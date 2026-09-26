@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #FAF8F5; /* cream-50 */
+    --foreground: #141413; /* noir-900 */
+    --border: #DFD7C7; /* cream-300 */
+    --primary: #0A0A0A; /* noir-950 */
+    --primary-foreground: #FAF8F5; /* cream-50 */
+    --secondary: #F4F0E8; /* cream-100 */
+    --secondary-foreground: #141413; /* noir-900 */
+    --accent: #C5A880; /* foil-gold */
+    --accent-foreground: #FAF8F5; /* cream-50 */
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)];
+  }
+}
+
+@layer utilities {
+  .shadow-luxury-sm { box-shadow: 0 2px 8px -2px rgba(10, 10, 10, 0.05); }
+  .shadow-luxury-md { box-shadow: 0 4px 16px -4px rgba(10, 10, 10, 0.05); }
+  .shadow-luxury-lg { box-shadow: 0 8px 32px -8px rgba(10, 10, 10, 0.05); }
+  .shadow-luxury-xl { box-shadow: 0 16px 64px -16px rgba(10, 10, 10, 0.05); }
+}
