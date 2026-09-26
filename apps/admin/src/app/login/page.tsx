@@ -4,8 +4,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-noir-950 flex flex-col items-center justify-center p-4 text-cream-50">
       <div className="w-full max-w-md bg-cream-50 rounded-md shadow-luxury-xl p-8 text-noir-900 border border-cream-300">
         <div className="text-center mb-8">
-          <h1 className="text-2xl tracking-[0.2em] uppercase font-bold text-noir-950">Whitebook</h1>
-          <p className="text-sm text-noir-600 tracking-widest mt-2 uppercase">Admin Portal</p>
+          <h1 className="text-2xl tracking-[0.2em] uppercase font-bold text-noir-950">PerfectPic</h1>
+          <p className="text-sm text-noir-600 tracking-widest mt-2 uppercase">Admin Portal • perfectpic.in</p>
         </div>
         
         <form className="space-y-6">
@@ -14,7 +14,7 @@ export default function LoginPage() {
             <input 
               type="email" 
               className="w-full px-3 py-2 border border-cream-300 rounded-sm bg-cream-50 focus:outline-none focus:ring-1 focus:ring-noir-950 transition-colors"
-              placeholder="admin@whitebook.com"
+              placeholder="admin@perfectpic.in"
             />
           </div>
           <div className="space-y-2">
@@ -31,7 +31,7 @@ export default function LoginPage() {
         </form>
       </div>
       <div className="mt-8 text-sm text-noir-400 tracking-widest uppercase">
-        © {new Date().getFullYear()} Whitebook
+        © {new Date().getFullYear()} PerfectPic (perfectpic.in)
       </div>
     </div>
   );

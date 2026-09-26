@@ -17,7 +17,7 @@ export default function EditorLayout({
         </div>
         
         <div className="font-display font-bold text-xl tracking-[0.2em] uppercase text-noir-950">
-          Whitebook Editor
+          PerfectPic Editor
         </div>
         
         <div>

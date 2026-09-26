@@ -44,7 +44,10 @@ export default function StudioPage() {
           >
             3D Preview
           </button>
-          <button className="px-4 py-2 text-sm font-medium bg-noir-950 text-cream-50 rounded-sm hover:bg-noir-900 transition-colors">
+          <button 
+            onClick={() => router.push(`/preview/${projectId}`)}
+            className="px-4 py-2 text-sm font-medium bg-noir-950 text-cream-50 rounded-sm hover:bg-noir-900 transition-colors"
+          >
             Approve & Order
           </button>
         </div>

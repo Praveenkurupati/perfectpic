@@ -33,7 +33,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Sidebar */}
       <aside className="w-[260px] bg-noir-950 text-cream-50 flex flex-col flex-shrink-0">
         <div className="h-16 flex items-center px-6 border-b border-noir-800">
-          <span className="text-lg tracking-[0.2em] uppercase font-bold text-cream-50">Whitebook</span>
+          <span className="text-lg tracking-[0.2em] uppercase font-bold text-cream-50">PerfectPic</span>
         </div>
         
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
@@ -66,7 +66,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">Admin User</p>
-              <p className="text-xs text-noir-400 truncate">admin@whitebook.com</p>
+              <p className="text-xs text-noir-400 truncate">admin@perfectpic.in</p>
             </div>
           </div>
           <Link href="/login" className="flex items-center text-sm text-noir-400 hover:text-white transition-colors w-full px-2 py-2 rounded-sm hover:bg-noir-800/50">

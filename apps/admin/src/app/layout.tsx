@@ -8,8 +8,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Whitebook Admin",
-  description: "Whitebook Admin Portal",
+  title: "PerfectPic Admin | perfectpic.in",
+  description: "PerfectPic Back-Office & Print Production Portal",
 };
 
 export default function RootLayout({

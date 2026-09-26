@@ -4,7 +4,7 @@ export default function FAQPage() {
       category: "Getting Started",
       questions: [
         { q: "How long does it take to create a book?", a: "With our AI auto-layout, you can create a book in under 60 seconds. Simply select your photos, choose a theme, and we'll handle the rest. You can then review and make manual adjustments if you wish." },
-        { q: "Do I need an app to create a book?", a: "No! Whitebook works entirely in your web browser. You can create, edit, and order directly from your smartphone, tablet, or desktop." }
+        { q: "Do I need an app to create a book?", a: "No! PerfectPic works entirely in your web browser at perfectpic.in. You can create, edit, and order directly from your smartphone, tablet, or desktop." }
       ]
     },
     {

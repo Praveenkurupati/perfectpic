@@ -12,7 +12,7 @@ export default function CheckoutLayout({
         <div className="container mx-auto px-4 md:px-8 flex justify-between items-center">
           <Link href="/">
             <span className="font-display font-bold text-2xl tracking-[0.3em] uppercase text-noir-950">
-              Whitebook
+              PerfectPic
             </span>
           </Link>
           <div className="flex items-center text-green-700 text-sm font-medium">

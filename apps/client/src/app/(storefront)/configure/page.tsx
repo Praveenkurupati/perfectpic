@@ -118,7 +118,7 @@ export default function ConfigurePage() {
             </div>
 
             <Link 
-              href="/editor" 
+              href="/upload/new-project" 
               className="w-full flex items-center justify-center px-6 py-4 bg-noir-950 text-cream-50 font-medium hover:bg-noir-900 transition-colors rounded-sm"
             >
               Continue to Upload Photos <ArrowRight size={18} className="ml-2" />

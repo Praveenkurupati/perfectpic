@@ -42,7 +42,7 @@ export function Header() {
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
           <span className="font-display font-bold text-2xl md:text-3xl tracking-[0.3em] uppercase text-noir-950">
-            Whitebook
+            PerfectPic
           </span>
         </Link>
 
@@ -55,13 +55,13 @@ export function Header() {
             </button>
             <div className="absolute top-full left-0 mt-2 w-48 bg-cream-50 border border-cream-300 shadow-luxury-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 py-2">
               {CATEGORIES.map(cat => (
-                <Link key={cat} href={`/category/${cat.toLowerCase().replace(/ /g, '-')}`} className="block px-4 py-2 text-sm text-noir-700 hover:bg-cream-100 hover:text-noir-950 transition-colors">
+                <Link key={cat} href={`/configure?category=${cat.toLowerCase().replace(/ /g, '-')}`} className="block px-4 py-2 text-sm text-noir-700 hover:bg-cream-100 hover:text-noir-950 transition-colors">
                   {cat}
                 </Link>
               ))}
             </div>
           </div>
-          <Link href="/track" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
+          <Link href="/orders" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
             Track Orders
           </Link>
           <Link href="/pricing" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
@@ -70,14 +70,14 @@ export function Header() {
           <Link href="/faq" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
             FAQs
           </Link>
-          <Link href="/support" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
-            Support
+          <Link href="/projects" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
+            My Projects
           </Link>
         </nav>
 
         {/* Actions */}
         <div className="flex items-center space-x-4 md:space-x-6">
-          <Link href="/account" className="text-noir-900 hover:text-noir-700 transition-colors hidden md:block">
+          <Link href="/settings" className="text-noir-900 hover:text-noir-700 transition-colors hidden md:block" title="Account Settings">
             <User size={20} />
           </Link>
           <Link href="/cart" className="relative text-noir-900 hover:text-noir-700 transition-colors">
@@ -98,12 +98,12 @@ export function Header() {
           className="md:hidden bg-cream-50 border-b border-cream-300 px-4 py-6"
         >
           <nav className="flex flex-col space-y-4">
-            <Link href="/categories" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Categories</Link>
-            <Link href="/track" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Track Orders</Link>
+            <Link href="/configure" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Categories</Link>
+            <Link href="/orders" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Track Orders</Link>
             <Link href="/pricing" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Pricing</Link>
             <Link href="/faq" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">FAQs</Link>
-            <Link href="/support" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Support</Link>
-            <Link href="/account" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Account</Link>
+            <Link href="/projects" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Projects</Link>
+            <Link href="/settings" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Account Settings</Link>
           </nav>
         </m.div>
       )}

@@ -71,11 +71,16 @@ export default function Home() {
               { name: "Pet & Paws", emoji: "🐾", desc: "Furry friends" },
               { name: "Special Moments", emoji: "✨", desc: "Everyday magic" }
             ].map((cat, i) => (
-              <div key={i} className="bg-cream-100 p-6 md:p-8 rounded-sm hover:shadow-luxury-md transition-shadow cursor-pointer border border-transparent hover:border-cream-300 text-center flex flex-col items-center">
+              <Link 
+                key={i} 
+                href={`/configure?category=${encodeURIComponent(cat.name)}`}
+                className="bg-cream-100 p-6 md:p-8 rounded-sm hover:shadow-luxury-md transition-all cursor-pointer border border-transparent hover:border-cream-300 text-center flex flex-col items-center hover:-translate-y-1 block"
+              >
                 <span className="text-4xl mb-4">{cat.emoji}</span>
                 <h3 className="font-sans font-semibold text-noir-900 mb-2">{cat.name}</h3>
                 <p className="text-sm text-noir-700">{cat.desc}</p>
-              </div>
+                <span className="mt-4 text-[11px] font-medium uppercase tracking-[0.15em] text-foil-gold">Start Book →</span>
+              </Link>
             ))}
           </div>
         </div>

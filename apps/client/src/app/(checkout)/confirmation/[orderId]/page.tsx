@@ -21,7 +21,7 @@ export default function ConfirmationPage() {
 
       <h1 className="font-serif text-5xl mb-4 text-center">Order Confirmed!</h1>
       <p className="text-noir-600 mb-12 text-center max-w-md">
-        Thank you for choosing Whitebook. Your beautiful memories are now entering production.
+        Thank you for choosing PerfectPic. Your beautiful memories are now entering production at perfectpic.in.
       </p>
 
       <div className="w-full max-w-2xl bg-white p-8 rounded-sm shadow-sm border border-cream-200 mb-12">

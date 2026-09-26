@@ -22,8 +22,17 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: "Whitebook — Premium Photo Books",
-  description: "Create premium handcrafted photobooks that last generations. Printed on non-tearable, spill-safe pages with lay-flat binding.",
+  metadataBase: new URL("https://perfectpic.in"),
+  title: "PerfectPic — Premium Handcrafted Photo Books | perfectpic.in",
+  description: "Create premium handcrafted photobooks that last generations. Printed on non-tearable, spill-safe pages with lay-flat binding on perfectpic.in.",
+  openGraph: {
+    title: "PerfectPic — Premium Photo Books",
+    description: "Create premium handcrafted photobooks in 60 seconds.",
+    url: "https://perfectpic.in",
+    siteName: "PerfectPic",
+    locale: "en_IN",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
