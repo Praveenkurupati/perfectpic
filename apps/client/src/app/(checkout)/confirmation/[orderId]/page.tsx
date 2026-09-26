@@ -2,8 +2,11 @@
 
 import { motion } from 'motion/react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-export default function ConfirmationPage({ params }: { params: { orderId: string } }) {
+export default function ConfirmationPage() {
+  const params = useParams();
+  const orderId = (params?.orderId as string) || 'WB-8491';
   return (
     <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-20 px-4 flex flex-col items-center">
       <motion.div 
@@ -25,7 +28,7 @@ export default function ConfirmationPage({ params }: { params: { orderId: string
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm mb-8 pb-8 border-b border-cream-200">
           <div>
             <span className="block text-xs text-noir-500 uppercase tracking-widest mb-1">Order ID</span>
-            <span className="font-medium">#{params.orderId}</span>
+            <span className="font-medium">#{orderId}</span>
           </div>
           <div>
             <span className="block text-xs text-noir-500 uppercase tracking-widest mb-1">Date</span>

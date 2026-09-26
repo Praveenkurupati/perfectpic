@@ -19,6 +19,10 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
   }
 
   const token = authHeader.split(" ")[1];
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized - Invalid token format" });
+    return;
+  }
 
   try {
     const decoded = verifyToken(token) as { id: string; role?: string };
@@ -34,11 +38,13 @@ export const optionalAuth = (req: Request, res: Response, next: NextFunction) =>
   
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.split(" ")[1];
-    try {
-      const decoded = verifyToken(token) as { id: string; role?: string };
-      req.user = decoded;
-    } catch (error) {
-      // Ignore invalid token for optional auth
+    if (token) {
+      try {
+        const decoded = verifyToken(token) as { id: string; role?: string };
+        req.user = decoded;
+      } catch (error) {
+        // Ignore invalid token for optional auth
+      }
     }
   }
   next();

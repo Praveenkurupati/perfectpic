@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useEditorStore } from '@/stores/useEditorStore';
 
@@ -10,8 +10,10 @@ const EditorToolbar = dynamic(() => import('@/features/editor/components/EditorT
 const PhotoTray = dynamic(() => import('@/features/editor/components/PhotoTray'), { ssr: false });
 const SpreadFilmstrip = dynamic(() => import('@/features/editor/components/SpreadFilmstrip'), { ssr: false });
 
-export default function StudioPage({ params }: { params: { projectId: string } }) {
+export default function StudioPage() {
   const router = useRouter();
+  const params = useParams();
+  const projectId = (params?.projectId as string) || '';
   const { undo, redo, bookConfig } = useEditorStore();
 
   return (
@@ -19,7 +21,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
       {/* Top Bar */}
       <header className="h-14 border-b border-cream-300 bg-white flex items-center justify-between px-4 z-10 shrink-0">
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push(`/upload/${params.projectId}`)} className="p-2 hover:bg-cream-50 rounded-sm">
+          <button onClick={() => router.push(`/upload/${projectId}`)} className="p-2 hover:bg-cream-50 rounded-sm">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
           </button>
           <div>
@@ -37,7 +39,7 @@ export default function StudioPage({ params }: { params: { projectId: string } }
           </button>
           <div className="w-px h-6 bg-cream-300 mx-2" />
           <button 
-            onClick={() => router.push(`/preview/${params.projectId}`)}
+            onClick={() => router.push(`/preview/${projectId}`)}
             className="px-4 py-2 text-sm font-medium border border-noir-900 rounded-sm hover:bg-cream-100 transition-colors"
           >
             3D Preview

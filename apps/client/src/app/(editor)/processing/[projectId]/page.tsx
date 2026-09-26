@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 
 const steps = [
@@ -11,8 +11,10 @@ const steps = [
   "Generating your book layout..."
 ];
 
-export default function ProcessingPage({ params }: { params: { projectId: string } }) {
+export default function ProcessingPage() {
   const router = useRouter();
+  const params = useParams();
+  const projectId = (params?.projectId as string) || '';
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -22,7 +24,7 @@ export default function ProcessingPage({ params }: { params: { projectId: string
         if (p >= 100) {
           clearInterval(interval);
           setTimeout(() => {
-            router.push(`/studio/${params.projectId}`);
+            router.push(`/studio/${projectId}`);
           }, 1500);
           return 100;
         }
@@ -31,7 +33,7 @@ export default function ProcessingPage({ params }: { params: { projectId: string
     }, 50);
 
     return () => clearInterval(interval);
-  }, [params.projectId, router]);
+  }, [projectId, router]);
 
   useEffect(() => {
     if (progress > 25 && currentStep === 0) setCurrentStep(1);
@@ -51,10 +53,10 @@ export default function ProcessingPage({ params }: { params: { projectId: string
              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
            />
            <div className="absolute inset-y-4 inset-x-8 flex flex-col gap-2">
-             <motion.div className="h-1/2 bg-cream-300 rounded-sm" style={{ scaleX: progress / 100 }} originX={0} />
+             <motion.div className="h-1/2 bg-cream-300 rounded-sm" style={{ scaleX:  progress / 100 , transformOrigin: "left" }} />
              <div className="flex gap-2 h-1/2">
-               <motion.div className="flex-1 bg-cream-300 rounded-sm" style={{ scaleX: Math.max(0, (progress - 50) * 2) / 100 }} originX={0} />
-               <motion.div className="flex-1 bg-cream-300 rounded-sm" style={{ scaleX: Math.max(0, (progress - 75) * 4) / 100 }} originX={0} />
+               <motion.div className="flex-1 bg-cream-300 rounded-sm" style={{ scaleX:  Math.max(0, (progress - 50) * 2) / 100 , transformOrigin: "left" }} />
+               <motion.div className="flex-1 bg-cream-300 rounded-sm" style={{ scaleX:  Math.max(0, (progress - 75) * 4) / 100 , transformOrigin: "left" }} />
              </div>
            </div>
         </div>

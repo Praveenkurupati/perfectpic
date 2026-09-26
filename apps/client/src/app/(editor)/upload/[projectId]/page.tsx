@@ -1,16 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { motion } from 'motion/react';
 
-export default function UploadPage({ params }: { params: { projectId: string } }) {
+export default function UploadPage() {
   const router = useRouter();
+  const params = useParams();
+  const projectId = (params?.projectId as string) || '';
   const [uploaded, setUploaded] = useState(0);
   const totalPhotos = 45;
 
   const handleContinue = () => {
-    router.push(`/processing/${params.projectId}`);
+    router.push(`/processing/${projectId}`);
   };
 
   return (

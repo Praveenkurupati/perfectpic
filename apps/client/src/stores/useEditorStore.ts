@@ -103,15 +103,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   reorderPages: (fromIndex, toIndex) => set((state) => {
     const newPages = [...state.pages];
     const [moved] = newPages.splice(fromIndex, 1);
-    newPages.splice(toIndex, 0, moved);
+    if (moved) {
+      newPages.splice(toIndex, 0, moved);
+    }
     return { pages: newPages };
   }),
   setCurrentPage: (index) => set({ currentPageIndex: index }),
   addPhoto: (photo) => set((state) => ({ photos: [...state.photos, photo] })),
   removePhoto: (id) => set((state) => ({ photos: state.photos.filter(p => p.id !== id) })),
   updatePageCanvas: (index, elements) => set((state) => {
+    const page = state.pages[index];
+    if (!page) return state;
     const newPages = [...state.pages];
-    newPages[index] = { ...newPages[index], elements };
+    newPages[index] = { ...page, elements };
     return { pages: newPages };
   }),
   setPhotoFilter: (filter) => set({ photoFilter: filter })

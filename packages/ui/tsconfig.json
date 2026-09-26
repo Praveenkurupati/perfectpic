@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/config-typescript",
+  "extends": "@repo/config-typescript/tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {

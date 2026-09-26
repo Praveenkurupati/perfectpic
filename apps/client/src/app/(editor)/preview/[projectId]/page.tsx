@@ -1,20 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 const BookFlipPreview = dynamic(() => import('@/features/preview/components/BookFlipPreview'), { ssr: false });
 
-export default function PreviewPage({ params }: { params: { projectId: string } }) {
+export default function PreviewPage() {
   const router = useRouter();
+  const params = useParams();
+  const projectId = (params?.projectId as string) || '';
   const [approved, setApproved] = useState(false);
 
   return (
     <div className="h-screen flex flex-col bg-noir-800 text-cream-50 font-sans">
       <header className="h-16 flex items-center justify-between px-8 border-b border-noir-700 bg-noir-900 shrink-0">
         <h1 className="font-serif text-2xl tracking-wide">3D Preview</h1>
-        <button onClick={() => router.push(`/studio/${params.projectId}`)} className="text-sm hover:text-foil-gold uppercase tracking-widest">
+        <button onClick={() => router.push(`/studio/${projectId}`)} className="text-sm hover:text-foil-gold uppercase tracking-widest">
           Close Preview
         </button>
       </header>
@@ -66,7 +68,7 @@ export default function PreviewPage({ params }: { params: { projectId: string } 
                 Approve & Add to Cart
               </button>
               <button 
-                onClick={() => router.push(`/studio/${params.projectId}`)}
+                onClick={() => router.push(`/studio/${projectId}`)}
                 className="w-full py-3 border border-noir-700 text-cream-50 rounded-sm hover:bg-noir-800 transition-colors text-sm"
               >
                 Make Changes
