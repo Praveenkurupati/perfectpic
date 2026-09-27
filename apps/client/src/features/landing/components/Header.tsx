@@ -34,13 +34,16 @@ export function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const isHome = pathname === "/";
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(pathname || '/')}`;
 
   return (
     <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
-        isScrolled ? "bg-cream-50/95 backdrop-blur-md border-b border-cream-300 py-3 shadow-luxury-xs" : "bg-transparent py-5"
+        (isScrolled || !isHome)
+          ? "bg-cream-50/95 backdrop-blur-md border-b border-cream-300 py-3.5 shadow-luxury-xs" 
+          : "bg-transparent py-5"
       )}
     >
       <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">

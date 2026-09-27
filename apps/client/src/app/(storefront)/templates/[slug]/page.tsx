@@ -169,9 +169,9 @@ export default function BookDetailPage() {
     currentBook.templatePhotos?.[1] || currentBook.coverImage;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] text-neutral-900 font-sans antialiased">
+    <div className="min-h-screen bg-[#faf8f5] text-neutral-900 font-sans antialiased pt-20 md:pt-24">
       {/* Top Breadcrumb Bar */}
-      <div className="border-b border-neutral-200/80 bg-white/70 backdrop-blur-sm sticky top-0 z-30">
+      <div className="border-b border-neutral-200/80 bg-white/90 backdrop-blur-md sticky top-[60px] md:top-[68px] z-20 shadow-2xs">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
           <nav className="flex items-center space-x-2 text-xs text-neutral-500 font-medium lowercase">
             <Link
@@ -209,7 +209,7 @@ export default function BookDetailPage() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-14">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-start">
           {/* LEFT COLUMN: Interactive 3D Mockup & Visual Spread Viewer */}
-          <div className="lg:col-span-6 lg:sticky lg:top-20 space-y-6">
+          <div className="lg:col-span-6 lg:sticky lg:top-36 space-y-6">
             {/* Main Stage Presentation Area */}
             <div className="bg-white border border-neutral-200/90 rounded-2xl p-6 md:p-10 shadow-sm relative overflow-hidden flex flex-col items-center justify-center min-h-[480px]">
               {/* Top View Mode Pills */}
