@@ -4,6 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 
+import { connectDB, isDbConnected } from "./db/connection";
 import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth";
 import uploadRoutes from "./routes/upload";
@@ -22,9 +23,13 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "50mb" })); // for base64 images if needed
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Health check
+// Health check with DB status
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+  res.status(200).json({ 
+    status: "ok", 
+    database: isDbConnected() ? "mongodb" : "in-memory",
+    timestamp: new Date().toISOString() 
+  });
 });
 
 // Routes
@@ -41,6 +46,8 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Backend server running on port ${PORT}`);
+app.listen(PORT, async () => {
+  console.log(`🚀 PerfectPic Backend server running on port ${PORT}`);
+  // Connect to MongoDB
+  await connectDB();
 });
