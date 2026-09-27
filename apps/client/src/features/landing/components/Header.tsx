@@ -61,6 +61,9 @@ export function Header() {
               ))}
             </div>
           </div>
+          <Link href="/templates" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
+            Templates
+          </Link>
           <Link href="/orders" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
             Track Orders
           </Link>

@@ -1,11 +1,44 @@
 // apps/backend/src/data/templates.ts
 
+export interface TemplateProduct {
+  id: string;
+  slug: string;
+  seriesLabel: string; // e.g. "travel series", "travel edit", "moments series"
+  bookType: 'custom photobook' | 'custom magazine' | 'artisan layflat';
+  title: string;
+  displayName: string;
+  tagline: string;
+  subtitle: string;
+  description: string;
+  category: string;
+  coverImage: string;
+  mockupBg?: string; // background color for mockup container
+  coverColor?: string; // e.g. #F8BAC7 for Paris pink, #70C5CB for Summer mint
+  spineText?: string;
+  rating: number;
+  reviewCount: number;
+  fromPrice: number;
+  pricing: { [key: string]: number };
+  basePages: number;
+  maxPhotos: number;
+  badge?: 'new' | 'bestseller' | 'popular' | 'trending' | '';
+  featured: boolean;
+  defaultOptions: {
+    size: string;
+    cover: string;
+    theme: string;
+    color: string;
+    packaging: string;
+  };
+  templatePhotos: string[];
+}
+
 export const categories = [
-  { id: 'cat-all', name: 'All Books', slug: 'all', description: 'Browse our complete collection of handcrafted photo books.', emoji: '✨', count: 4 },
-  { id: 'cat-1', name: 'Travel', slug: 'travel', description: 'Capture your wanderlust and epic adventures across the globe.', emoji: '✈️', count: 3 },
-  { id: 'cat-2', name: 'Anniversary', slug: 'anniversary', description: 'Celebrate milestone anniversaries and love stories.', emoji: '🥂', count: 1 },
-  { id: 'cat-3', name: 'Wedding', slug: 'wedding', description: 'Preserve the magic and vows of your big day.', emoji: '💍', count: 0 },
-  { id: 'cat-4', name: 'Baby & Kids', slug: 'baby', description: 'Treasure baby’s first steps and growing milestones.', emoji: '👶', count: 0 }
+  { id: 'cat-all', name: 'All Series', slug: 'all', description: 'Browse our complete collection of handcrafted photo books.', emoji: '✨', count: 5 },
+  { id: 'cat-1', name: 'Travel Series', slug: 'travel', description: 'Capture your wanderlust and epic adventures across the globe.', emoji: '✈️', count: 3 },
+  { id: 'cat-2', name: 'Moments Series', slug: 'moments', description: 'Daily magic, summer highlights, and candid family memories.', emoji: '☀️', count: 1 },
+  { id: 'cat-3', name: 'Anniversary Series', slug: 'anniversary', description: 'Celebrate milestone anniversaries and enduring love stories.', emoji: '🥂', count: 1 },
+  { id: 'cat-4', name: 'Wedding Series', slug: 'wedding', description: 'Preserve the vows and portraits of your celebration.', emoji: '💍', count: 0 }
 ];
 
 export const productSizes = [
@@ -41,61 +74,139 @@ export const packagingOptions = [
   { id: 'pack-3', name: 'Gilded Gift Packaging', priceAdjustment: 199, description: 'Hand-wrapped in bespoke parchment paper with wax seal.' }
 ];
 
-export const templates = [
+export let templates: TemplateProduct[] = [
   {
     id: 'tpl-1',
-    slug: 'sri-lanka-travel',
-    title: 'Sri Lanka Travel Diary',
-    subtitle: 'A journey through the tear drop of India',
-    description: 'Perfect for capturing the vibrant colors, ancient ruins, misty tea hills, and golden beaches of Sri Lanka.',
+    slug: 'travel-series-paris',
+    seriesLabel: 'travel series',
+    bookType: 'custom photobook',
+    title: 'custom photobook',
+    displayName: 'Paris Journey Hardcover',
+    tagline: 'your journeys, perfectly told',
+    subtitle: 'Timeless moments across the City of Light',
+    description: 'Minimalist editorial layouts with bold typography and iconic architectural framing.',
     category: 'Travel',
-    coverImage: 'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=800&auto=format&fit=crop',
-    templatePhotos: [
-      'https://images.unsplash.com/photo-1580974582391-a6649c82a85f?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1579564177579-22a49f50f2fb?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1620216664966-218eb8a40d51?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1533050487297-09b450131914?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1586526462747-d5d1ea857f13?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1625736173007-88fcf32d20d7?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1582496739818-d4cbf2826cce?w=800&auto=format&fit=crop'
-    ],
+    coverImage: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
+    coverColor: '#F8BAC7', // pastel pink like in screenshot
+    spineText: 'PARIS',
+    rating: 5.0,
+    reviewCount: 72,
+    fromPrice: 1999,
     pricing: { '8.25': 1999, '10': 2499 },
     basePages: 40,
     maxPhotos: 100,
+    badge: 'bestseller',
+    featured: true,
     defaultOptions: {
       size: '8.25x8.25',
       cover: 'cov-1',
       theme: 'theme-4',
-      color: 'col-4',
+      color: 'col-3',
       packaging: 'pack-1'
     },
-    availableThemes: ['Wanderlust', 'Minimal Modern', 'Classic Cream'],
-    availableCovers: ['Hardcover Laminar', 'Hardcover Leather', 'Softcover'],
-    availableColors: ['Ocean Blue', 'Forest Green', 'Ivory White'],
-    availablePackaging: ['Standard Eco Box', 'Luxury Keepsake Box'],
-    featured: true,
-    badge: 'Bestseller'
+    templatePhotos: [
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1520939817895-060bdef4ad1b?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1471623432079-b009d30b6729?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1549144511-f099e773c147?w=800&auto=format&fit=crop'
+    ]
   },
   {
     id: 'tpl-2',
-    slug: 'colombia-adventure',
-    title: 'Colombia Adventure',
-    subtitle: 'Vibrant colonial streets, coffee valleys & Andean peaks',
-    description: 'Document your journey through the colorful balconies of Cartagena, the wax palms of Salento, and lush coffee fincas.',
+    slug: 'travel-edit-paris',
+    seriesLabel: 'travel edit',
+    bookType: 'custom magazine',
+    title: 'custom magazine',
+    displayName: 'The Paris Chapter Edit',
+    tagline: 'your travels, front-page featured',
+    subtitle: 'Glossy editorial magazine with headline features',
+    description: 'High-fashion spreads and editorial callouts making your personal vacation look straight from Vogue.',
     category: 'Travel',
-    coverImage: 'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=800&auto=format&fit=crop',
+    coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop',
+    coverColor: '#F5C4CD',
+    spineText: 'PARIS EDIT',
+    rating: 5.0,
+    reviewCount: 72,
+    fromPrice: 2499,
+    pricing: { '8.25': 2499, '10': 2999 },
+    basePages: 44,
+    maxPhotos: 85,
+    badge: '',
+    featured: true,
+    defaultOptions: {
+      size: '8.25x8.25',
+      cover: 'cov-1',
+      theme: 'theme-1',
+      color: 'col-1',
+      packaging: 'pack-2'
+    },
     templatePhotos: [
-      'https://images.unsplash.com/photo-1583321526487-75d8d067ed77?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1589133342379-450f28246bc5?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1538354670077-7422f0853515?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1601614917409-e137b75249f0?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1587399887756-3c072b220d53?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1588691880947-f376cc0954b8?w=800&auto=format&fit=crop'
-    ],
+      'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'tpl-3',
+    slug: 'moments-series-summer',
+    seriesLabel: 'moments series',
+    bookType: 'custom photobook',
+    title: 'custom photobook',
+    displayName: 'Summer 2026 Coastal Moments',
+    tagline: 'your moments, forever kept',
+    subtitle: 'Sun-drenched pool days and sunset beach dinners',
+    description: 'Pastel coastal tones with centered picture-window frames that accentuate warm summer memories.',
+    category: 'Moments',
+    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
+    coverColor: '#72C2C6', // pastel mint/cyan like in screenshot
+    spineText: 'SUMMER 2026',
+    rating: 5.0,
+    reviewCount: 72,
+    fromPrice: 1999,
     pricing: { '8.25': 1999, '10': 2499 },
     basePages: 40,
-    maxPhotos: 80,
+    maxPhotos: 90,
+    badge: 'new',
+    featured: true,
+    defaultOptions: {
+      size: '8.25x8.25',
+      cover: 'cov-1',
+      theme: 'theme-1',
+      color: 'col-4',
+      packaging: 'pack-1'
+    },
+    templatePhotos: [
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1473116763249-2faaef81ccda?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop'
+    ]
+  },
+  {
+    id: 'tpl-4',
+    slug: 'sri-lanka-travel',
+    seriesLabel: 'travel series',
+    bookType: 'custom photobook',
+    title: 'custom photobook',
+    displayName: 'Sri Lanka Tea Hills & Coasts',
+    tagline: 'raw landscapes, forever captured',
+    subtitle: 'From Sigiriya rock fortress to Ella misty peaks',
+    description: 'Perfect for capturing the vibrant colors, ancient ruins, misty tea hills, and golden beaches.',
+    category: 'Travel',
+    coverImage: 'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=800&auto=format&fit=crop',
+    coverColor: '#2D4A3E',
+    spineText: 'SRI LANKA',
+    rating: 4.9,
+    reviewCount: 114,
+    fromPrice: 1999,
+    pricing: { '8.25': 1999, '10': 2499 },
+    basePages: 40,
+    maxPhotos: 100,
+    badge: 'popular',
+    featured: true,
     defaultOptions: {
       size: '8.25x8.25',
       cover: 'cov-1',
@@ -103,67 +214,35 @@ export const templates = [
       color: 'col-5',
       packaging: 'pack-1'
     },
-    availableThemes: ['Wanderlust', 'Minimal Modern'],
-    availableCovers: ['Hardcover Laminar', 'Hardcover Leather'],
-    availableColors: ['Midnight Black', 'Forest Green', 'Ivory White'],
-    availablePackaging: ['Standard Eco Box', 'Luxury Keepsake Box'],
-    featured: true,
-    badge: 'New'
-  },
-  {
-    id: 'tpl-3',
-    slug: 'annapurna-base-camp',
-    title: 'Annapurna Base Camp',
-    subtitle: 'Trekking into the sanctuary of the majestic Himalayas',
-    description: 'A grand book for a grand adventure. Showcase the awe-inspiring peaks, prayer flags, sunrise summits, and the spirit of high-altitude trekking.',
-    category: 'Travel',
-    coverImage: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
     templatePhotos: [
-      'https://images.unsplash.com/photo-1522204646733-5c7ffce4141d?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1541819612089-a2991e2b585d?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1544735716-f2868ff8373b?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1517408800924-42f885e72d24?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1548110594-e3c3b52d439b?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1629851722883-9bfa3d0d603a?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1551608674-f25bbfb8a4f6?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1510252879573-0ff7dc218412?w=800&auto=format&fit=crop'
-    ],
-    pricing: { '8.25': 2499, '10': 2999 },
-    basePages: 48,
-    maxPhotos: 120,
-    defaultOptions: {
-      size: '10x10',
-      cover: 'cov-2',
-      theme: 'theme-3',
-      color: 'col-2',
-      packaging: 'pack-2'
-    },
-    availableThemes: ['Wanderlust', 'Dark Luxe', 'Minimal Modern'],
-    availableCovers: ['Hardcover Laminar', 'Hardcover Leather'],
-    availableColors: ['Midnight Black', 'Ivory White', 'Ocean Blue'],
-    availablePackaging: ['Standard Eco Box', 'Luxury Keepsake Box', 'Gilded Gift Packaging'],
-    featured: true,
-    badge: 'Popular Pick'
+      'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1580974582391-a6649c82a85f?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1579564177579-22a49f50f2fb?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1620216664966-218eb8a40d51?w=800&auto=format&fit=crop'
+    ]
   },
   {
-    id: 'tpl-4',
+    id: 'tpl-5',
     slug: 'first-anniversary',
-    title: 'Our 1st Anniversary',
-    subtitle: 'Celebrating 365 days of love, laughter & new chapters',
+    seriesLabel: 'anniversary series',
+    bookType: 'custom photobook',
+    title: 'custom photobook',
+    displayName: 'Our 1st Anniversary Keepsake',
+    tagline: 'years of love, timelessly bound',
+    subtitle: 'Celebrating 365 days of laughter and milestones',
     description: 'Relive the most romantic moments, candid smiles, and first-year milestones in a luxury lay-flat keepsake book.',
     category: 'Anniversary',
     coverImage: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
-    templatePhotos: [
-      'https://images.unsplash.com/photo-1518193026322-26162334f664?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1494955870715-979c4f10164f?w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=800&auto=format&fit=crop'
-    ],
+    coverColor: '#E3C28C', // gold accent
+    spineText: 'CHAPTER ONE',
+    rating: 5.0,
+    reviewCount: 96,
+    fromPrice: 1999,
     pricing: { '8.25': 1999, '10': 2499 },
     basePages: 36,
     maxPhotos: 75,
+    badge: 'new',
+    featured: true,
     defaultOptions: {
       size: '8.25x8.25',
       cover: 'cov-1',
@@ -171,11 +250,11 @@ export const templates = [
       color: 'col-3',
       packaging: 'pack-2'
     },
-    availableThemes: ['Romance', 'Classic Cream', 'Minimal Modern'],
-    availableCovers: ['Hardcover Laminar', 'Hardcover Leather'],
-    availableColors: ['Dusty Rose', 'Ivory White'],
-    availablePackaging: ['Luxury Keepsake Box', 'Gilded Gift Packaging'],
-    featured: true,
-    badge: 'Milestone'
+    templatePhotos: [
+      'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1518193026322-26162334f664?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=800&auto=format&fit=crop'
+    ]
   }
 ];

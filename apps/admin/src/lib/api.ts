@@ -37,11 +37,26 @@ export const adminApi = {
   getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),
   updateOrderStatus: (id: string, status: string) => fetcher<any>(`/orders/${id}/status`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status }) }),
   
-  // Products
+  // Products & Templates
   getProducts: (category?: string) => {
     const params = category ? `?category=${encodeURIComponent(category)}` : '';
     return fetcher<{ products: any[]; total: number }>(`/products${params}`);
   },
+  getProduct: (idOrSlug: string) => fetcher<any>(`/products/${idOrSlug}`),
+  createProduct: (data: any) => fetcher<{ message: string; product: any }>('/products', {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  }),
+  updateProduct: (id: string, data: any) => fetcher<{ message: string; product: any }>(`/products/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  }),
+  deleteProduct: (id: string) => fetcher<{ message: string }>(`/products/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  }),
   getProductConfig: () => fetcher<any>('/products/config'),
   
   // Projects

@@ -12,12 +12,14 @@ import {
   Search,
   Bell,
   LogOut,
-  User as UserIcon
+  User as UserIcon,
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Template Books", href: "/templates", icon: BookOpen },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Production", href: "/production", icon: Printer },
   { name: "Customers", href: "/customers", icon: Users },
