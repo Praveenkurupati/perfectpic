@@ -12,13 +12,23 @@ import {
 } from '../data/templates';
 import { Product } from '../db/models/Product';
 import { isDbConnected } from '../db/connection';
+import { cacheGet, cacheSet, cacheDelByPrefix } from '../cache/redis';
 
 const router = Router();
 
 // GET /api/products - list all products with optional ?category=Travel filter
 router.get('/', async (req, res) => {
   const { category } = req.query;
+  const categoryKey = category && typeof category === 'string' ? category.toLowerCase() : 'all';
+  const cacheKey = `products:list:${categoryKey}`;
 
+  // 1. Try Redis cache
+  const cached = await cacheGet<{ products: any[]; total: number }>(cacheKey);
+  if (cached) {
+    return res.json(cached);
+  }
+
+  // 2. Query MongoDB
   try {
     if (isDbConnected()) {
       let query: any = {};
@@ -32,13 +42,15 @@ router.get('/', async (req, res) => {
         };
       }
       const products = await Product.find(query).sort({ createdAt: -1 });
-      return res.json({ products, total: products.length });
+      const responseData = { products, total: products.length };
+      await cacheSet(cacheKey, responseData, 300); // 5 min TTL
+      return res.json(responseData);
     }
   } catch (err) {
     console.error('MongoDB product query error:', err);
   }
 
-  // Fallback to in-memory templates
+  // 3. Fallback to in-memory templates
   let filteredProducts = templates;
   if (category && typeof category === 'string' && category.toLowerCase() !== 'all') {
     filteredProducts = templates.filter(
@@ -47,39 +59,65 @@ router.get('/', async (req, res) => {
     );
   }
   
-  res.json({ products: filteredProducts, total: filteredProducts.length });
+  const responseData = { products: filteredProducts, total: filteredProducts.length };
+  await cacheSet(cacheKey, responseData, 300);
+  res.json(responseData);
 });
 
-router.get('/categories', (req, res) => {
-  res.json({ categories });
+router.get('/categories', async (req, res) => {
+  const cacheKey = 'products:categories';
+  const cached = await cacheGet<{ categories: any[] }>(cacheKey);
+  if (cached) return res.json(cached);
+
+  const responseData = { categories };
+  await cacheSet(cacheKey, responseData, 3600);
+  res.json(responseData);
 });
 
-router.get('/config', (req, res) => {
-  res.json({
+router.get('/config', async (req, res) => {
+  const cacheKey = 'products:config';
+  const cached = await cacheGet<any>(cacheKey);
+  if (cached) return res.json(cached);
+
+  const responseData = {
     sizes: productSizes,
     covers: coverTypes,
     themes: bookThemes,
     colors: bookColors,
     packaging: packagingOptions
-  });
+  };
+  await cacheSet(cacheKey, responseData, 3600);
+  res.json(responseData);
 });
 
 router.get('/featured', async (req, res) => {
+  const cacheKey = 'products:featured';
+  const cached = await cacheGet<{ products: any[] }>(cacheKey);
+  if (cached) return res.json(cached);
+
   try {
     if (isDbConnected()) {
       const featured = await Product.find({ featured: true }).sort({ createdAt: -1 });
-      return res.json({ products: featured });
+      const responseData = { products: featured };
+      await cacheSet(cacheKey, responseData, 300);
+      return res.json(responseData);
     }
   } catch (err) {
     console.error('MongoDB featured query error:', err);
   }
 
   const featured = templates.filter(t => t.featured);
-  res.json({ products: featured });
+  const responseData = { products: featured };
+  await cacheSet(cacheKey, responseData, 300);
+  res.json(responseData);
 });
 
 router.get('/:slug', async (req, res) => {
   const slugParam = req.params.slug;
+  const cacheKey = `product:item:${slugParam}`;
+
+  const cached = await cacheGet<any>(cacheKey);
+  if (cached) return res.json(cached);
 
   try {
     if (isDbConnected()) {
@@ -89,6 +127,7 @@ router.get('/:slug', async (req, res) => {
       }
       const product = await Product.findOne(query);
       if (product) {
+        await cacheSet(cacheKey, product, 300);
         return res.json(product);
       }
     }
@@ -100,6 +139,7 @@ router.get('/:slug', async (req, res) => {
   if (!product) {
     return res.status(404).json({ error: 'Product not found' });
   }
+  await cacheSet(cacheKey, product, 300);
   res.json(product);
 });
 
@@ -148,6 +188,10 @@ router.post('/', async (req, res) => {
       : [body.coverImage || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=800&auto=format&fit=crop']
   };
 
+  // Invalidate Redis caches
+  await cacheDelByPrefix('products:');
+  await cacheDelByPrefix('product:');
+
   try {
     if (isDbConnected()) {
       const created = await Product.create(productData);
@@ -169,6 +213,10 @@ router.post('/', async (req, res) => {
 // Admin: Update existing template book
 router.put('/:id', async (req, res) => {
   const idParam = req.params.id;
+
+  // Invalidate Redis caches
+  await cacheDelByPrefix('products:');
+  await cacheDelByPrefix('product:');
 
   try {
     if (isDbConnected()) {
@@ -219,6 +267,10 @@ router.put('/:id', async (req, res) => {
 // Admin: Delete template book
 router.delete('/:id', async (req, res) => {
   const idParam = req.params.id;
+
+  // Invalidate Redis caches
+  await cacheDelByPrefix('products:');
+  await cacheDelByPrefix('product:');
 
   try {
     if (isDbConnected()) {

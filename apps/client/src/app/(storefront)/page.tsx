@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
+import ExploreCard from "@/features/catalog/components/ExploreCard";
 
 // Fallback books data matching the user's reference design
 const fallbackTemplates: BookItem[] = [
@@ -271,11 +272,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Book Items Grid (3 Cards per row matching screenshot) */}
+          {/* Book Items Grid (3 Cards per row matching screenshot: 5 books + 6th Explore Card) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProducts.map(book => (
+            {filteredProducts.slice(0, 5).map(book => (
               <BookCard key={book.id} book={book} />
             ))}
+            <ExploreCard totalCount={allProducts.length || 23} />
           </div>
 
           {/* View All Templates CTA */}

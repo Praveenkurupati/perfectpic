@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { UploadCloud, Check, Trash2, Plus, Sparkles, ArrowRight } from 'lucide-react';
+import { UploadCloud, Check, Trash2, Plus, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useEditorStore } from '@/stores/useEditorStore';
 
@@ -67,13 +68,27 @@ function UploadContent() {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-10 px-4 md:px-8 pb-32">
+    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-8 px-4 md:px-8 pb-48 scroll-smooth">
       <div className="max-w-6xl mx-auto">
+        {/* Navigation Breadcrumb / Back button */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href={`/configure${templateSlug ? `?template=${templateSlug}` : ''}`}
+            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-noir-600 hover:text-noir-950 transition-colors"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Configuration</span>
+          </Link>
+          <div className="text-xs text-noir-500 font-medium">
+            <span className="font-semibold text-noir-950">Step 2:</span> Photo Selection & Curation
+          </div>
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-4 border-b border-cream-200">
           <div>
             <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-foil-gold font-semibold mb-1">
               <Sparkles size={14} />
-              <span>Step 2 of 3 • Photo Selection</span>
+              <span>Smart Curation</span>
             </div>
             <h1 className="font-serif text-3xl md:text-5xl text-noir-950 font-medium">Upload Your Photos</h1>
             <p className="text-sm text-noir-600 mt-1">

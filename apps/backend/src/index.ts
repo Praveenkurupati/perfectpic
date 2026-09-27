@@ -5,6 +5,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 
 import { connectDB, isDbConnected } from "./db/connection";
+import { connectRedis, isRedisConnected } from "./cache/redis";
 import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth";
 import uploadRoutes from "./routes/upload";
@@ -23,11 +24,12 @@ app.use(morgan("dev"));
 app.use(express.json({ limit: "50mb" })); // for base64 images if needed
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Health check with DB status
+// Health check with DB and Cache status
 app.get("/api/health", (req, res) => {
   res.status(200).json({ 
     status: "ok", 
     database: isDbConnected() ? "mongodb" : "in-memory",
+    cache: isRedisConnected() ? "redis" : "disabled",
     timestamp: new Date().toISOString() 
   });
 });
@@ -50,4 +52,6 @@ app.listen(PORT, async () => {
   console.log(`🚀 PerfectPic Backend server running on port ${PORT}`);
   // Connect to MongoDB
   await connectDB();
+  // Connect to Redis Cache
+  await connectRedis();
 });
