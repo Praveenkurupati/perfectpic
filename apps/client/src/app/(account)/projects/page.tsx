@@ -44,14 +44,16 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-end mb-8">
-          <h1 className="font-serif text-4xl">My Projects</h1>
-          <Link href="/configure" className="bg-noir-950 text-cream-50 px-6 py-2 rounded-sm text-sm font-medium hover:bg-noir-900">
-            + New Project
-          </Link>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center pb-4 border-b border-cream-200">
+        <div>
+          <h2 className="font-serif text-2xl font-semibold text-noir-900">Saved Projects</h2>
+          <p className="text-xs text-noir-500 uppercase tracking-wider mt-0.5">Resume editing anytime</p>
         </div>
+        <Link href="/configure" className="bg-noir-950 text-cream-50 px-4 py-2 rounded-sm text-xs uppercase tracking-wider font-semibold hover:bg-noir-900 transition-colors">
+          + New Project
+        </Link>
+      </div>
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -103,7 +105,6 @@ export default function ProjectsPage() {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 }

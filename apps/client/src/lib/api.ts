@@ -41,9 +41,13 @@ export const api = {
   getFeaturedProducts: () => fetcher<{ products: any[] }>('/products/featured'),
   getProduct: (slug: string) => fetcher<any>(`/products/${slug}`),
   getCategories: () => fetcher<{ categories: any[] }>('/products/categories'),
-  getProductConfig: () => fetcher<{ sizes: any[]; covers: any[]; themes: any[]; colors: any[]; packaging: any[] }>('/products/config'),
+  getProductConfig: () => fetcher<{ sizes: any[]; covers: any[]; themes: any[]; colors: any[]; packaging: any[]; pageCountOptions?: any[]; pageOptions?: number[] }>('/products/config'),
   
   // Auth
+  login: (data: { email?: string; phone?: string; identifier?: string; password?: string }) => 
+    fetcher<{ token: string; user: any; message: string }>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  signup: (data: { name: string; email?: string; phone?: string; password?: string }) =>
+    fetcher<{ token: string; user: any; message: string }>('/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
   sendOtp: (phone: string) => fetcher<{ message: string }>('/auth/send-otp', { method: 'POST', body: JSON.stringify({ phone }) }),
   verifyOtp: (phone: string, otp: string) => fetcher<{ token: string; user: any }>('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, otp }) }),
   getMe: () => fetcher<{ user: any }>('/auth/me', { headers: authHeaders() }),

@@ -32,6 +32,13 @@ function authHeaders(): HeadersInit {
 }
 
 export const adminApi = {
+  // Auth
+  login: (data: { email?: string; identifier?: string; password?: string }) =>
+    fetcher<{ token: string; user: any; message: string }>('/auth/admin/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   // Orders
   getOrders: () => fetcher<{ orders: any[] }>('/orders', { headers: authHeaders() }),
   getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),

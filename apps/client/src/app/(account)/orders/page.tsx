@@ -33,11 +33,13 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="font-serif text-4xl mb-8">My Orders</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between pb-4 border-b border-cream-200">
+        <h2 className="font-serif text-2xl font-semibold text-noir-900">Your Orders</h2>
+        <span className="text-xs text-noir-500 uppercase tracking-wider">{orders.length} order(s) found</span>
+      </div>
 
-        {loading ? (
+      {loading ? (
           <div className="space-y-4">
             {[1, 2].map(i => (
               <div key={i} className="bg-white p-6 rounded-sm shadow-sm border border-cream-200 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-pulse">
@@ -86,7 +88,6 @@ export default function OrdersPage() {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 }

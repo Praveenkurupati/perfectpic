@@ -1,11 +1,21 @@
 'use client';
 
 import { useCartStore } from '@/stores/useCartStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useRouter } from 'next/navigation';
 
 export default function CartPage() {
   const router = useRouter();
   const { items, getSubtotal, getTotal, discount, packagingAddon, setPackagingAddon } = useCartStore();
+  const { isAuthenticated } = useAuthStore();
+
+  const handleProceedToCheckout = () => {
+    if (isAuthenticated) {
+      router.push('/checkout');
+    } else {
+      router.push('/login?redirect=/checkout');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-12 px-4">
@@ -100,7 +110,7 @@ export default function CartPage() {
               </div>
 
               <button 
-                onClick={() => router.push('/auth')}
+                onClick={handleProceedToCheckout}
                 className="w-full bg-noir-950 text-cream-50 py-4 rounded-sm font-medium tracking-widest uppercase hover:bg-noir-900 transition-colors"
               >
                 Proceed to Checkout

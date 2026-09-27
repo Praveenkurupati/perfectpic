@@ -1,16 +1,42 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/stores/useCartStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { getTotal } = useCartStore();
+  const { user, isAuthenticated, initialize } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    initialize();
+    setMounted(true);
+  }, [initialize]);
+
+  useEffect(() => {
+    if (mounted && !isAuthenticated) {
+      router.push('/login?redirect=/checkout');
+    }
+  }, [mounted, isAuthenticated, router]);
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
     router.push('/confirmation/WB-8491');
   };
+
+  if (!mounted || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-cream-50 flex items-center justify-center font-sans text-noir-900">
+        <div className="text-center">
+          <p className="font-serif text-xl mb-2">Redirecting to sign in...</p>
+          <p className="text-xs text-noir-500 uppercase tracking-widest">Please sign in to proceed with checkout</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-12 px-4">
@@ -26,11 +52,11 @@ export default function CheckoutPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs uppercase tracking-wider mb-1 text-noir-600">Full Name</label>
-                  <input type="text" className="w-full border border-cream-300 rounded-sm p-3 focus:border-foil-gold focus:outline-none" required />
+                  <input type="text" defaultValue={user?.name || ''} className="w-full border border-cream-300 rounded-sm p-3 focus:border-foil-gold focus:outline-none" required />
                 </div>
                 <div>
                   <label className="block text-xs uppercase tracking-wider mb-1 text-noir-600">Phone</label>
-                  <input type="tel" className="w-full border border-cream-300 rounded-sm p-3 focus:border-foil-gold focus:outline-none" required />
+                  <input type="tel" defaultValue={user?.phone || '+91 98765 43210'} className="w-full border border-cream-300 rounded-sm p-3 focus:border-foil-gold focus:outline-none" required />
                 </div>
                 <div>
                   <label className="block text-xs uppercase tracking-wider mb-1 text-noir-600">PIN Code</label>

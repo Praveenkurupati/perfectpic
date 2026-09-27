@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 import { Product } from './models/Product';
 import { Order } from './models/Order';
 import { Project } from './models/Project';
+import { User } from './models/User';
+import bcrypt from 'bcryptjs';
 import { defaultBooks } from '../data/defaultBooks';
 import { connectRedis, cacheDelByPrefix, cacheFlushAll } from '../cache/redis';
 
@@ -136,8 +138,51 @@ async function runSeed() {
     }
     console.log(`  ✨ Successfully inserted ${initialProjects.length} initial drafts!`);
 
-    // 4. Redis Cache Flush
-    console.log('\n⚡ Step 4: Invalidating Redis cache...');
+    // 4. Seed Admin & 30 Users
+    console.log('\n👥 Step 4: Seeding Admin and 30 User accounts...');
+    await User.deleteMany({});
+    console.log('  🧹 Cleared existing users collection.');
+
+    const defaultPasswordHash = await bcrypt.hash('password123', 10);
+
+    // Seed Admin
+    const admin = await User.create({
+      name: 'Admin PerfectPic',
+      email: 'admin@perfectpic.in',
+      phone: '+91 99999 00000',
+      password: defaultPasswordHash,
+      role: 'admin',
+      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop'
+    });
+    console.log(`  👑 Admin created: ${admin?.email} (Password: password123, Role: admin)`);
+
+    // Seed 30 Users
+    const indianNames = [
+      'Aarav Sharma', 'Diya Patel', 'Rohan Verma', 'Ananya Iyer', 'Kabir Mehta',
+      'Ishaan Nair', 'Mira Reddy', 'Aditya Joshi', 'Pooja Bhatt', 'Vikram Singh',
+      'Sneha Rao', 'Arjun Kapoor', 'Tanvi Desai', 'Siddharth Roy', 'Rhea Sen',
+      'Karan Malhotra', 'Tara Nambiar', 'Dev Singhania', 'Kavya Pillai', 'Varun Dhawan',
+      'Nisha Hegde', 'Gautam Chopra', 'Meera Kulkarni', 'Dhruv Saxena', 'Avani Banerji',
+      'Harsh Vardhan', 'Shreya Ghoshal', 'Nikhil Kamath', 'Alia Bhatt', 'Sanya Kapoor'
+    ];
+
+    const usersToInsert = [];
+    for (let i = 1; i <= 30; i++) {
+      usersToInsert.push({
+        name: `User ${i} (${indianNames[i - 1] || 'Customer'})`,
+        email: `user${i}@perfectpic.in`,
+        phone: `+91 98000 ${String(i).padStart(5, '0')}`,
+        password: defaultPasswordHash,
+        role: 'user',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`
+      });
+    }
+
+    const createdUsers = await User.insertMany(usersToInsert as any[]);
+    console.log(`  ✨ Successfully inserted ${createdUsers.length} user accounts! (user1@perfectpic.in to user30@perfectpic.in, password: password123)`);
+
+    // 5. Redis Cache Flush
+    console.log('\n⚡ Step 5: Invalidating Redis cache...');
     try {
       await connectRedis();
       await cacheFlushAll();
