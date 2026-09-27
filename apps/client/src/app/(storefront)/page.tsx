@@ -10,90 +10,90 @@ import { api } from "@/lib/api";
 import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
 import ExploreCard from "@/features/catalog/components/ExploreCard";
 
-// Fallback books data matching the user's reference design
+// Top 5 Indian photobooks prioritized for India launch
 const fallbackTemplates: BookItem[] = [
   {
     id: 'tpl-1',
-    slug: 'travel-series-paris',
+    slug: 'trek-series-nethravathi',
+    seriesLabel: 'trek series',
+    bookType: 'custom photobook',
+    title: 'custom photobook',
+    displayName: 'Netravati Peak Cloud Trails',
+    tagline: 'emerald valleys & western monsoon mist',
+    subtitle: 'Chikmagalur Ghats Ridge Hike',
+    coverImage: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop',
+    coverColor: '#4E7055',
+    spineText: 'NETRAVATI',
+    rating: 4.9,
+    reviewCount: 88,
+    fromPrice: 1999,
+    badge: 'trending'
+  },
+  {
+    id: 'tpl-2',
+    slug: 'travel-series-kerala',
     seriesLabel: 'travel series',
     bookType: 'custom photobook',
     title: 'custom photobook',
-    displayName: 'Paris Journey Hardcover',
-    tagline: 'your journeys, perfectly told',
-    subtitle: 'Timeless moments across the City of Light',
-    coverImage: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
-    coverColor: '#F8BAC7',
-    spineText: 'PARIS',
+    displayName: 'Kerala Gods Own Country',
+    tagline: 'swaying palms, backwaters & spice trails',
+    subtitle: 'Alleppey, Kumarakom & Kochi',
+    coverImage: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
+    coverColor: '#3B7A57',
+    spineText: 'KERALA',
     rating: 5.0,
-    reviewCount: 72,
+    reviewCount: 145,
     fromPrice: 1999,
     badge: 'bestseller'
   },
   {
-    id: 'tpl-2',
-    slug: 'travel-edit-paris',
-    seriesLabel: 'travel edit',
-    bookType: 'custom magazine',
-    title: 'custom magazine',
-    displayName: 'The Paris Chapter Edit',
-    tagline: 'your travels, front-page featured',
-    subtitle: 'Glossy editorial magazine with headline features',
-    coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop',
-    coverColor: '#F5C4CD',
-    spineText: 'PARIS EDIT',
-    rating: 5.0,
-    reviewCount: 72,
-    fromPrice: 2499,
-    badge: ''
-  },
-  {
     id: 'tpl-3',
-    slug: 'moments-series-summer',
-    seriesLabel: 'moments series',
+    slug: 'trek-series-himalaya',
+    seriesLabel: 'trek series',
     bookType: 'custom photobook',
     title: 'custom photobook',
-    displayName: 'Summer 2026 Coastal Moments',
-    tagline: 'your moments, forever kept',
-    subtitle: 'Sun-drenched pool days and sunset beach dinners',
-    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
-    coverColor: '#72C2C6',
-    spineText: 'SUMMER 2026',
-    rating: 5.0,
-    reviewCount: 72,
+    displayName: 'Himalayan Summit Chronicles',
+    tagline: 'eternal snowfields & high prayer flags',
+    subtitle: 'Great Himalayan Range Expeditions',
+    coverImage: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop',
+    coverColor: '#415A77',
+    spineText: 'HIMALAYAS',
+    rating: 4.9,
+    reviewCount: 94,
     fromPrice: 1999,
-    badge: 'new'
+    badge: 'popular'
   },
   {
     id: 'tpl-4',
-    slug: 'sri-lanka-travel',
+    slug: 'travel-series-varkala',
     seriesLabel: 'travel series',
     bookType: 'custom photobook',
     title: 'custom photobook',
-    displayName: 'Sri Lanka Tea Hills & Coasts',
-    tagline: 'raw landscapes, forever captured',
-    subtitle: 'From Sigiriya rock fortress to Ella misty peaks',
-    coverImage: 'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=800&auto=format&fit=crop',
-    coverColor: '#2D4A3E',
-    spineText: 'SRI LANKA',
+    displayName: 'Varkala Bohemian Cliffs',
+    tagline: 'red laterite cliffs & arabian sea sunset',
+    subtitle: 'North Cliff Surf & Beach Diaries',
+    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
+    coverColor: '#D87040',
+    spineText: 'VARKALA',
     rating: 4.9,
-    reviewCount: 114,
+    reviewCount: 92,
     fromPrice: 1999,
     badge: 'popular'
   },
   {
     id: 'tpl-5',
-    slug: 'first-anniversary',
-    seriesLabel: 'anniversary series',
+    slug: 'trek-series-kudremukh',
+    seriesLabel: 'trek series',
     bookType: 'custom photobook',
     title: 'custom photobook',
-    displayName: 'Our 1st Anniversary Keepsake',
-    tagline: 'years of love, timelessly bound',
-    subtitle: 'Celebrating 365 days of laughter and milestones',
-    coverImage: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
-    coverColor: '#E3C28C',
-    spineText: 'CHAPTER ONE',
-    rating: 5.0,
-    reviewCount: 96,
+    displayName: 'Kudremukh Rolling Meadows',
+    tagline: 'shola forests & horse-face peak',
+    subtitle: 'Kudremukh National Park Trail',
+    coverImage: 'https://images.unsplash.com/photo-1511497584788-87676104235f?w=800&auto=format&fit=crop',
+    coverColor: '#606C38',
+    spineText: 'KUDREMUKH',
+    rating: 4.8,
+    reviewCount: 76,
     fromPrice: 1999,
     badge: 'new'
   }
@@ -132,18 +132,19 @@ export default function Home() {
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center pt-24 pb-16 overflow-hidden bg-cream-50">
-        <div className="container mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div className="max-w-2xl z-10">
+      <section className="relative min-h-[90vh] flex items-center pt-28 pb-16 overflow-hidden bg-cream-50">
+        <div className="container mx-auto px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          {/* Hero Left Content */}
+          <div className="lg:col-span-6 z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-cream-200/80 border border-cream-300 rounded-full text-xs font-semibold uppercase tracking-wider text-noir-800 mb-6">
               <Sparkles size={14} className="text-foil-gold" />
-              <span>India&apos;s Finest Custom Photo Books</span>
+              <span>India&apos;s Curated Photobook Platform</span>
             </div>
             <h1 className="font-serif text-5xl md:text-7xl font-medium leading-[1.08] text-noir-950 mb-6">
               Your Memories Deserve An Heirloom.
             </h1>
             <p className="font-sans text-lg text-noir-700 mb-10 leading-relaxed max-w-lg">
-              Upload from your phone. Our smart engine crafts seamless panoramic layouts printed on tear-proof, lay-flat luxury paper.
+              From high Himalayan treks and Western Ghats trails to Kerala backwaters and family milestones. Our smart studio creates seamless panoramic lay-flat photo books crafted in India.
             </p>
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6">
               <Link 
@@ -156,11 +157,11 @@ export default function Home() {
                 href="#catalog" 
                 className="inline-flex justify-center items-center px-8 py-4 bg-white text-noir-900 border border-cream-300 font-medium tracking-wide hover:bg-cream-100 transition-all rounded-sm text-center shadow-sm"
               >
-                Browse Curated Templates
+                Explore Indian Collections
               </a>
             </div>
             
-            <div className="mt-12 flex flex-wrap gap-4">
+            <div className="mt-12 flex flex-wrap gap-3 sm:gap-4">
               <span className="inline-flex items-center px-3.5 py-1.5 bg-white border border-cream-300 rounded-full text-xs font-medium text-noir-700 shadow-sm">
                 <Check size={14} className="mr-1.5 text-foil-gold" /> 12K Ultra-HD Indigo
               </span>
@@ -173,21 +174,52 @@ export default function Home() {
             </div>
           </div>
           
-          <div className="relative h-[420px] md:h-[580px] w-full flex justify-center items-center">
-            {/* Visual Book Showcase Mockup */}
-            <div className="relative w-[320px] h-[440px] md:w-[460px] md:h-[580px] rounded-sm overflow-hidden shadow-book-spread border border-cream-300 transform -rotate-3 hover:rotate-0 transition-transform duration-700 group">
-              <img 
-                src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop" 
-                alt="Photobook Showcase" 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-noir-950/80 via-transparent to-noir-950/20" />
-              <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/40 to-transparent"></div>
-              
-              <div className="absolute bottom-6 left-6 right-6 text-cream-50">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-foil-gold font-semibold">Featured Edition</span>
-                <h3 className="font-serif text-2xl font-medium mt-1">Paris Journey Hardcover</h3>
-                <p className="text-xs text-cream-50/70 mt-1">8.25&quot; × 8.25&quot; Custom Archival Lay-Flat Book</p>
+          {/* Hero Right Image: User's Reference Curated Journals Tabletop Image */}
+          <div className="lg:col-span-6 w-full flex justify-center items-center">
+            <div className="relative w-full max-w-[560px] rounded-2xl overflow-hidden shadow-luxury-2xl border border-cream-300/90 bg-white p-3 md:p-4 group transition-all duration-500 hover:shadow-luxury-3xl">
+              <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-cream-100">
+                <img 
+                  src="/images/curated-journals-hero.jpg" 
+                  alt="Photomemories: Curated Journals & Hardcovers" 
+                  className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                />
+                
+                {/* Subtle Luxury Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-noir-950/70 via-transparent to-black/10 pointer-events-none" />
+
+                {/* Floating Gold Pill Badge */}
+                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-cream-300 shadow-sm flex items-center gap-1.5">
+                  <Sparkles size={12} className="text-foil-gold" />
+                  <span className="text-[11px] font-semibold tracking-wider uppercase text-noir-900">Curated Journals</span>
+                </div>
+
+                {/* Bottom Overlay Info */}
+                <div className="absolute bottom-4 left-4 right-4 text-cream-50 flex items-end justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.25em] text-foil-gold font-bold block">
+                      Curated Cover Editions
+                    </span>
+                    <h3 className="font-serif text-xl md:text-2xl font-medium mt-0.5 text-white drop-shadow-md">
+                      Bespoke Embossed Hardcovers
+                    </h3>
+                  </div>
+                  <Link 
+                    href="#curated-journals"
+                    className="hidden sm:inline-flex items-center px-4 py-2 bg-white text-noir-950 text-xs font-semibold uppercase tracking-wider rounded-full shadow-lg hover:bg-cream-100 transition-colors"
+                  >
+                    View Covers →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Quality Guarantee Ticker Under Image */}
+              <div className="mt-3 pt-2.5 border-t border-cream-200/80 flex items-center justify-between text-[11px] text-noir-600 px-1">
+                <span className="flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Archival Lay-Flat Hardcovers
+                </span>
+                <span className="hidden sm:inline text-foil-gold font-semibold">Free Delivery PAN-India</span>
+                <span>Starting at ₹1,999</span>
               </div>
             </div>
           </div>
@@ -198,7 +230,7 @@ export default function Home() {
       <section className="py-16 bg-white border-b border-cream-200">
         <div className="container mx-auto px-4 md:px-8">
           <div className="text-center mb-10">
-            <h2 className="font-serif text-3xl md:text-4xl text-noir-900 mb-2">Designed For Every Chapter of Life</h2>
+            <h2 className="font-serif text-3xl md:text-4xl text-noir-900 mb-2">Designed For Every Indian Journey</h2>
             <p className="text-noir-600 max-w-xl mx-auto text-xs md:text-sm">Pick a milestone theme to jumpstart your layout with curated font pairings and grids.</p>
           </div>
           
@@ -238,6 +270,85 @@ export default function Home() {
         </div>
       </section>
 
+      {/* PHOTOMEMORIES: CURATED JOURNALS SHOWCASE SECTION */}
+      <section id="curated-journals" className="py-20 bg-cream-100/60 border-b border-cream-200">
+        <div className="container mx-auto px-4 md:px-8 max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Column: Full Curated Journals Art Mockup */}
+            <div className="lg:col-span-7">
+              <div className="relative rounded-2xl overflow-hidden shadow-luxury-xl border border-cream-300 bg-white p-3 md:p-4">
+                <img 
+                  src="/images/curated-journals-hero.jpg" 
+                  alt="Photomemories: Curated Journals Showcase" 
+                  className="w-full h-auto rounded-xl object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Highlights & Features */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-foil-gold font-bold">
+                <BookOpen size={14} />
+                <span>Photomemories™ Collection</span>
+              </div>
+              <h2 className="font-serif text-3xl md:text-5xl text-noir-950 font-medium leading-tight">
+                Curated Hardcovers Built for Keepsakes.
+              </h2>
+              <p className="text-noir-700 text-sm md:text-base leading-relaxed">
+                Whether it is the mist of Netravati, the tranquil backwaters of Kerala, or your first anniversary, each cover is crafted with archival cloth-bound board, custom title embossing, and inset photo windows.
+              </p>
+
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check size={16} className="text-foil-gold" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-noir-900">Custom Title Foil & Debossing</h4>
+                    <p className="text-xs text-noir-600 mt-0.5">Crisp metallic gold or matte foil lettering along the front and spine.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check size={16} className="text-foil-gold" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-noir-900">Archival Photo Inset Window</h4>
+                    <p className="text-xs text-noir-600 mt-0.5">Your hero photograph is recessed with precision beveling directly on the cover.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3.5">
+                  <div className="w-8 h-8 rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check size={16} className="text-foil-gold" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-sm text-noir-900">100% Lay-Flat Panoramic Binding</h4>
+                    <p className="text-xs text-noir-600 mt-0.5">Opens completely flat across every spread so no faces are lost in the center crease.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/configure"
+                  className="inline-flex justify-center items-center px-6 py-3 bg-noir-950 text-cream-50 font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-noir-900 transition-colors text-center"
+                >
+                  Customize Any Cover
+                </Link>
+                <Link
+                  href="/templates"
+                  className="inline-flex justify-center items-center px-6 py-3 bg-white text-noir-900 border border-cream-300 font-semibold text-xs uppercase tracking-widest rounded-sm hover:bg-cream-100 transition-colors text-center"
+                >
+                  View All 35+ Books
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Signature Series Book Showcase - Matching User Reference UI */}
       <section id="catalog" className="py-24 bg-[#faf8f5] scroll-mt-16">
         <div className="container mx-auto px-4 md:px-8 max-w-7xl">
@@ -245,13 +356,13 @@ export default function Home() {
             <div>
               <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-foil-gold font-bold mb-2">
                 <BookOpen size={14} />
-                <span>Signature Photobook Collections</span>
+                <span>India Launch Editions</span>
               </div>
               <h2 className="font-serif text-3xl md:text-5xl text-neutral-900 font-medium tracking-tight">
                 Curated Series & Editions
               </h2>
               <p className="text-neutral-600 mt-2 text-sm md:text-base max-w-xl leading-relaxed">
-                Select your preferred format. Each book is custom printed with high-grade non-tearable pages and lay-flat panoramic spreads.
+                Featured Indian trek series and classic travel journals. Custom printed on high-grade non-tearable synthetic paper with lay-flat spreads.
               </p>
             </div>
 
@@ -273,12 +384,12 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Book Items Grid (3 Cards per row matching screenshot: 5 books + 6th Explore Card) */}
+          {/* Book Items Grid (3 Cards per row: 5 Indian books + 6th Explore Card) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredProducts.slice(0, 5).map(book => (
               <BookCard key={book.id} book={book} />
             ))}
-            <ExploreCard totalCount={allProducts.length || 23} />
+            <ExploreCard totalCount={allProducts.length || 35} />
           </div>
 
           {/* View All Templates CTA */}
@@ -287,7 +398,7 @@ export default function Home() {
               href="/templates"
               className="inline-flex items-center px-8 py-3.5 bg-white border border-neutral-300 text-neutral-900 rounded-full text-sm font-semibold hover:border-black hover:bg-neutral-50 transition-all shadow-sm group"
             >
-              <span>Explore All Template Collections</span>
+              <span>Explore All 35+ Template Collections</span>
               <ArrowRight size={16} className="ml-2 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
@@ -331,7 +442,7 @@ export default function Home() {
             <div className="flex flex-col md:flex-row justify-between items-center space-y-8 md:space-y-0">
               <div className="text-left">
                 <h3 className="font-sans text-xl font-medium mb-2">Standard 8.25&quot; × 8.25&quot;</h3>
-                <p className="text-cream-50/60">Hardcover • 40 Pages • Up to 120 Photos • Lay-Flat</p>
+                <p className="text-cream-50/60">Hardcover • 32 Pages (Default) • Up to 120 Photos • Lay-Flat</p>
               </div>
               <div className="text-right">
                 <div className="text-4xl font-serif mb-2">₹1,999</div>
@@ -352,7 +463,7 @@ export default function Home() {
       <section className="py-16 bg-white">
         <div className="container mx-auto px-4 md:px-8 max-w-6xl">
           <div className="bg-cream-100 border border-foil-gold/30 p-8 md:p-12 rounded-sm text-center shadow-luxury-md">
-            <h2 className="font-serif text-3xl md:text-4xl text-noir-900 mb-4">Family & Corporate Bundles</h2>
+            <h2 className="font-serif text-3xl md:text-4xl text-noir-900 mb-4">Family & Adventure Bundles</h2>
             <p className="text-noir-700 mb-8 max-w-2xl mx-auto">Perfect for gifting. The more you print, the more you save.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
@@ -378,7 +489,7 @@ export default function Home() {
       <section className="py-24 bg-cream-50 border-t border-cream-200">
         <div className="container mx-auto px-4 md:px-8 max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="font-serif text-4xl md:text-5xl text-noir-900 mb-4">Loved by 10,000+ Families</h2>
+            <h2 className="font-serif text-4xl md:text-5xl text-noir-900 mb-4">Loved by 10,000+ Indian Explorers & Families</h2>
             <div className="flex items-center justify-center space-x-2 text-noir-900">
               <span className="font-bold text-xl">4.9</span>
               <div className="flex text-foil-gold">
@@ -390,9 +501,9 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { name: "Priya S.", text: "The print quality blew me away. It literally looks like a luxury coffee table book you'd buy in a high-end store." },
-              { name: "Rahul M.", text: "My toddler spilled water on it the first day. I wiped it off and it was completely fine. Worth every rupee." },
-              { name: "Neha K.", text: "The AI layout feature saved me hours. It perfectly grouped photos from our Europe trip. Highly recommend!" }
+              { name: "Priya S. (Bengaluru)", text: "The print quality blew me away. The Kudremukh trek photos look even better than on my iPhone screen. Worth every single rupee." },
+              { name: "Rahul M. (Mumbai)", text: "Our Kerala trip photobook was delivered in 4 days. Non-tearable pages and seamless lay-flat make it look like a luxury gallery volume." },
+              { name: "Neha K. (Delhi)", text: "The Himalayan trek edition is stunning. Big bold spreads, no crease obstruction in the center, and the cover foil gives it an heirloom feel." }
             ].map((review, i) => (
               <div key={i} className="bg-white p-8 border border-cream-300 shadow-luxury-sm rounded-sm">
                 <div className="flex text-foil-gold mb-4">

@@ -21,6 +21,7 @@ export interface IProduct extends Document {
   basePages: number;
   maxPhotos: number;
   badge?: string;
+  priority?: number;
   tags?: string[];
   pageOptions?: number[];
   defaultOptions: {
@@ -58,6 +59,7 @@ const ProductSchema: Schema = new Schema(
     basePages: { type: Number, default: 32 },
     maxPhotos: { type: Number, default: 120 },
     badge: { type: String, default: '' },
+    priority: { type: Number, default: 0, index: true },
     featured: { type: Boolean, default: true },
     defaultOptions: {
       type: Object,

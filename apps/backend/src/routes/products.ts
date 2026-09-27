@@ -74,7 +74,7 @@ router.get('/', async (req, res) => {
         query = { $and: conditions };
       }
 
-      const products = await Product.find(query).sort({ createdAt: -1 });
+      const products = await Product.find(query).sort({ priority: -1, createdAt: 1 });
       const responseData = { products, total: products.length };
       await cacheSet(cacheKey, responseData, 300); // 5 min TTL
       return res.json(responseData);
@@ -108,6 +108,7 @@ router.get('/', async (req, res) => {
     );
   }
   
+  filteredProducts.sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
   const responseData = { products: filteredProducts, total: filteredProducts.length };
   await cacheSet(cacheKey, responseData, 300);
   res.json(responseData);
@@ -147,7 +148,7 @@ router.get('/featured', async (req, res) => {
 
   try {
     if (isDbConnected()) {
-      const featured = await Product.find({ featured: true }).sort({ createdAt: -1 });
+      const featured = await Product.find({ featured: true }).sort({ priority: -1, createdAt: 1 });
       const responseData = { products: featured };
       await cacheSet(cacheKey, responseData, 300);
       return res.json(responseData);
@@ -156,7 +157,7 @@ router.get('/featured', async (req, res) => {
     console.error('MongoDB featured query error:', err);
   }
 
-  const featured = templates.filter(t => t.featured);
+  const featured = templates.filter(t => t.featured).sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
   const responseData = { products: featured };
   await cacheSet(cacheKey, responseData, 300);
   res.json(responseData);
