@@ -11,6 +11,7 @@ import projectRoutes from "./routes/projects";
 import orderRoutes from "./routes/orders";
 import paymentRoutes from "./routes/payments";
 import shippingRoutes from "./routes/shipping";
+import productRoutes from "./routes/products";
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/shipping", shippingRoutes);
+app.use("/api/products", productRoutes);
 
 // Global Error Handler
 app.use(errorHandler);

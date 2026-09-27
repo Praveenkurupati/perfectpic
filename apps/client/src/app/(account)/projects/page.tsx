@@ -1,53 +1,108 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '@/lib/api';
 
 export default function ProjectsPage() {
-  const projects = [
-    { id: 'proj-1', title: 'Baby First Year', updated: '2 hours ago', status: 'Draft', cover: null },
-    { id: 'proj-2', title: 'Japan 2025', updated: '3 months ago', status: 'Completed', cover: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=300&auto=format&fit=crop' },
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fallbackProjects = [
+    { id: 'proj-1', title: 'Baby First Year', updatedAt: new Date().toISOString(), status: 'Draft', coverUrl: null },
+    { id: 'proj-2', title: 'Japan 2025', updatedAt: new Date(Date.now() - 90*24*60*60*1000).toISOString(), status: 'Completed', coverUrl: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=300&auto=format&fit=crop' },
   ];
+
+  useEffect(() => {
+    api.getProjects()
+      .then(res => setProjects(res.projects || []))
+      .catch(err => {
+        console.error("Failed to fetch projects, using mock data", err);
+        setProjects(fallbackProjects);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const formatRelativeTime = (dateString: string) => {
+    if (!dateString) return 'Recently';
+    const timestamp = new Date(dateString).getTime();
+    if (isNaN(timestamp)) return dateString; // e.g. "2 hours ago"
+    
+    const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+    const daysDifference = Math.round((timestamp - Date.now()) / (1000 * 60 * 60 * 24));
+    
+    if (Math.abs(daysDifference) < 1) {
+      const hoursDifference = Math.round((timestamp - Date.now()) / (1000 * 60 * 60));
+      return rtf.format(hoursDifference, 'hour');
+    }
+    
+    if (Math.abs(daysDifference) > 30) {
+      return rtf.format(Math.round(daysDifference / 30), 'month');
+    }
+    
+    return rtf.format(daysDifference, 'day');
+  };
 
   return (
     <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-12 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-end mb-8">
           <h1 className="font-serif text-4xl">My Projects</h1>
-          <button className="bg-noir-950 text-cream-50 px-6 py-2 rounded-sm text-sm font-medium hover:bg-noir-900">
+          <Link href="/configure" className="bg-noir-950 text-cream-50 px-6 py-2 rounded-sm text-sm font-medium hover:bg-noir-900">
             + New Project
-          </button>
+          </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {projects.map(project => (
-            <div key={project.id} className="bg-white border border-cream-200 rounded-sm overflow-hidden group">
-              <div className="aspect-square bg-cream-100 relative">
-                {project.cover ? (
-                  <img src={project.cover} alt={project.title} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-cream-400">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white border border-cream-200 rounded-sm overflow-hidden animate-pulse">
+                <div className="aspect-square bg-cream-200"></div>
+                <div className="p-4 space-y-2">
+                  <div className="h-5 bg-cream-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-cream-200 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {projects.length === 0 ? (
+              <div className="col-span-full py-12 text-center text-noir-500 bg-white border border-cream-200 rounded-sm">
+                No projects found. Start creating your first photobook!
+              </div>
+            ) : (
+              projects.map(project => (
+                <div key={project.id} className="bg-white border border-cream-200 rounded-sm overflow-hidden group">
+                  <div className="aspect-square bg-cream-100 relative">
+                    {(project.coverUrl || project.coverImage) ? (
+                      <img src={project.coverUrl || project.coverImage} alt={project.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-cream-400">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-[10px] uppercase tracking-widest px-2 py-1 rounded-sm font-medium">
+                      {project.status}
+                    </div>
+                    
+                    {/* Hover overlay */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
+                      <Link href={`/studio/${project.id}`} className="bg-white text-noir-900 px-6 py-2 rounded-sm text-sm font-medium hover:bg-cream-50">
+                        {project.status === 'Draft' ? 'Continue Editing' : 'View / Edit'}
+                      </Link>
+                      <button className="text-white text-xs hover:underline">Duplicate</button>
+                    </div>
                   </div>
-                )}
-                <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm text-[10px] uppercase tracking-widest px-2 py-1 rounded-sm font-medium">
-                  {project.status}
+                  <div className="p-4">
+                    <h3 className="font-serif text-lg leading-tight mb-1 truncate">{project.title}</h3>
+                    <p className="text-xs text-noir-500">Last edited {formatRelativeTime(project.updatedAt)}</p>
+                  </div>
                 </div>
-                
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
-                  <Link href={`/studio/${project.id}`} className="bg-white text-noir-900 px-6 py-2 rounded-sm text-sm font-medium hover:bg-cream-50">
-                    {project.status === 'Draft' ? 'Continue Editing' : 'View / Edit'}
-                  </Link>
-                  <button className="text-white text-xs hover:underline">Duplicate</button>
-                </div>
-              </div>
-              <div className="p-4">
-                <h3 className="font-serif text-lg leading-tight mb-1 truncate">{project.title}</h3>
-                <p className="text-xs text-noir-500">Last edited {project.updated}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

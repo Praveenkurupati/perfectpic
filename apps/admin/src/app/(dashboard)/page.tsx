@@ -1,16 +1,39 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { ShoppingCart, IndianRupee, Printer, Ticket } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { recentOrders, revenueData } from "@/lib/mock-data";
+import { adminApi } from "@/lib/api";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export default function DashboardOverview() {
+  const [orders, setOrders] = useState<any[]>(recentOrders);
+
+  useEffect(() => {
+    adminApi.getOrders()
+      .then(res => {
+        if (res && res.orders && res.orders.length > 0) {
+          // Normalize orders to match dashboard format
+          const formatted = res.orders.map((o: any) => ({
+            id: o.id,
+            customer: o.title || 'Guest Order',
+            amount: (o.amount || o.total || 1999).toLocaleString('en-IN'),
+            status: o.status || 'confirmed'
+          }));
+          setOrders(formatted);
+        }
+      })
+      .catch(err => {
+        console.warn("Using offline mock orders in dashboard:", err);
+      });
+  }, []);
+
   const stats = [
     { label: "Total Orders", value: "1,247", icon: ShoppingCart, trend: "+12%", trendUp: true },
     { label: "Revenue", value: "₹18,64,500", icon: IndianRupee, trend: "+8%", trendUp: true },
-    { label: "Pending Prints", value: "23", icon: Printer, trend: "-5%", trendUp: true }, // less pending is good
+    { label: "Pending Prints", value: "23", icon: Printer, trend: "-5%", trendUp: true },
     { label: "Active Tickets", value: "8", icon: Ticket, trend: "+2", trendUp: false },
   ];
 
@@ -19,7 +42,7 @@ export default function DashboardOverview() {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-2xl font-semibold text-noir-950">Dashboard Overview</h1>
-          <p className="text-sm text-noir-500 mt-1">Welcome back. Here is what is happening today.</p>
+          <p className="text-sm text-noir-500 mt-1">Welcome back. Here is what is happening today across PerfectPic.</p>
         </div>
         <div className="space-x-3">
           <button className="px-4 py-2 bg-cream-100 text-noir-900 rounded-sm text-sm font-medium hover:bg-cream-200 transition-colors border border-cream-300">
@@ -70,7 +93,7 @@ export default function DashboardOverview() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#666' }} tickFormatter={(value) => `₹${value/1000}k`} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: '#fff', borderRadius: '4px', border: '1px solid #DFD7C7', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                  formatter={(value: number) => [`₹${value}`, 'Revenue']}
+                  formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Revenue']}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#C5A880" strokeWidth={2} fillOpacity={1} fill="url(#colorRevenue)" />
               </AreaChart>
@@ -85,7 +108,7 @@ export default function DashboardOverview() {
             <Link href="/orders" className="text-sm text-foil-gold hover:text-foil-gold/80 font-medium">View All</Link>
           </div>
           <div className="flex-1 flex flex-col space-y-4 overflow-y-auto">
-            {recentOrders.slice(0, 5).map(order => (
+            {orders.slice(0, 5).map(order => (
               <div key={order.id} className="flex justify-between items-center py-2 border-b border-cream-100 last:border-0">
                 <div>
                   <Link href={`/orders/${order.id}`} className="font-medium text-sm text-noir-900 hover:underline">
@@ -99,7 +122,7 @@ export default function DashboardOverview() {
                     "text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-sm inline-block mt-1",
                     order.status === 'confirmed' ? "bg-blue-100 text-blue-700" :
                     order.status === 'pending' ? "bg-amber-100 text-amber-700" :
-                    order.status === 'printing' ? "bg-purple-100 text-purple-700" :
+                    order.status === 'printing' || order.status === 'production' ? "bg-purple-100 text-purple-700" :
                     order.status === 'dispatched' ? "bg-indigo-100 text-indigo-700" :
                     order.status === 'delivered' ? "bg-green-100 text-green-700" :
                     "bg-red-100 text-red-700"

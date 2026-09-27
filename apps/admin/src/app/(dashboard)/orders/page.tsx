@@ -1,21 +1,61 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
 import { recentOrders } from "@/lib/mock-data";
+import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const tabs = ["All", "Payment Pending", "Confirmed", "In Print", "Dispatched", "Delivered", "Returned"];
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("All");
+  const [orders, setOrders] = useState<any[]>(recentOrders);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    adminApi.getOrders()
+      .then(res => {
+        if (res && res.orders && res.orders.length > 0) {
+          const apiOrders = res.orders.map((o: any) => ({
+            id: o.id,
+            customer: o.title || 'Guest Order',
+            date: o.date ? new Date(o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '26 Sep 2026',
+            pages: o.pageCount || 40,
+            size: o.dimensions || '8.25" × 8.25"',
+            status: o.status || 'confirmed',
+            amount: (o.amount || o.total || 1999).toLocaleString('en-IN')
+          }));
+          setOrders(apiOrders);
+        }
+      })
+      .catch(err => {
+        console.warn("Using offline mock orders:", err);
+      });
+  }, []);
+
+  const filteredOrders = orders.filter(order => {
+    const matchesTab = activeTab === "All" || 
+      (activeTab === "Confirmed" && (order.status === 'confirmed' || order.status === 'production')) ||
+      (activeTab === "In Print" && (order.status === 'printing' || order.status === 'production')) ||
+      (activeTab === "Dispatched" && order.status === 'dispatched') ||
+      (activeTab === "Delivered" && order.status === 'delivered') ||
+      (activeTab === "Payment Pending" && order.status === 'pending');
+
+    const matchesSearch = !searchQuery || 
+      order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.customer.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesTab && matchesSearch;
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-2xl font-semibold text-noir-950">Orders Management</h1>
-          <p className="text-sm text-noir-500 mt-1">View and manage all customer orders.</p>
+          <p className="text-sm text-noir-500 mt-1">View and manage all customer orders across India.</p>
         </div>
       </div>
 
@@ -43,6 +83,8 @@ export default function OrdersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-noir-400" />
             <input 
               type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search ID, Name..." 
               className="w-full pl-9 pr-4 py-2 bg-cream-50 border border-cream-300 rounded-sm text-sm focus:outline-none focus:border-noir-400 focus:ring-1 focus:ring-noir-400 transition-shadow"
             />
@@ -55,7 +97,7 @@ export default function OrdersPage() {
             <thead>
               <tr className="border-b border-cream-200 bg-cream-50/50">
                 <th className="p-4 text-xs font-semibold text-noir-600 uppercase tracking-wider">Order ID</th>
-                <th className="p-4 text-xs font-semibold text-noir-600 uppercase tracking-wider">Customer</th>
+                <th className="p-4 text-xs font-semibold text-noir-600 uppercase tracking-wider">Customer / Book</th>
                 <th className="p-4 text-xs font-semibold text-noir-600 uppercase tracking-wider">Date</th>
                 <th className="p-4 text-xs font-semibold text-noir-600 uppercase tracking-wider">Spec</th>
                 <th className="p-4 text-xs font-semibold text-noir-600 uppercase tracking-wider">Status</th>
@@ -64,60 +106,65 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-cream-100">
-              {recentOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-cream-50/50 transition-colors group">
-                  <td className="p-4">
-                    <Link href={`/orders/${order.id}`} className="font-medium text-sm text-noir-950 hover:underline">
-                      {order.id}
-                    </Link>
-                  </td>
-                  <td className="p-4 text-sm text-noir-800">{order.customer}</td>
-                  <td className="p-4 text-sm text-noir-500 whitespace-nowrap">{order.date}</td>
-                  <td className="p-4 text-sm text-noir-600">
-                    {order.pages}p, {order.size}
-                  </td>
-                  <td className="p-4">
-                    <span className={cn(
-                      "text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm inline-block font-medium",
-                      order.status === 'confirmed' ? "bg-blue-100 text-blue-700" :
-                      order.status === 'pending' ? "bg-amber-100 text-amber-700" :
-                      order.status === 'printing' ? "bg-purple-100 text-purple-700" :
-                      order.status === 'dispatched' ? "bg-indigo-100 text-indigo-700" :
-                      order.status === 'delivered' ? "bg-green-100 text-green-700" :
-                      "bg-red-100 text-red-700"
-                    )}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="p-4 text-sm font-medium tabular-nums text-noir-900">₹{order.amount}</td>
-                  <td className="p-4 text-right">
-                    <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link 
-                        href={`/orders/${order.id}`}
-                        className="text-xs font-medium text-noir-600 hover:text-noir-950 px-2 py-1 bg-cream-100 rounded-sm"
-                      >
-                        View
-                      </Link>
-                      <button className="text-noir-400 hover:text-noir-950 p-1">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </div>
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="p-8 text-center text-sm text-noir-500">
+                    No orders match your filter criteria.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredOrders.map((order) => (
+                  <tr key={order.id} className="hover:bg-cream-50/50 transition-colors group">
+                    <td className="p-4">
+                      <Link href={`/orders/${order.id}`} className="font-medium text-sm text-noir-950 hover:underline">
+                        {order.id}
+                      </Link>
+                    </td>
+                    <td className="p-4 text-sm text-noir-800 font-medium">{order.customer}</td>
+                    <td className="p-4 text-sm text-noir-500 whitespace-nowrap">{order.date}</td>
+                    <td className="p-4 text-sm text-noir-600">
+                      {order.pages}p, {order.size}
+                    </td>
+                    <td className="p-4">
+                      <span className={cn(
+                        "text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm inline-block font-medium",
+                        order.status === 'confirmed' ? "bg-blue-100 text-blue-700" :
+                        order.status === 'pending' ? "bg-amber-100 text-amber-700" :
+                        order.status === 'printing' || order.status === 'production' ? "bg-purple-100 text-purple-700" :
+                        order.status === 'dispatched' ? "bg-indigo-100 text-indigo-700" :
+                        order.status === 'delivered' ? "bg-green-100 text-green-700" :
+                        "bg-red-100 text-red-700"
+                      )}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-sm font-medium tabular-nums text-noir-900">₹{order.amount}</td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link 
+                          href={`/orders/${order.id}`}
+                          className="text-xs font-medium text-noir-600 hover:text-noir-950 px-2 py-1 bg-cream-100 rounded-sm"
+                        >
+                          View
+                        </Link>
+                        <button className="text-noir-400 hover:text-noir-950 p-1">
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         <div className="p-4 border-t border-cream-200 flex items-center justify-between text-sm text-noir-500">
-          <div>Showing 1 to 10 of 42 results</div>
+          <div>Showing {filteredOrders.length} results</div>
           <div className="flex space-x-1">
             <button className="p-1 rounded-sm hover:bg-cream-100 border border-transparent disabled:opacity-50"><ChevronLeft className="w-4 h-4" /></button>
             <button className="px-3 py-1 rounded-sm bg-noir-950 text-cream-50 font-medium">1</button>
-            <button className="px-3 py-1 rounded-sm hover:bg-cream-100 font-medium">2</button>
-            <button className="px-3 py-1 rounded-sm hover:bg-cream-100 font-medium">3</button>
-            <span className="px-2 py-1">...</span>
             <button className="p-1 rounded-sm hover:bg-cream-100 border border-transparent"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>

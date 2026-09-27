@@ -1,85 +1,256 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { motion } from 'motion/react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { UploadCloud, Check, Trash2, Plus, Sparkles, ArrowRight } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useEditorStore } from '@/stores/useEditorStore';
 
-export default function UploadPage() {
+function UploadContent() {
   const router = useRouter();
   const params = useParams();
-  const projectId = (params?.projectId as string) || '';
-  const [uploaded, setUploaded] = useState(0);
-  const totalPhotos = 45;
+  const searchParams = useSearchParams();
+  const projectId = (params?.projectId as string) || 'new-project';
+  const templateSlug = searchParams.get('template');
+
+  const { photos, setPhotos, addPhoto, removePhoto, setTemplate } = useEditorStore();
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState<string | null>(null);
+
+  // If template is passed in URL and store is empty, load template photos
+  useEffect(() => {
+    if (templateSlug) {
+      setLoadingTemplate(true);
+      api.getProduct(templateSlug)
+        .then(res => {
+          if (res) {
+            setTemplate(res);
+            setTemplateName(res.title);
+            if (res.templatePhotos && res.templatePhotos.length > 0) {
+              const initialPhotos = res.templatePhotos.map((url: string, index: number) => ({
+                id: `tpl-${templateSlug}-${index}`,
+                url,
+                usedCount: 0,
+                flagged: false,
+                name: `Template Photo ${index + 1}`
+              }));
+              setPhotos(initialPhotos);
+            }
+          }
+        })
+        .catch(err => {
+          console.warn("Could not fetch template for upload page:", err);
+        })
+        .finally(() => {
+          setLoadingTemplate(false);
+        });
+    }
+  }, [templateSlug, setPhotos, setTemplate]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      Array.from(e.target.files).forEach((file, index) => {
+        const url = URL.createObjectURL(file);
+        addPhoto({
+          id: `upload-${Date.now()}-${index}`,
+          url,
+          usedCount: 0,
+          flagged: false,
+          name: file.name
+        });
+      });
+    }
+  };
 
   const handleContinue = () => {
     router.push(`/processing/${projectId}`);
   };
 
   return (
-    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 p-8">
+    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-10 px-4 md:px-8 pb-32">
       <div className="max-w-6xl mx-auto">
-        <h1 className="font-serif text-4xl mb-2">Upload Your Memories</h1>
-        <p className="text-sm text-noir-600 mb-8 uppercase tracking-[0.2em]">Select photos for your book</p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 pb-4 border-b border-cream-200">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-foil-gold font-semibold mb-1">
+              <Sparkles size={14} />
+              <span>Step 2 of 3 • Photo Selection</span>
+            </div>
+            <h1 className="font-serif text-3xl md:text-5xl text-noir-950 font-medium">Upload Your Photos</h1>
+            <p className="text-sm text-noir-600 mt-1">
+              {templateName 
+                ? `Customizing "${templateName}". Review template photos and add your own memories.` 
+                : 'Select high-resolution photos for optimal print quality. Our smart engine will group by story.'}
+            </p>
+          </div>
+
+          <div className="mt-4 md:mt-0 text-right">
+            <span className="text-2xl font-serif font-bold text-noir-950">{photos.length}</span>
+            <span className="text-xs text-noir-500 uppercase tracking-wider block">Photos in Project</span>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3">
-            <div className="border-2 border-dashed border-cream-400 bg-white p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:bg-cream-100 transition-colors">
-              <div className="w-16 h-16 bg-cream-100 rounded-full flex items-center justify-center mb-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div className="lg:col-span-3 space-y-8">
+            
+            {/* Drag & Drop Upload Zone */}
+            <label className="border-2 border-dashed border-cream-400 bg-white p-10 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group">
+              <div className="w-16 h-16 bg-cream-100 group-hover:bg-cream-200 rounded-full flex items-center justify-center mb-4 transition-colors">
+                <UploadCloud size={28} className="text-noir-900" />
               </div>
-              <button className="bg-noir-950 text-cream-50 px-6 py-3 rounded-sm mb-4">Upload Photos</button>
-              <p className="text-noir-600 text-sm">Or drag and drop your photos here</p>
-              <p className="text-xs text-noir-500 mt-2">Supports JPEG, PNG, HEIC, WebP</p>
-            </div>
+              <span className="bg-noir-950 text-cream-50 px-6 py-2.5 rounded-sm text-sm font-medium mb-3 shadow-sm">
+                Browse Files from Device
+              </span>
+              <p className="text-noir-700 text-sm font-medium">Or drag and drop photos directly here</p>
+              <p className="text-xs text-noir-500 mt-2">Supports high-res JPEG, PNG, HEIC, WebP</p>
+              <input 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                onChange={handleFileUpload} 
+                className="hidden" 
+              />
+            </label>
 
-            <div className="mt-12">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-serif text-xl">Uploaded Photos ({uploaded})</h3>
-                <div className="flex gap-4 text-sm">
-                  <button className="hover:text-foil-gold">Select All</button>
-                  <button className="text-red-500 hover:text-red-700">Delete Selected</button>
+            {/* Uploaded Photos Grid */}
+            <div className="bg-white p-6 border border-cream-300 rounded-sm">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="font-serif text-2xl font-medium text-noir-950">Photo Collection ({photos.length})</h3>
+                  <p className="text-xs text-noir-500">Tap trash icon to remove any photo from auto-curation</p>
                 </div>
+                {photos.length > 0 && (
+                  <button 
+                    onClick={() => setPhotos([])} 
+                    className="text-xs text-red-600 hover:text-red-700 font-semibold"
+                  >
+                    Clear All
+                  </button>
+                )}
               </div>
-              
-              {uploaded > 0 ? (
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {/* Photo grid mapping would go here */}
+
+              {loadingTemplate ? (
+                <div className="py-16 text-center text-noir-600 flex flex-col items-center">
+                  <div className="w-8 h-8 border-2 border-noir-950 border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <p className="text-sm">Loading template photos...</p>
+                </div>
+              ) : photos.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {photos.map((photo) => (
+                    <div 
+                      key={photo.id} 
+                      className="group relative aspect-square bg-cream-100 rounded-sm overflow-hidden border border-cream-200 shadow-sm"
+                    >
+                      <img src={photo.url} alt="Uploaded" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => removePhoto(photo.id)}
+                          className="w-8 h-8 bg-white text-red-600 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-sm"
+                          title="Remove photo"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Plus card */}
+                  <label className="aspect-square border border-dashed border-cream-400 bg-cream-50 hover:bg-cream-100 rounded-sm flex flex-col items-center justify-center cursor-pointer transition-colors text-noir-600">
+                    <Plus size={24} className="mb-1" />
+                    <span className="text-xs font-semibold">Add More</span>
+                    <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  </label>
                 </div>
               ) : (
-                <div className="text-center py-12 text-noir-500 border border-cream-300 rounded-sm">
-                  No photos uploaded yet
+                <div className="text-center py-16 text-noir-500 border border-dashed border-cream-300 rounded-sm">
+                  <p className="font-serif text-xl text-noir-700 mb-1">No photos added yet</p>
+                  <p className="text-xs text-noir-500 max-w-sm mx-auto">
+                    Upload photos above or import from Google Photos or iCloud to let our AI layout your photobook.
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Sidebar / Cloud Source Integration */}
           <div className="lg:col-span-1 space-y-4">
-            <h3 className="font-serif text-xl mb-4">Import From</h3>
-            {['Device', 'Google Photos', 'iCloud', 'Instagram'].map(source => (
-              <button key={source} className="w-full bg-white border border-cream-300 p-4 rounded-sm flex items-center gap-4 hover:border-foil-gold transition-colors">
-                <div className="w-8 h-8 bg-cream-100 rounded-sm flex items-center justify-center">
-                  <span className="text-xs font-bold">{source[0]}</span>
-                </div>
-                <span>{source}</span>
-              </button>
-            ))}
+            <div className="bg-white p-6 border border-cream-300 rounded-sm">
+              <h3 className="font-serif text-xl font-medium mb-4 text-noir-950">Cloud Photo Sources</h3>
+              <p className="text-xs text-noir-600 mb-4">Connect external accounts to import albums seamlessly:</p>
+              
+              <div className="space-y-2.5">
+                {[
+                  { name: 'Google Photos', icon: '📸', desc: 'Direct album import' },
+                  { name: 'Apple iCloud', icon: '☁️', desc: 'Sync from iOS gallery' },
+                  { name: 'Instagram', icon: '✨', desc: 'Feed & Saved stories' }
+                ].map(source => (
+                  <button 
+                    key={source.name} 
+                    onClick={() => alert(`${source.name} cloud connector initialized.`)}
+                    className="w-full bg-cream-50 border border-cream-200 p-3.5 rounded-sm flex items-center gap-3.5 hover:border-noir-950 transition-colors text-left"
+                  >
+                    <span className="text-2xl">{source.icon}</span>
+                    <div>
+                      <span className="text-sm font-semibold text-noir-900 block">{source.name}</span>
+                      <span className="text-[11px] text-noir-500">{source.desc}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-cream-100 p-6 border border-cream-300 rounded-sm text-xs text-noir-700 space-y-2">
+              <span className="font-bold text-noir-950 block">AI Smart Layout Highlights:</span>
+              <p className="flex items-start gap-1.5">
+                <Check size={14} className="text-foil-gold shrink-0 mt-0.5" />
+                <span>Auto-deduplicates blurry & similar takes</span>
+              </p>
+              <p className="flex items-start gap-1.5">
+                <Check size={14} className="text-foil-gold shrink-0 mt-0.5" />
+                <span>Chronological & location-based timeline grouping</span>
+              </p>
+              <p className="flex items-start gap-1.5">
+                <Check size={14} className="text-foil-gold shrink-0 mt-0.5" />
+                <span>Smart face-aware centering for panoramic spreads</span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-cream-300 p-4 flex justify-between items-center z-10 px-8">
+      {/* Floating Bottom Sticky Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-cream-300 p-4 z-40 px-6 md:px-12 flex justify-between items-center shadow-luxury-lg">
         <div>
-          <p className="text-sm font-bold">{uploaded} / 150 Max Photos</p>
-          <p className="text-xs text-red-500">Minimum 20 photos required</p>
+          <div className="flex items-baseline gap-2">
+            <span className="font-serif text-2xl font-bold text-noir-950">{photos.length}</span>
+            <span className="text-xs text-noir-600">/ 120 Max Photos</span>
+          </div>
+          <p className="text-[11px] text-noir-500 hidden sm:block">
+            {photos.length >= 8 
+              ? 'Ready for Smart Auto-Layout generation.' 
+              : 'Add at least 8 photos for an optimal 40-page story.'}
+          </p>
         </div>
+
         <button 
           onClick={handleContinue}
-          className="bg-noir-950 text-cream-50 px-8 py-3 rounded-sm font-medium tracking-wide disabled:opacity-50"
-          disabled={uploaded < 20 && false} // disabled for testing
+          className="bg-noir-950 text-cream-50 px-8 py-3.5 rounded-sm font-medium tracking-wide hover:bg-noir-900 transition-colors flex items-center gap-2 shadow-sm"
         >
-          Continue to Smart Layout
+          <span>Continue to Smart Layout</span>
+          <ArrowRight size={16} />
         </button>
       </div>
     </div>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-cream-50">
+        <div className="w-8 h-8 border-2 border-noir-950 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    }>
+      <UploadContent />
+    </Suspense>
   );
 }

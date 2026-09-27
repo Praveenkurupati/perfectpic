@@ -7,11 +7,12 @@ interface Page {
   elements: any[];
 }
 
-interface Photo {
+export interface Photo {
   id: string;
   url: string;
   usedCount: number;
   flagged: boolean;
+  name?: string;
 }
 
 interface EditorState {
@@ -23,10 +24,13 @@ interface EditorState {
   currentPageIndex: number;
   photos: Photo[];
   photoFilter: 'all' | 'unused' | 'flagged';
+  template: any | null;
   bookConfig: {
     size: string;
     coverType: string;
     theme: string;
+    color?: string;
+    packaging?: string;
   };
   autoSaveStatus: 'saved' | 'saving' | 'error';
   
@@ -40,10 +44,13 @@ interface EditorState {
   removePage: (index: number) => void;
   reorderPages: (fromIndex: number, toIndex: number) => void;
   setCurrentPage: (index: number) => void;
+  setPhotos: (photos: Photo[]) => void;
   addPhoto: (photo: Photo) => void;
   removePhoto: (id: string) => void;
   updatePageCanvas: (index: number, elements: any[]) => void;
   setPhotoFilter: (filter: 'all' | 'unused' | 'flagged') => void;
+  setTemplate: (template: any) => void;
+  setBookConfig: (config: Partial<EditorState['bookConfig']>) => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -59,10 +66,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentPageIndex: 0,
   photos: [],
   photoFilter: 'all',
+  template: null,
   bookConfig: {
-    size: '8x8',
-    coverType: 'hardcover',
-    theme: 'classic',
+    size: '8.25x8.25',
+    coverType: 'cov-1',
+    theme: 'theme-1',
+    color: 'col-1',
+    packaging: 'pack-1',
   },
   autoSaveStatus: 'saved',
 
@@ -109,6 +119,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     return { pages: newPages };
   }),
   setCurrentPage: (index) => set({ currentPageIndex: index }),
+  setPhotos: (photos) => set({ photos }),
   addPhoto: (photo) => set((state) => ({ photos: [...state.photos, photo] })),
   removePhoto: (id) => set((state) => ({ photos: state.photos.filter(p => p.id !== id) })),
   updatePageCanvas: (index, elements) => set((state) => {
@@ -118,5 +129,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     newPages[index] = { ...page, elements };
     return { pages: newPages };
   }),
-  setPhotoFilter: (filter) => set({ photoFilter: filter })
+  setPhotoFilter: (filter) => set({ photoFilter: filter }),
+  setTemplate: (template) => set({ template }),
+  setBookConfig: (config) => set((state) => ({
+    bookConfig: { ...state.bookConfig, ...config }
+  }))
 }));
