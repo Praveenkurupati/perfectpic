@@ -21,7 +21,8 @@ export interface IProduct extends Document {
   basePages: number;
   maxPhotos: number;
   badge?: string;
-  featured: boolean;
+  tags?: string[];
+  pageOptions?: number[];
   defaultOptions: {
     size: string;
     cover: string;
@@ -45,6 +46,8 @@ const ProductSchema: Schema = new Schema(
     subtitle: { type: String, default: '' },
     description: { type: String, default: '' },
     category: { type: String, default: 'Travel', index: true },
+    tags: { type: [String], default: [], index: true },
+    pageOptions: { type: [Number], default: [12, 24, 32, 60, 120] },
     coverImage: { type: String, required: true },
     coverColor: { type: String, default: '#F8BAC7' },
     spineText: { type: String, default: 'PHOTOBOOK' },
@@ -52,8 +55,8 @@ const ProductSchema: Schema = new Schema(
     reviewCount: { type: Number, default: 72 },
     fromPrice: { type: Number, default: 1999 },
     pricing: { type: Schema.Types.Mixed, default: { '8.25': 1999, '10': 2499 } },
-    basePages: { type: Number, default: 40 },
-    maxPhotos: { type: Number, default: 100 },
+    basePages: { type: Number, default: 32 },
+    maxPhotos: { type: Number, default: 120 },
     badge: { type: String, default: '' },
     featured: { type: Boolean, default: true },
     defaultOptions: {

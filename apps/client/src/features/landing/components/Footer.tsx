@@ -13,7 +13,7 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-cream-50/70 font-sans text-sm max-w-sm leading-relaxed mb-8">
-              Handcrafted Photo Books That Last Generations. Printed on premium non-tearable paper with lay-flat binding for memories that deserve more than a phone gallery. Built with love on perfectpic.in.
+              Premium Custom Photo Books That Last Generations. Printed on archival non-tearable paper with lay-flat binding for memories that deserve more than a phone gallery. Built with love on perfectpic.in.
             </p>
             <a 
               href="https://wa.me/919999999999?text=Hi%20PerfectPic%20Team%2C%20I%20need%20help%20with%20my%20photobook" 

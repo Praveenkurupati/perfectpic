@@ -118,6 +118,7 @@ export default function Home() {
 
   const categories = [
     { id: "all", label: "all series" },
+    { id: "trek series", label: "trek series" },
     { id: "travel series", label: "travel series" },
     { id: "travel edit", label: "travel edit" },
     { id: "moments series", label: "moments series" },
@@ -136,7 +137,7 @@ export default function Home() {
           <div className="max-w-2xl z-10">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-cream-200/80 border border-cream-300 rounded-full text-xs font-semibold uppercase tracking-wider text-noir-800 mb-6">
               <Sparkles size={14} className="text-foil-gold" />
-              <span>India&apos;s Finest Handcrafted Photobooks</span>
+              <span>India&apos;s Finest Custom Photo Books</span>
             </div>
             <h1 className="font-serif text-5xl md:text-7xl font-medium leading-[1.08] text-noir-950 mb-6">
               Your Memories Deserve An Heirloom.
@@ -186,7 +187,7 @@ export default function Home() {
               <div className="absolute bottom-6 left-6 right-6 text-cream-50">
                 <span className="text-[10px] uppercase tracking-[0.25em] text-foil-gold font-semibold">Featured Edition</span>
                 <h3 className="font-serif text-2xl font-medium mt-1">Paris Journey Hardcover</h3>
-                <p className="text-xs text-cream-50/70 mt-1">8.25&quot; × 8.25&quot; Custom Handcrafted Lay-Flat Book</p>
+                <p className="text-xs text-cream-50/70 mt-1">8.25&quot; × 8.25&quot; Custom Archival Lay-Flat Book</p>
               </div>
             </div>
           </div>
@@ -203,13 +204,13 @@ export default function Home() {
           
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 md:gap-4">
             {[
+              { name: "Trekking", emoji: "🏔️", filter: "trek series" },
               { name: "Travel", emoji: "✈️", filter: "travel series" },
               { name: "Magazines", emoji: "📰", filter: "travel edit" },
               { name: "Moments", emoji: "☀️", filter: "moments series" },
               { name: "Anniversary", emoji: "🥂", filter: "anniversary series" },
               { name: "Wedding", emoji: "💍", filter: "wedding" },
               { name: "Baby & Kids", emoji: "👶", filter: "baby" },
-              { name: "Birthday", emoji: "🎂", filter: "birthday" },
               { name: "Festivals", emoji: "🪔", filter: "festivals" }
             ].map((cat, i) => (
               <button 
@@ -422,7 +423,7 @@ export default function Home() {
             Your Memories Deserve Better Than a Phone Gallery
           </h2>
           <p className="text-xl text-cream-50/70 mb-10 max-w-2xl mx-auto font-sans">
-            Bring them into the real world with a premium handcrafted photobook.
+            Bring them into the real world with a premium custom photobook.
           </p>
           <Link 
             href="/configure" 

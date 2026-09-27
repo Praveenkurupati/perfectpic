@@ -1,20 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 
 const steps = [
   "Sorting your timeline...",
-  "Detecting faces and focal points...",
-  "Balancing color stories...",
-  "Generating your book layout..."
+  "Formatting 1 photo per page standard...",
+  "Applying gallery archival margins...",
+  "Generating your lay-flat book layout..."
 ];
 
-export default function ProcessingPage() {
+function ProcessingContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const projectId = (params?.projectId as string) || '';
+  const pages = searchParams.get('pages') || '32';
+
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
 
@@ -24,16 +27,16 @@ export default function ProcessingPage() {
         if (p >= 100) {
           clearInterval(interval);
           setTimeout(() => {
-            router.push(`/studio/${projectId}`);
-          }, 1500);
+            router.push(`/studio/${projectId}?pages=${pages}`);
+          }, 1200);
           return 100;
         }
         return p + 1;
       });
-    }, 50);
+    }, 40);
 
     return () => clearInterval(interval);
-  }, [projectId, router]);
+  }, [pages, projectId, router]);
 
   useEffect(() => {
     if (progress > 25 && currentStep === 0) setCurrentStep(1);
@@ -70,9 +73,10 @@ export default function ProcessingPage() {
               exit={{ opacity: 0, y: -10 }}
               className="font-serif text-2xl"
             >
-              {progress === 100 ? "Your 32-page photobook is ready!" : steps[currentStep]}
+              {progress === 100 ? `Your ${pages}-page photobook is ready!` : steps[currentStep]}
             </motion.h2>
           </AnimatePresence>
+          <p className="text-xs text-noir-500 font-mono">1 photo per page • archival gallery margins</p>
         </div>
 
         <div className="space-y-6">
@@ -98,8 +102,15 @@ export default function ProcessingPage() {
             ))}
           </div>
         </div>
-
       </div>
     </div>
+  );
+}
+
+export default function ProcessingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream-50 flex items-center justify-center text-sm font-serif">Curating layouts...</div>}>
+      <ProcessingContent />
+    </Suspense>
   );
 }

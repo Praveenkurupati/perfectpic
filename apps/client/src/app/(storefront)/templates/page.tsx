@@ -1,105 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
 import { api } from "@/lib/api";
-import { Sparkles, ArrowLeft } from "lucide-react";
+import { Sparkles, ArrowLeft, Search, X } from "lucide-react";
 import Link from "next/link";
 
-const fallbackTemplates: BookItem[] = [
-  {
-    id: 'tpl-1',
-    slug: 'travel-series-paris',
-    seriesLabel: 'travel series',
-    bookType: 'custom photobook',
-    title: 'custom photobook',
-    displayName: 'Paris Journey Hardcover',
-    tagline: 'your journeys, perfectly told',
-    subtitle: 'Timeless moments across the City of Light',
-    coverImage: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
-    coverColor: '#F8BAC7',
-    spineText: 'PARIS',
-    rating: 5.0,
-    reviewCount: 72,
-    fromPrice: 1999,
-    badge: 'bestseller'
-  },
-  {
-    id: 'tpl-2',
-    slug: 'travel-edit-paris',
-    seriesLabel: 'travel edit',
-    bookType: 'custom magazine',
-    title: 'custom magazine',
-    displayName: 'The Paris Chapter Edit',
-    tagline: 'your travels, front-page featured',
-    subtitle: 'Glossy editorial magazine with headline features',
-    coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop',
-    coverColor: '#F5C4CD',
-    spineText: 'PARIS EDIT',
-    rating: 5.0,
-    reviewCount: 72,
-    fromPrice: 2499,
-    badge: ''
-  },
-  {
-    id: 'tpl-3',
-    slug: 'moments-series-summer',
-    seriesLabel: 'moments series',
-    bookType: 'custom photobook',
-    title: 'custom photobook',
-    displayName: 'Summer 2026 Coastal Moments',
-    tagline: 'your moments, forever kept',
-    subtitle: 'Sun-drenched pool days and sunset beach dinners',
-    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
-    coverColor: '#72C2C6',
-    spineText: 'SUMMER 2026',
-    rating: 5.0,
-    reviewCount: 72,
-    fromPrice: 1999,
-    badge: 'new'
-  },
-  {
-    id: 'tpl-4',
-    slug: 'sri-lanka-travel',
-    seriesLabel: 'travel series',
-    bookType: 'custom photobook',
-    title: 'custom photobook',
-    displayName: 'Sri Lanka Tea Hills & Coasts',
-    tagline: 'raw landscapes, forever captured',
-    subtitle: 'From Sigiriya rock fortress to Ella misty peaks',
-    coverImage: 'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=800&auto=format&fit=crop',
-    coverColor: '#2D4A3E',
-    spineText: 'SRI LANKA',
-    rating: 4.9,
-    reviewCount: 114,
-    fromPrice: 1999,
-    badge: 'popular'
-  },
-  {
-    id: 'tpl-5',
-    slug: 'first-anniversary',
-    seriesLabel: 'anniversary series',
-    bookType: 'custom photobook',
-    title: 'custom photobook',
-    displayName: 'Our 1st Anniversary Keepsake',
-    tagline: 'years of love, timelessly bound',
-    subtitle: 'Celebrating 365 days of laughter and milestones',
-    coverImage: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
-    coverColor: '#E3C28C',
-    spineText: 'CHAPTER ONE',
-    rating: 5.0,
-    reviewCount: 96,
-    fromPrice: 1999,
-    badge: 'new'
-  }
+const popularTags = [
+  { id: "all", label: "All" },
+  { id: "trek", label: "🏔️ Trekking" },
+  { id: "himalayas", label: "❄️ Himalayas" },
+  { id: "kerala", label: "🌴 Kerala" },
+  { id: "beach", label: "🌊 Beaches" },
+  { id: "western ghats", label: "🍃 Western Ghats" },
+  { id: "rajasthan", label: "🏰 Heritage" },
+  { id: "anniversary", label: "🥂 Anniversary" },
 ];
 
-export default function TemplatesPage() {
-  const [books, setBooks] = useState<BookItem[]>(fallbackTemplates);
+function TemplatesContent() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  const initialTag = searchParams.get("tag") || "all";
+
+  const [books, setBooks] = useState<BookItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [selectedTag, setSelectedTag] = useState<string>(initialTag);
+  const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     api.getProducts()
       .then(res => {
         if (res && res.products && res.products.length > 0) {
@@ -114,29 +45,53 @@ export default function TemplatesPage() {
 
   const categories = [
     { id: "all", label: "all series" },
+    { id: "trek series", label: "trek series" },
     { id: "travel series", label: "travel series" },
     { id: "travel edit", label: "travel edit" },
     { id: "moments series", label: "moments series" },
     { id: "anniversary series", label: "anniversary series" }
   ];
 
-  const filteredBooks = activeCategory === "all"
-    ? books
-    : books.filter(b => b.seriesLabel?.toLowerCase() === activeCategory.toLowerCase());
+  // Multi-dimensional filtering: category + tag + text search
+  const filteredBooks = books.filter(book => {
+    // 1. Category match
+    const matchesCategory = activeCategory === "all" || 
+      book.seriesLabel?.toLowerCase() === activeCategory.toLowerCase() ||
+      book.category?.toLowerCase() === activeCategory.toLowerCase();
+
+    // 2. Tag match
+    const matchesTag = selectedTag === "all" ||
+      (book.tags && book.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase()));
+
+    // 3. Search query match (title, displayName, tagline, subtitle, tags)
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      book.title?.toLowerCase().includes(q) ||
+      book.displayName?.toLowerCase().includes(q) ||
+      book.tagline?.toLowerCase().includes(q) ||
+      book.subtitle?.toLowerCase().includes(q) ||
+      book.seriesLabel?.toLowerCase().includes(q) ||
+      (book.tags && book.tags.some(t => t.toLowerCase().includes(q)));
+
+    return matchesCategory && matchesTag && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-[#faf8f5] py-16 md:py-24 px-4 md:px-8">
       <div className="container mx-auto max-w-7xl">
         {/* Breadcrumb / Top Link */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <Link href="/" className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-neutral-500 hover:text-black transition-colors">
             <ArrowLeft size={14} className="mr-1.5" />
             <span>Back to Home</span>
           </Link>
+          <span className="text-xs text-neutral-400 font-mono">
+            {filteredBooks.length} {filteredBooks.length === 1 ? "edition" : "editions"} available
+          </span>
         </div>
 
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-neutral-200 rounded-full text-xs font-semibold uppercase tracking-wider text-neutral-800 mb-4 shadow-sm">
             <Sparkles size={14} className="text-foil-gold" />
             <span>Curated Photobook & Magazine Catalog</span>
@@ -145,18 +100,57 @@ export default function TemplatesPage() {
             Heirloom Series Collection
           </h1>
           <p className="text-neutral-600 text-sm md:text-base leading-relaxed">
-            Each book is individually handcrafted with 100% tear-proof lay-flat synthetic paper, ultra-HD 12K Indigo reproduction, and customized spine typography.
+            From iconic Indian Himalayan treks to coastal retreats and milestone anniversaries. Each book features exactly one photo per page with elegant gallery margins, printed on 100% tear-proof lay-flat synthetic paper.
           </p>
 
-          {/* Filter Chips */}
-          <div className="flex flex-wrap justify-center gap-2 mt-8">
+          {/* Search Bar */}
+          <div className="mt-8 max-w-xl mx-auto relative">
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 w-4 h-4 text-neutral-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search treks, destinations, or themes (e.g. Annapurna, Nethravathi, Kerala)..."
+                className="w-full pl-11 pr-10 py-3.5 bg-white border border-neutral-300 rounded-full text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 shadow-sm transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3.5 p-1 text-neutral-400 hover:text-neutral-700 rounded-full"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Tag Filter Pills */}
+          <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
+            {popularTags.map(tag => (
+              <button
+                key={tag.id}
+                onClick={() => setSelectedTag(tag.id)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  selectedTag === tag.id
+                    ? "bg-neutral-900 text-white shadow-xs"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {tag.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Series Category Filter Chips */}
+          <div className="flex flex-wrap justify-center gap-2 mt-6">
             {categories.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`px-5 py-2 rounded-full text-xs font-semibold lowercase tracking-wide transition-all ${
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold lowercase tracking-wide transition-all ${
                   activeCategory === cat.id
-                    ? "bg-neutral-900 text-white shadow-sm"
+                    ? "bg-amber-900/90 text-white shadow-sm"
                     : "bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-100 hover:text-black"
                 }`}
               >
@@ -167,18 +161,47 @@ export default function TemplatesPage() {
         </div>
 
         {/* Books Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredBooks.map(book => (
-            <BookCard key={book.id} book={book} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <div key={i} className="bg-white rounded-2xl border border-neutral-200 h-96 animate-pulse p-6" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredBooks.map(book => (
+              <BookCard key={book.id || book.slug} book={book} />
+            ))}
+          </div>
+        )}
 
-        {filteredBooks.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-2xl border border-neutral-200">
-            <p className="text-neutral-500 text-sm">No books found in this series currently.</p>
+        {!loading && filteredBooks.length === 0 && (
+          <div className="text-center py-20 bg-white rounded-2xl border border-neutral-200 max-w-xl mx-auto p-8 shadow-sm">
+            <p className="text-base font-semibold text-neutral-900 mb-1">No matching photo books found</p>
+            <p className="text-neutral-500 text-xs mb-6">
+              We couldn&apos;t find any books matching &ldquo;{searchQuery || selectedTag}&rdquo;. Try another trek, region, or clear filters.
+            </p>
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedTag("all");
+                setActiveCategory("all");
+              }}
+              className="px-5 py-2 bg-neutral-900 text-white text-xs font-semibold rounded-full hover:bg-black transition-colors"
+            >
+              Reset All Filters
+            </button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+export default function TemplatesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#faf8f5] flex items-center justify-center text-sm text-neutral-500">Loading catalog...</div>}>
+      <TemplatesContent />
+    </Suspense>
   );
 }

@@ -23,6 +23,8 @@ export interface TemplateProduct {
   maxPhotos: number;
   badge?: 'new' | 'bestseller' | 'popular' | 'trending' | '';
   featured: boolean;
+  tags?: string[];
+  pageOptions?: number[];
   defaultOptions: {
     size: string;
     cover: string;
@@ -34,11 +36,20 @@ export interface TemplateProduct {
 }
 
 export const categories = [
-  { id: 'cat-all', name: 'All Series', slug: 'all', description: 'Browse our complete collection of handcrafted photo books.', emoji: '✨', count: 5 },
-  { id: 'cat-1', name: 'Travel Series', slug: 'travel', description: 'Capture your wanderlust and epic adventures across the globe.', emoji: '✈️', count: 3 },
-  { id: 'cat-2', name: 'Moments Series', slug: 'moments', description: 'Daily magic, summer highlights, and candid family memories.', emoji: '☀️', count: 1 },
-  { id: 'cat-3', name: 'Anniversary Series', slug: 'anniversary', description: 'Celebrate milestone anniversaries and enduring love stories.', emoji: '🥂', count: 1 },
-  { id: 'cat-4', name: 'Wedding Series', slug: 'wedding', description: 'Preserve the vows and portraits of your celebration.', emoji: '💍', count: 0 }
+  { id: 'cat-all', name: 'All Series', slug: 'all', description: 'Browse our complete collection of custom photo books.', emoji: '✨', count: 35 },
+  { id: 'cat-trek', name: 'Trek Series', slug: 'trek', description: 'Himalayan ridges, alpine trails, and Western Ghats sanctuaries.', emoji: '🏔️', count: 10 },
+  { id: 'cat-1', name: 'Travel Series', slug: 'travel', description: 'Capture your wanderlust and epic adventures across India and the globe.', emoji: '✈️', count: 20 },
+  { id: 'cat-2', name: 'Moments Series', slug: 'moments', description: 'Daily magic, summer highlights, and candid family memories.', emoji: '☀️', count: 3 },
+  { id: 'cat-3', name: 'Anniversary Series', slug: 'anniversary', description: 'Celebrate milestone anniversaries and enduring love stories.', emoji: '🥂', count: 2 },
+  { id: 'cat-4', name: 'Wedding Series', slug: 'wedding', description: 'Preserve the vows and portraits of your celebration.', emoji: '💍', count: 2 }
+];
+
+export const pageCountOptions = [
+  { count: 12, name: '12 Pages', priceAdjustment: -700, photos: 12, description: '12 photo slots. Compact keepsake.' },
+  { count: 24, name: '24 Pages', priceAdjustment: -300, photos: 24, description: '24 photo slots. Weekend getaway.' },
+  { count: 32, name: '32 Pages', priceAdjustment: 0, photos: 32, default: true, description: '32 photo slots (Standard Edition). 1 photo per page.' },
+  { count: 60, name: '60 Pages', priceAdjustment: 1000, photos: 60, description: '60 photo slots. Extended travel journey.' },
+  { count: 120, name: '120 Pages', priceAdjustment: 2800, photos: 120, description: '120 photo slots. Collector\'s master volume.' }
 ];
 
 export const productSizes = [
@@ -48,7 +59,7 @@ export const productSizes = [
 
 export const coverTypes = [
   { id: 'cov-1', name: 'Hardcover Laminar', priceAdjustment: 0, included: true, description: 'Silky matte anti-scratch lamination with rigid luxury board.' },
-  { id: 'cov-2', name: 'Hardcover Vegan Leather', priceAdjustment: 500, included: false, description: 'Supple handcrafted Italian leatherette with foil debossing.' },
+  { id: 'cov-2', name: 'Hardcover Vegan Leather', priceAdjustment: 500, included: false, description: 'Supple premium Italian leatherette with foil debossing.' },
   { id: 'cov-3', name: 'Softcover Artisan', priceAdjustment: -300, included: false, description: 'Lightweight flexible softcover with velvety touch.' }
 ];
 

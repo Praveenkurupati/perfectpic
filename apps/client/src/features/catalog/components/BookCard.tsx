@@ -12,6 +12,9 @@ export interface BookItem {
   displayName?: string;
   tagline: string; // e.g. "your journeys, perfectly told"
   subtitle?: string;
+  category?: string;
+  tags?: string[];
+  pageOptions?: number[];
   coverImage: string;
   coverColor?: string;
   spineText?: string;
@@ -151,6 +154,20 @@ export default function BookCard({ book }: { book: BookItem }) {
         <p className="text-xs text-neutral-500 mt-1 lowercase font-normal leading-relaxed">
           {book.tagline || book.subtitle}
         </p>
+
+        {/* Search Meta Tags */}
+        {book.tags && book.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {book.tags.slice(0, 3).map((tag, idx) => (
+              <span key={idx} className="text-[10px] text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-full font-mono">
+                #{tag}
+              </span>
+            ))}
+            {book.tags.length > 3 && (
+              <span className="text-[10px] text-neutral-400 self-center">+{book.tags.length - 3}</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Button: start my design */}

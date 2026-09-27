@@ -13,10 +13,19 @@ function UploadContent() {
   const searchParams = useSearchParams();
   const projectId = (params?.projectId as string) || 'new-project';
   const templateSlug = searchParams.get('template');
+  const pagesParam = searchParams.get('pages') || '32';
+  const pageCountNum = parseInt(pagesParam, 10) || 32;
 
-  const { photos, setPhotos, addPhoto, removePhoto, setTemplate } = useEditorStore();
+  const { photos, setPhotos, addPhoto, removePhoto, setTemplate, setPageCount } = useEditorStore();
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState<string | null>(null);
+
+  // Sync page count
+  useEffect(() => {
+    if (pageCountNum) {
+      setPageCount(pageCountNum);
+    }
+  }, [pageCountNum, setPageCount]);
 
   // If template is passed in URL and store is empty, load template photos
   useEffect(() => {
@@ -26,7 +35,7 @@ function UploadContent() {
         .then(res => {
           if (res) {
             setTemplate(res);
-            setTemplateName(res.title);
+            setTemplateName(res.displayName || res.title);
             if (res.templatePhotos && res.templatePhotos.length > 0) {
               const initialPhotos = res.templatePhotos.map((url: string, index: number) => ({
                 id: `tpl-${templateSlug}-${index}`,
@@ -64,7 +73,7 @@ function UploadContent() {
   };
 
   const handleContinue = () => {
-    router.push(`/processing/${projectId}`);
+    router.push(`/processing/${projectId}?pages=${pageCountNum}`);
   };
 
   return (
@@ -99,8 +108,12 @@ function UploadContent() {
           </div>
 
           <div className="mt-4 md:mt-0 text-right">
-            <span className="text-2xl font-serif font-bold text-noir-950">{photos.length}</span>
+            <div className="flex items-baseline md:justify-end gap-1.5">
+              <span className="text-2xl font-serif font-bold text-noir-950">{photos.length}</span>
+              <span className="text-sm text-noir-500 font-mono">/ {pageCountNum} Target</span>
+            </div>
             <span className="text-xs text-noir-500 uppercase tracking-wider block">Photos in Project</span>
+            <span className="text-[11px] text-foil-gold font-mono block mt-0.5">1 photo per page standard</span>
           </div>
         </div>
 
@@ -237,12 +250,12 @@ function UploadContent() {
         <div>
           <div className="flex items-baseline gap-2">
             <span className="font-serif text-2xl font-bold text-noir-950">{photos.length}</span>
-            <span className="text-xs text-noir-600">/ 120 Max Photos</span>
+            <span className="text-xs text-noir-600 font-mono">/ {pageCountNum} Pages Selected (1 photo / page)</span>
           </div>
           <p className="text-[11px] text-noir-500 hidden sm:block">
-            {photos.length >= 8 
-              ? 'Ready for Smart Auto-Layout generation.' 
-              : 'Add at least 8 photos for an optimal 40-page story.'}
+            {photos.length >= pageCountNum 
+              ? `All ${pageCountNum} page slots ready for layout.` 
+              : `Selected ${pageCountNum} pages. Unfilled pages can be assigned or auto-filled inside the Studio.`}
           </p>
         </div>
 

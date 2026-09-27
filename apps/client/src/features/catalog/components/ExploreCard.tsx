@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Star, ArrowRight, Compass } from "lucide-react";
 
-export default function ExploreCard({ totalCount = 23 }: { totalCount?: number }) {
+export default function ExploreCard({ totalCount = 35 }: { totalCount?: number }) {
   return (
     <div className="bg-gradient-to-b from-[#fcfbf9] to-[#f5efe6] border border-neutral-300/80 hover:border-black rounded-2xl p-6 shadow-sm hover:shadow-luxury-md transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
       <div>

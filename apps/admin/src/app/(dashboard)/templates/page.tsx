@@ -30,6 +30,8 @@ interface TemplateItem {
   maxPhotos: number;
   badge?: string;
   featured: boolean;
+  tags?: string[];
+  pageOptions?: number[];
   templatePhotos?: string[];
 }
 
@@ -58,8 +60,9 @@ export default function TemplatesManagementPage() {
     coverColor: "#F8BAC7",
     spineText: "PHOTOBOOK",
     fromPrice: 1999,
-    basePages: 40,
+    basePages: 32,
     badge: "new",
+    tags: "",
     templatePhotos: ""
   });
 
@@ -85,19 +88,20 @@ export default function TemplatesManagementPage() {
     setEditingTemplate(null);
     setFormData({
       displayName: "",
-      seriesLabel: "travel series",
+      seriesLabel: "trek series",
       bookType: "custom photobook",
       title: "custom photobook",
       tagline: "your journeys, perfectly told",
-      subtitle: "Handcrafted heirloom photobook",
-      category: "Travel",
-      coverImage: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop",
-      coverColor: "#F8BAC7",
+      subtitle: "Archival heirloom photobook",
+      category: "Trek",
+      coverImage: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop",
+      coverColor: "#5B7B88",
       spineText: "PHOTOBOOK",
       fromPrice: 1999,
-      basePages: 40,
+      basePages: 32,
       badge: "new",
-      templatePhotos: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop, https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800&auto=format&fit=crop"
+      tags: "trek, himalayas, mountains, adventure",
+      templatePhotos: "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop"
     });
     setIsModalOpen(true);
   };
@@ -116,8 +120,9 @@ export default function TemplatesManagementPage() {
       coverColor: tpl.coverColor || "#F8BAC7",
       spineText: tpl.spineText || "PHOTOBOOK",
       fromPrice: tpl.fromPrice || 1999,
-      basePages: tpl.basePages || 40,
+      basePages: tpl.basePages || 32,
       badge: tpl.badge || "",
+      tags: (tpl.tags || []).join(", "),
       templatePhotos: (tpl.templatePhotos || []).join(", ")
     });
     setIsModalOpen(true);
@@ -132,10 +137,16 @@ export default function TemplatesManagementPage() {
       .map(s => s.trim())
       .filter(Boolean);
 
+    const tagsList = formData.tags
+      .split(",")
+      .map(s => s.trim().toLowerCase())
+      .filter(Boolean);
+
     const payload = {
       ...formData,
       fromPrice: Number(formData.fromPrice),
       basePages: Number(formData.basePages),
+      tags: tagsList,
       templatePhotos: photosList.length > 0 ? photosList : [formData.coverImage]
     };
 
@@ -171,10 +182,13 @@ export default function TemplatesManagementPage() {
 
   const filteredTemplates = templates.filter(t => {
     const matchesCat = selectedCategory === "all" || t.category.toLowerCase() === selectedCategory.toLowerCase();
-    const matchesSearch = !searchQuery || 
-      t.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.seriesLabel?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = !query || 
+      t.displayName?.toLowerCase().includes(query) ||
+      t.seriesLabel?.toLowerCase().includes(query) ||
+      t.title?.toLowerCase().includes(query) ||
+      t.tagline?.toLowerCase().includes(query) ||
+      t.tags?.some(tag => tag.toLowerCase().includes(query));
     return matchesCat && matchesSearch;
   });
 
@@ -214,6 +228,7 @@ export default function TemplatesManagementPage() {
         <div className="flex gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
           {[
             { id: "all", label: "All Series" },
+            { id: "trek", label: "Trek Series" },
             { id: "travel", label: "Travel Series" },
             { id: "moments", label: "Moments Series" },
             { id: "anniversary", label: "Anniversary Series" }
@@ -327,6 +342,19 @@ export default function TemplatesManagementPage() {
                 <p className="text-xs text-neutral-500 mt-0.5 lowercase leading-relaxed">
                   {book.tagline || book.subtitle}
                 </p>
+
+                {book.tags && book.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2.5">
+                    {book.tags.slice(0, 4).map((tag, idx) => (
+                      <span key={idx} className="text-[10px] bg-neutral-100 text-neutral-600 px-1.5 py-0.5 rounded-sm font-mono">
+                        #{tag}
+                      </span>
+                    ))}
+                    {book.tags.length > 4 && (
+                      <span className="text-[10px] text-neutral-400 self-center">+{book.tags.length - 4}</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Admin Actions Bar */}
@@ -463,6 +491,7 @@ export default function TemplatesManagementPage() {
                     className="w-full p-2.5 border border-cream-300 rounded-sm text-sm focus:border-noir-950 focus:outline-none bg-white"
                   >
                     <option value="Travel">Travel</option>
+                    <option value="Trek">Trek</option>
                     <option value="Moments">Moments</option>
                     <option value="Anniversary">Anniversary</option>
                     <option value="Wedding">Wedding</option>
@@ -528,6 +557,22 @@ export default function TemplatesManagementPage() {
                 </div>
                 <p className="text-[11px] text-noir-400 mt-1">
                   Provide any high-res picture URL. This picture will immediately render on the client side photobook.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-noir-700 mb-1">
+                  Search Tags & Keywords (Comma-separated)
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.tags} 
+                  onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                  placeholder="e.g. trek, himalayas, kedarkantha, snow, mountains, adventure"
+                  className="w-full p-2.5 border border-cream-300 rounded-sm text-sm focus:border-noir-950 focus:outline-none"
+                />
+                <p className="text-[11px] text-noir-500 mt-1">
+                  Used by customers to search for this book on the storefront (e.g. searching "kerala", "trek", "himalayas").
                 </p>
               </div>
 

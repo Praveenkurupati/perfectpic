@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-interface Page {
+export interface Page {
   id: string;
   type: 'cover' | 'spread' | 'back';
   layout: string;
@@ -16,12 +16,19 @@ export interface Photo {
 }
 
 interface EditorState {
-  canvas: any | null; // Placeholder for fabric.Canvas
+  canvas: any | null;
   selectedObjectId: string | null;
   history: string[];
   historyIndex: number;
   pages: Page[];
   currentPageIndex: number;
+  
+  // Dynamic page count (12, 24, 32 default, 60, 120)
+  pageCount: number;
+  currentSpreadIndex: number; // 0 = Cover, 1 = Spreads 1-2, etc.
+  selectedSlot: number | null; // Currently targeted page number for photo drop/click
+  pagePhotos: Record<number, Photo | null>; // page number -> Photo (1 photo per page standard)
+
   photos: Photo[];
   photoFilter: 'all' | 'unused' | 'flagged';
   template: any | null;
@@ -31,6 +38,8 @@ interface EditorState {
     theme: string;
     color?: string;
     packaging?: string;
+    pages?: number;
+    price?: number;
   };
   autoSaveStatus: 'saved' | 'saving' | 'error';
   
@@ -44,6 +53,12 @@ interface EditorState {
   removePage: (index: number) => void;
   reorderPages: (fromIndex: number, toIndex: number) => void;
   setCurrentPage: (index: number) => void;
+  setPageCount: (count: number) => void;
+  setCurrentSpreadIndex: (index: number) => void;
+  setSelectedSlot: (slot: number | null) => void;
+  assignPhotoToPage: (pageNumber: number, photo: Photo | null) => void;
+  autoPopulatePages: () => void;
+  clearPagePhoto: (pageNumber: number) => void;
   setPhotos: (photos: Photo[]) => void;
   addPhoto: (photo: Photo) => void;
   removePhoto: (id: string) => void;
@@ -53,17 +68,35 @@ interface EditorState {
   setBookConfig: (config: Partial<EditorState['bookConfig']>) => void;
 }
 
+// Generate default spreads matching page count
+const generateSpreads = (pageCount: number): Page[] => {
+  const spreads: Page[] = [
+    { id: 'cover', type: 'cover', layout: 'full', elements: [] }
+  ];
+  const numSpreads = Math.ceil(pageCount / 2);
+  for (let i = 1; i <= numSpreads; i++) {
+    spreads.push({
+      id: `spread-${i}`,
+      type: 'spread',
+      layout: 'single-photo-per-page',
+      elements: []
+    });
+  }
+  spreads.push({ id: 'back', type: 'back', layout: 'full', elements: [] });
+  return spreads;
+};
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   canvas: null,
   selectedObjectId: null,
   history: [],
   historyIndex: -1,
-  pages: [
-    { id: 'cover', type: 'cover', layout: 'full', elements: [] },
-    { id: 'spread-1', type: 'spread', layout: '2-photo', elements: [] },
-    { id: 'back', type: 'back', layout: 'full', elements: [] },
-  ],
-  currentPageIndex: 0,
+  pageCount: 32, // Default 32 pages as requested
+  currentSpreadIndex: 1, // Start on first spread (Pages 1 & 2)
+  selectedSlot: 1, // Default focus on Page 1
+  pagePhotos: {},
+  pages: generateSpreads(32),
+  currentPageIndex: 1,
   photos: [],
   photoFilter: 'all',
   template: null,
@@ -73,6 +106,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     theme: 'theme-1',
     color: 'col-1',
     packaging: 'pack-1',
+    pages: 32,
+    price: 1999
   },
   autoSaveStatus: 'saved',
 
@@ -100,7 +135,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (index !== undefined) {
       newPages.splice(index, 0, page);
     } else {
-      // insert before back cover
       newPages.splice(newPages.length - 1, 0, page);
     }
     return { pages: newPages };
@@ -118,8 +152,112 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
     return { pages: newPages };
   }),
-  setCurrentPage: (index) => set({ currentPageIndex: index }),
-  setPhotos: (photos) => set({ photos }),
+  setCurrentPage: (index) => set({ currentPageIndex: index, currentSpreadIndex: index }),
+
+  setPageCount: (count) => set((state) => ({
+    pageCount: count,
+    pages: generateSpreads(count),
+    bookConfig: { ...state.bookConfig, pages: count }
+  })),
+
+  setCurrentSpreadIndex: (index) => set({
+    currentSpreadIndex: index,
+    currentPageIndex: index,
+    selectedSlot: index === 0 ? 0 : (index - 1) * 2 + 1
+  }),
+
+  setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+
+  assignPhotoToPage: (pageNumber, photo) => set((state) => {
+    const updatedPagePhotos = { ...state.pagePhotos };
+    const oldPhoto = updatedPagePhotos[pageNumber];
+
+    if (photo) {
+      updatedPagePhotos[pageNumber] = photo;
+    } else {
+      delete updatedPagePhotos[pageNumber];
+    }
+
+    // Recalculate usedCount for all photos
+    const counts: Record<string, number> = {};
+    Object.values(updatedPagePhotos).forEach(p => {
+      if (p) counts[p.id] = (counts[p.id] || 0) + 1;
+    });
+
+    const updatedPhotos = state.photos.map(p => ({
+      ...p,
+      usedCount: counts[p.id] || 0
+    }));
+
+    return {
+      pagePhotos: updatedPagePhotos,
+      photos: updatedPhotos,
+      autoSaveStatus: 'saved'
+    };
+  }),
+
+  clearPagePhoto: (pageNumber) => set((state) => {
+    const updatedPagePhotos = { ...state.pagePhotos };
+    delete updatedPagePhotos[pageNumber];
+
+    const counts: Record<string, number> = {};
+    Object.values(updatedPagePhotos).forEach(p => {
+      if (p) counts[p.id] = (counts[p.id] || 0) + 1;
+    });
+
+    const updatedPhotos = state.photos.map(p => ({
+      ...p,
+      usedCount: counts[p.id] || 0
+    }));
+
+    return {
+      pagePhotos: updatedPagePhotos,
+      photos: updatedPhotos
+    };
+  }),
+
+  autoPopulatePages: () => set((state) => {
+    if (state.photos.length === 0) return state;
+
+    const newPagePhotos: Record<number, Photo> = {};
+    // Page 0 = Cover
+    if (state.photos[0]) {
+      newPagePhotos[0] = state.photos[0];
+    }
+
+    // Pages 1 to pageCount (1 photo per page)
+    for (let pageNum = 1; pageNum <= state.pageCount; pageNum++) {
+      const photoIndex = pageNum % state.photos.length;
+      if (state.photos[photoIndex]) {
+        newPagePhotos[pageNum] = state.photos[photoIndex]!;
+      }
+    }
+
+    const counts: Record<string, number> = {};
+    Object.values(newPagePhotos).forEach(p => {
+      if (p) counts[p.id] = (counts[p.id] || 0) + 1;
+    });
+
+    const updatedPhotos = state.photos.map(p => ({
+      ...p,
+      usedCount: counts[p.id] || 0
+    }));
+
+    return {
+      pagePhotos: newPagePhotos,
+      photos: updatedPhotos
+    };
+  }),
+
+  setPhotos: (photos) => {
+    set({ photos });
+    // If pages are empty and we just set photos, auto-populate initial pages
+    const state = get();
+    if (Object.keys(state.pagePhotos).length === 0 && photos.length > 0) {
+      state.autoPopulatePages();
+    }
+  },
+
   addPhoto: (photo) => set((state) => ({ photos: [...state.photos, photo] })),
   removePhoto: (id) => set((state) => ({ photos: state.photos.filter(p => p.id !== id) })),
   updatePageCanvas: (index, elements) => set((state) => {

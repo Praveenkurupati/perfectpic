@@ -8,6 +8,7 @@ import {
   bookThemes,
   bookColors,
   packagingOptions,
+  pageCountOptions,
   TemplateProduct
 } from '../data/templates';
 import { Product } from '../db/models/Product';
@@ -16,11 +17,13 @@ import { cacheGet, cacheSet, cacheDelByPrefix } from '../cache/redis';
 
 const router = Router();
 
-// GET /api/products - list all products with optional ?category=Travel filter
+// GET /api/products - list all products with optional ?category=, ?search=, ?tag= filters
 router.get('/', async (req, res) => {
-  const { category } = req.query;
+  const { category, search, tag } = req.query;
   const categoryKey = category && typeof category === 'string' ? category.toLowerCase() : 'all';
-  const cacheKey = `products:list:${categoryKey}`;
+  const searchKey = search && typeof search === 'string' ? search.trim().toLowerCase() : '';
+  const tagKey = tag && typeof tag === 'string' ? tag.trim().toLowerCase() : '';
+  const cacheKey = `products:list:${categoryKey}:${searchKey}:${tagKey}`;
 
   // 1. Try Redis cache
   const cached = await cacheGet<{ products: any[]; total: number }>(cacheKey);
@@ -32,15 +35,45 @@ router.get('/', async (req, res) => {
   try {
     if (isDbConnected()) {
       let query: any = {};
+      const conditions: any[] = [];
+
       if (category && typeof category === 'string' && category.toLowerCase() !== 'all') {
         const catRegex = new RegExp(`^${category}$`, 'i');
-        query = {
+        conditions.push({
           $or: [
             { category: catRegex },
             { seriesLabel: new RegExp(category, 'i') }
           ]
-        };
+        });
       }
+
+      if (search && typeof search === 'string' && search.trim() !== '') {
+        const sRegex = new RegExp(search.trim(), 'i');
+        conditions.push({
+          $or: [
+            { displayName: sRegex },
+            { title: sRegex },
+            { tagline: sRegex },
+            { tags: sRegex },
+            { seriesLabel: sRegex },
+            { description: sRegex },
+            { subtitle: sRegex }
+          ]
+        });
+      }
+
+      if (tag && typeof tag === 'string' && tag.trim() !== '' && tag.toLowerCase() !== 'all') {
+        conditions.push({
+          tags: new RegExp(`^${tag.trim()}$`, 'i')
+        });
+      }
+
+      if (conditions.length === 1) {
+        query = conditions[0];
+      } else if (conditions.length > 1) {
+        query = { $and: conditions };
+      }
+
       const products = await Product.find(query).sort({ createdAt: -1 });
       const responseData = { products, total: products.length };
       await cacheSet(cacheKey, responseData, 300); // 5 min TTL
@@ -53,9 +86,25 @@ router.get('/', async (req, res) => {
   // 3. Fallback to in-memory templates
   let filteredProducts = templates;
   if (category && typeof category === 'string' && category.toLowerCase() !== 'all') {
-    filteredProducts = templates.filter(
+    filteredProducts = filteredProducts.filter(
       t => t.category.toLowerCase() === category.toLowerCase() ||
            t.seriesLabel.toLowerCase().includes(category.toLowerCase())
+    );
+  }
+  if (search && typeof search === 'string' && search.trim() !== '') {
+    const s = search.trim().toLowerCase();
+    filteredProducts = filteredProducts.filter(
+      t => (t.displayName && t.displayName.toLowerCase().includes(s)) ||
+           (t.title && t.title.toLowerCase().includes(s)) ||
+           (t.tagline && t.tagline.toLowerCase().includes(s)) ||
+           (t.seriesLabel && t.seriesLabel.toLowerCase().includes(s)) ||
+           (t.tags && t.tags.some(tg => tg.toLowerCase().includes(s)))
+    );
+  }
+  if (tag && typeof tag === 'string' && tag.trim() !== '' && tag.toLowerCase() !== 'all') {
+    const targetTag = tag.trim().toLowerCase();
+    filteredProducts = filteredProducts.filter(
+      t => t.tags && t.tags.some(tg => tg.toLowerCase() === targetTag)
     );
   }
   
@@ -84,7 +133,8 @@ router.get('/config', async (req, res) => {
     covers: coverTypes,
     themes: bookThemes,
     colors: bookColors,
-    packaging: packagingOptions
+    packaging: packagingOptions,
+    pageCountOptions: pageCountOptions
   };
   await cacheSet(cacheKey, responseData, 3600);
   res.json(responseData);
@@ -176,6 +226,14 @@ router.post('/', async (req, res) => {
     maxPhotos: Number(body.maxPhotos) || 100,
     badge: body.badge || '',
     featured: body.featured ?? true,
+    tags: Array.isArray(body.tags)
+      ? body.tags
+      : (typeof body.tags === 'string'
+          ? body.tags.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean)
+          : []),
+    pageOptions: Array.isArray(body.pageOptions) && body.pageOptions.length > 0
+      ? body.pageOptions
+      : [12, 24, 32, 60, 120],
     defaultOptions: body.defaultOptions || {
       size: '8.25x8.25',
       cover: 'cov-1',
@@ -226,6 +284,12 @@ router.put('/:id', async (req, res) => {
       }
 
       const updateData = { ...req.body };
+      if (typeof updateData.tags === 'string') {
+        updateData.tags = updateData.tags.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean);
+      }
+      if (updateData.pageOptions && typeof updateData.pageOptions === 'string') {
+        updateData.pageOptions = updateData.pageOptions.split(',').map((p: string) => Number(p.trim())).filter((n: number) => !isNaN(n));
+      }
       if (updateData.fromPrice) {
         updateData.fromPrice = Number(updateData.fromPrice);
         if (!updateData.pricing) {
@@ -250,9 +314,18 @@ router.put('/:id', async (req, res) => {
   }
 
   const existing = templates[index]!;
+  const parsedTags = req.body.tags !== undefined
+    ? (Array.isArray(req.body.tags) ? req.body.tags : req.body.tags.split(',').map((t: string) => t.trim().toLowerCase()).filter(Boolean))
+    : existing.tags;
+  const parsedPageOptions = req.body.pageOptions !== undefined
+    ? (Array.isArray(req.body.pageOptions) ? req.body.pageOptions : req.body.pageOptions.split(',').map((p: string) => Number(p.trim())).filter((n: number) => !isNaN(n)))
+    : existing.pageOptions;
+
   const updated: TemplateProduct = {
     ...existing,
     ...req.body,
+    tags: parsedTags,
+    pageOptions: parsedPageOptions,
     fromPrice: req.body.fromPrice ? Number(req.body.fromPrice) : existing.fromPrice,
     basePages: req.body.basePages ? Number(req.body.basePages) : existing.basePages,
     pricing: req.body.fromPrice 

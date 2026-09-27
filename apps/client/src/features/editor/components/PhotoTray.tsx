@@ -1,43 +1,117 @@
 'use client';
 
-import { useEditorStore } from '@/stores/useEditorStore';
+import { useEditorStore, Photo } from '@/stores/useEditorStore';
+import { UploadCloud, Check, Plus, ArrowLeftRight, Image as ImageIcon } from 'lucide-react';
 
-const defaultSamplePhotos = [
-  'https://images.unsplash.com/photo-1580974582391-a6649c82a85f?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1579564177579-22a49f50f2fb?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1620216664966-218eb8a40d51?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1533050487297-09b450131914?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1586526462747-d5d1ea857f13?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1625736173007-88fcf32d20d7?w=400&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1582496739818-d4cbf2826cce?w=400&auto=format&fit=crop'
+const defaultSamplePhotos: Photo[] = [
+  { id: 'sample-1', url: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Himalayan Ridge' },
+  { id: 'sample-2', url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Alpine Summit' },
+  { id: 'sample-3', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Yosemite Mist' },
+  { id: 'sample-4', url: 'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Coffee Mountain' },
+  { id: 'sample-5', url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Parisian Avenue' },
+  { id: 'sample-6', url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Golden Sands' }
 ];
 
 export default function PhotoTray() {
-  const { photos, photoFilter, setPhotoFilter, addPhoto } = useEditorStore();
+  const { 
+    photos, 
+    photoFilter, 
+    setPhotoFilter, 
+    addPhoto, 
+    selectedSlot, 
+    setSelectedSlot,
+    assignPhotoToPage,
+    currentSpreadIndex,
+    pageCount,
+    pagePhotos
+  } = useEditorStore();
 
-  const displayPhotos = photos.length > 0 
-    ? photos.map(p => ({ id: p.id, url: p.url, used: p.usedCount > 0, flagged: p.flagged }))
-    : defaultSamplePhotos.map((url, i) => ({ id: `default-${i}`, url, used: i % 3 === 0, flagged: false }));
+  const displayPhotos: Photo[] = photos.length > 0 ? photos : defaultSamplePhotos;
 
   const filteredPhotos = displayPhotos.filter(p => {
-    if (photoFilter === 'unused') return !p.used;
+    if (photoFilter === 'unused') return (p.usedCount || 0) === 0;
     if (photoFilter === 'flagged') return p.flagged;
     return true;
   });
 
+  const leftPageNum = (currentSpreadIndex - 1) * 2 + 1;
+  const rightPageNum = (currentSpreadIndex - 1) * 2 + 2;
+  const isInsideSpread = currentSpreadIndex > 0 && currentSpreadIndex <= Math.ceil(pageCount / 2);
+
+  // Handle clicking a photo to place it
+  const handlePhotoClick = (photo: Photo) => {
+    let targetPage = selectedSlot;
+
+    // If no slot explicitly selected or on cover/back, find first empty page slot
+    if (targetPage === null || targetPage === undefined) {
+      if (currentSpreadIndex === 0) {
+        targetPage = 0; // Cover
+      } else if (isInsideSpread) {
+        // Prefer left or right of current spread if empty
+        if (!pagePhotos[leftPageNum]) targetPage = leftPageNum;
+        else if (!pagePhotos[rightPageNum]) targetPage = rightPageNum;
+        else targetPage = leftPageNum;
+      } else {
+        // Find first empty page in book
+        for (let i = 1; i <= pageCount; i++) {
+          if (!pagePhotos[i]) {
+            targetPage = i;
+            break;
+          }
+        }
+        if (targetPage === null) targetPage = 1;
+      }
+    }
+
+    assignPhotoToPage(targetPage, photo);
+
+    // Auto-advance target slot to next page
+    if (targetPage > 0 && targetPage < pageCount) {
+      setSelectedSlot(targetPage + 1);
+    }
+  };
+
+  const handlePlaceLeft = (e: React.MouseEvent, photo: Photo) => {
+    e.stopPropagation();
+    assignPhotoToPage(leftPageNum, photo);
+    setSelectedSlot(rightPageNum);
+  };
+
+  const handlePlaceRight = (e: React.MouseEvent, photo: Photo) => {
+    e.stopPropagation();
+    assignPhotoToPage(rightPageNum, photo);
+    setSelectedSlot(rightPageNum < pageCount ? rightPageNum + 1 : null);
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="flex border-b border-cream-300 text-xs uppercase tracking-wider font-semibold">
+      {/* Tray Header */}
+      <div className="p-3 border-b border-cream-300 bg-cream-50/50">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-noir-900">
+            Photos ({displayPhotos.length})
+          </span>
+          {selectedSlot !== null && (
+            <span className="text-[10px] text-foil-gold font-semibold uppercase tracking-wider font-mono">
+              Target: Page {selectedSlot}
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-noir-500 leading-tight">
+          Click any photo to assign into the active page (1 photo per page standard).
+        </p>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex border-b border-cream-200 text-[11px] uppercase tracking-wider font-semibold">
         {[
           { key: 'all', label: `All (${displayPhotos.length})` },
-          { key: 'unused', label: 'Unused' },
-          { key: 'flagged', label: 'Favorites' }
+          { key: 'unused', label: 'Unused' }
         ].map(filter => (
           <button 
             key={filter.key}
             onClick={() => setPhotoFilter(filter.key as any)}
-            className={`flex-1 py-3 text-center border-b-2 transition-colors ${
+            className={`flex-1 py-2 text-center border-b-2 transition-colors ${
               photoFilter === filter.key 
                 ? 'border-noir-950 text-noir-950 font-bold' 
                 : 'border-transparent text-noir-400 hover:text-noir-700'
@@ -48,26 +122,61 @@ export default function PhotoTray() {
         ))}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2.5 content-start">
-        {filteredPhotos.map((photo) => (
-          <div 
-            key={photo.id} 
-            className="aspect-square bg-cream-200 rounded-sm relative group overflow-hidden cursor-grab shadow-sm border border-cream-200 hover:border-foil-gold transition-all"
-          >
-            <img src={photo.url} alt="Tray Photo" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-            {photo.used && (
-              <span className="absolute top-1 right-1 bg-black/75 backdrop-blur-sm text-cream-50 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-[2px] font-semibold">
-                Placed
-              </span>
-            )}
-          </div>
-        ))}
+      {/* Photos Grid */}
+      <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-2 content-start">
+        {filteredPhotos.map((photo) => {
+          const isPlaced = (photo.usedCount || 0) > 0;
+
+          return (
+            <div 
+              key={photo.id} 
+              onClick={() => handlePhotoClick(photo)}
+              className="aspect-square bg-cream-100 rounded-sm relative group overflow-hidden cursor-pointer shadow-xs border border-cream-300 hover:border-foil-gold transition-all"
+              title="Click to place on target page"
+            >
+              <img 
+                src={photo.url} 
+                alt={photo.name || 'Photo'} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+              />
+              
+              {/* Placed badge */}
+              {isPlaced && (
+                <span className="absolute top-1 right-1 bg-black/75 backdrop-blur-xs text-cream-50 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-[2px] font-semibold flex items-center gap-0.5">
+                  <Check size={10} /> Placed
+                </span>
+              )}
+
+              {/* Hover overlay with quick place buttons */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
+                {isInsideSpread && (
+                  <div className="flex gap-1 w-full">
+                    <button
+                      onClick={(e) => handlePlaceLeft(e, photo)}
+                      className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
+                    >
+                      P.{leftPageNum}
+                    </button>
+                    <button
+                      onClick={(e) => handlePlaceRight(e, photo)}
+                      className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
+                    >
+                      P.{rightPageNum}
+                    </button>
+                  </div>
+                )}
+                <span className="text-[10px] text-white font-medium">Click to place</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
       
+      {/* Upload Button */}
       <div className="p-3 border-t border-cream-300 bg-cream-50">
-        <label className="w-full py-2.5 bg-white border border-dashed border-cream-400 rounded-sm text-xs font-semibold text-noir-900 hover:border-noir-950 transition-colors flex items-center justify-center cursor-pointer text-center">
-          <span>+ Upload More Photos</span>
+        <label className="w-full py-2 bg-white border border-dashed border-cream-400 rounded-sm text-xs font-semibold text-noir-900 hover:border-noir-950 transition-colors flex items-center justify-center cursor-pointer text-center gap-1.5">
+          <UploadCloud size={14} />
+          <span>Upload More Photos</span>
           <input 
             type="file" 
             multiple 
