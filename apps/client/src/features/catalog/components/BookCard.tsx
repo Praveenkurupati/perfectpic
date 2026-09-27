@@ -43,8 +43,12 @@ export default function BookCard({ book }: { book: BookItem }) {
           )}
         </div>
 
-        {/* 3D Photobook / Magazine Presentation Showcase */}
-        <div className="h-72 w-full flex items-center justify-center py-4 px-2 mb-6 perspective-[1000px]">
+        {/* 3D Photobook / Magazine Presentation Showcase (Clickable to detail page) */}
+        <Link 
+          href={`/templates/${book.slug}`}
+          className="h-72 w-full flex items-center justify-center py-4 px-2 mb-6 perspective-[1000px] cursor-pointer block"
+          title="Click to view full specifications & options"
+        >
           {isMagazine ? (
             /* Custom Magazine Mockup */
             <div className="relative w-44 h-60 rounded-[3px] p-2.5 shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-1" style={{ backgroundColor: coverBg }}>
@@ -114,7 +118,7 @@ export default function BookCard({ book }: { book: BookItem }) {
               </div>
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Rating and Price Row */}
         <div className="flex items-center justify-between mb-2">
@@ -145,10 +149,12 @@ export default function BookCard({ book }: { book: BookItem }) {
           </div>
         </div>
 
-        {/* Book Title (lowercase bold) */}
-        <h3 className="text-xl font-bold text-neutral-900 tracking-tight leading-snug lowercase">
-          {book.title}
-        </h3>
+        {/* Book Title (lowercase bold, clickable to detail view) */}
+        <Link href={`/templates/${book.slug}`} className="hover:text-amber-900 transition-colors block">
+          <h3 className="text-xl font-bold text-neutral-900 tracking-tight leading-snug lowercase">
+            {book.title}
+          </h3>
+        </Link>
 
         {/* Tagline (lowercase subtle) */}
         <p className="text-xs text-neutral-500 mt-1 lowercase font-normal leading-relaxed">

@@ -11,10 +11,12 @@ function ConfigureContent() {
   const searchParams = useSearchParams();
   const templateSlug = searchParams.get("template");
   const categoryParam = searchParams.get("category");
+  const pagesParam = searchParams.get("pages");
+  const sizeParam = searchParams.get("size");
 
   const [step, setStep] = useState(1);
-  const [size, setSize] = useState("8.25x8.25");
-  const [pageCount, setPageCount] = useState<number>(32); // Default 32 pages as requested
+  const [size, setSize] = useState(sizeParam || "8.25x8.25");
+  const [pageCount, setPageCount] = useState<number>(pagesParam ? (parseInt(pagesParam, 10) || 32) : 32);
   const [cover, setCover] = useState("cov-1");
   const [theme, setTheme] = useState("theme-1");
   const [color, setColor] = useState("col-1");

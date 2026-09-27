@@ -165,16 +165,27 @@ router.get('/featured', async (req, res) => {
 
 router.get('/:slug', async (req, res) => {
   const slugParam = req.params.slug;
-  const cacheKey = `product:item:${slugParam}`;
+  const cacheKey = `product:item:${slugParam.toLowerCase()}`;
 
   const cached = await cacheGet<any>(cacheKey);
   if (cached) return res.json(cached);
 
+  const cleanSlug = slugParam.toLowerCase().replace(/_/g, '-');
+  const bareSlug = cleanSlug.replace(/-[0-9]+$/, '');
+
   try {
     if (isDbConnected()) {
-      let query: any = { slug: slugParam };
+      let query: any = { 
+        $or: [
+          { slug: slugParam },
+          { slug: cleanSlug },
+          { slug: new RegExp(`^${slugParam}$`, 'i') },
+          { slug: new RegExp(bareSlug, 'i') },
+          { displayName: new RegExp(bareSlug.replace(/-/g, ' '), 'i') }
+        ]
+      };
       if (mongoose.isValidObjectId(slugParam)) {
-        query = { $or: [{ slug: slugParam }, { _id: slugParam }] };
+        query.$or.push({ _id: slugParam });
       }
       const product = await Product.findOne(query);
       if (product) {
@@ -186,7 +197,23 @@ router.get('/:slug', async (req, res) => {
     console.error('MongoDB single product query error:', err);
   }
 
-  const product = templates.find(t => t.slug === slugParam || t.id === slugParam);
+  // Fallback to in-memory templates
+  let product = templates.find(t => 
+    t.slug === slugParam || 
+    t.slug === cleanSlug || 
+    t.id === slugParam ||
+    t.slug.toLowerCase() === cleanSlug
+  );
+
+  if (!product) {
+    // Try matching if slug contains the search term or vice versa (e.g. Paris_1 -> travel-series-paris)
+    product = templates.find(t => 
+      t.slug.includes(bareSlug) || 
+      bareSlug.includes(t.slug) ||
+      (t.displayName && t.displayName.toLowerCase().includes(bareSlug.replace(/-/g, ' ')))
+    );
+  }
+
   if (!product) {
     return res.status(404).json({ error: 'Product not found' });
   }
