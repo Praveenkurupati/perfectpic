@@ -10,6 +10,7 @@ interface CartItem {
   basePrice: number;
   extraPagesPrice: number;
   thumbnail: string;
+  quantity?: number;
 }
 
 interface CartState {
@@ -23,6 +24,7 @@ interface CartState {
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<CartItem>) => void;
+  clearCart: () => void;
   applyPromoCode: (code: string) => boolean;
   setPackagingAddon: (enabled: boolean) => void;
   setIsGift: (isGift: boolean) => void;
@@ -56,6 +58,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   updateItem: (id, updates) => set((state) => ({
     items: state.items.map(i => i.id === id ? { ...i, ...updates } : i)
   })),
+  clearCart: () => set({ items: [] }),
   applyPromoCode: (code) => {
     if (code === 'WELCOME10') {
       set({ promoCode: code, discount: 0.1 }); // 10% off

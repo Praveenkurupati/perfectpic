@@ -1,73 +1,114 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { api } from '@/lib/api';
+import { CheckCircle2, PackageCheck, Printer, Truck, FileText } from 'lucide-react';
 
 export default function ConfirmationPage() {
   const params = useParams();
-  const orderId = (params?.orderId as string) || 'WB-8491';
+  const orderId = (params?.orderId as string) || 'PP-8491';
+
+  const [order, setOrder] = useState<any>(null);
+
+  useEffect(() => {
+    api.getOrder(orderId)
+      .then((res) => {
+        if (res) setOrder(res);
+      })
+      .catch((err) => {
+        console.warn('Using local confirmation display:', err);
+      });
+  }, [orderId]);
+
+  const displayTotal = order?.total || order?.amount || 1999;
+  const displayDate = order?.createdAt 
+    ? new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'Today';
+
+  const currentStatus = (order?.status || 'paid').toLowerCase();
+  const stages = ['paid', 'production', 'printing', 'dispatched', 'delivered'];
+  const currentStageIndex = Math.max(0, stages.indexOf(currentStatus));
+
   return (
-    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-20 px-4 flex flex-col items-center">
+    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-16 px-4 flex flex-col items-center">
       <motion.div 
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-8 shadow-sm"
+        className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-sm"
       >
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
+        <CheckCircle2 className="w-10 h-10 text-emerald-600" />
       </motion.div>
 
-      <h1 className="font-serif text-5xl mb-4 text-center">Order Confirmed!</h1>
-      <p className="text-noir-600 mb-12 text-center max-w-md">
-        Thank you for choosing PerfectPic. Your beautiful memories are now entering production at perfectpic.in.
+      <h1 className="font-serif text-4xl md:text-5xl mb-3 text-center">Order Confirmed!</h1>
+      <p className="text-noir-600 mb-10 text-center max-w-md text-sm">
+        Thank you for choosing PerfectPic. Your memories are now in our production pipeline at perfectpic.in.
       </p>
 
-      <div className="w-full max-w-2xl bg-white p-8 rounded-sm shadow-sm border border-cream-200 mb-12">
+      <div className="w-full max-w-2xl bg-white p-6 md:p-8 rounded-sm shadow-sm border border-cream-200 mb-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm mb-8 pb-8 border-b border-cream-200">
           <div>
-            <span className="block text-xs text-noir-500 uppercase tracking-widest mb-1">Order ID</span>
-            <span className="font-medium">#{orderId}</span>
+            <span className="block text-[11px] text-noir-500 uppercase tracking-widest mb-1">Order ID</span>
+            <span className="font-semibold text-noir-950">#{order?.orderNumber || orderId}</span>
           </div>
           <div>
-            <span className="block text-xs text-noir-500 uppercase tracking-widest mb-1">Date</span>
-            <span className="font-medium">26 Sep 2026</span>
+            <span className="block text-[11px] text-noir-500 uppercase tracking-widest mb-1">Date</span>
+            <span className="font-semibold text-noir-950">{displayDate}</span>
           </div>
           <div>
-            <span className="block text-xs text-noir-500 uppercase tracking-widest mb-1">Amount Paid</span>
-            <span className="font-medium">₹3,099</span>
+            <span className="block text-[11px] text-noir-500 uppercase tracking-widest mb-1">Amount Paid</span>
+            <span className="font-semibold text-noir-950">₹{displayTotal.toLocaleString('en-IN')}</span>
           </div>
           <div>
-            <span className="block text-xs text-noir-500 uppercase tracking-widest mb-1">Est. Delivery</span>
-            <span className="font-medium">3-5 Oct</span>
+            <span className="block text-[11px] text-noir-500 uppercase tracking-widest mb-1">Pan-India Courier</span>
+            <span className="font-semibold text-noir-950">BlueDart Air</span>
           </div>
         </div>
 
         {/* Timeline Stepper */}
-        <div className="relative">
-          <div className="absolute top-3 left-6 right-6 h-[2px] bg-cream-200" />
-          <div className="absolute top-3 left-6 w-1/4 h-[2px] bg-foil-gold" />
+        <div className="relative pt-2">
+          <div className="absolute top-6 left-6 right-6 h-[2px] bg-cream-200" />
+          <div 
+            className="absolute top-6 left-6 h-[2px] bg-noir-950 transition-all duration-500" 
+            style={{ width: `${(currentStageIndex / (stages.length - 1)) * 90}%` }}
+          />
           
           <div className="flex justify-between relative z-10">
-            {['Paid', 'Production', 'Printing', 'Dispatched', 'Delivered'].map((step, i) => (
-              <div key={step} className="flex flex-col items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 bg-white ${i === 0 ? 'border-foil-gold text-foil-gold' : 'border-cream-300 text-transparent'}`}>
-                  <div className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-foil-gold' : ''}`} />
+            {['Paid', 'Production', 'Printing', 'Dispatched', 'Delivered'].map((step, i) => {
+              const isPastOrCurrent = i <= currentStageIndex;
+              return (
+                <div key={step} className="flex flex-col items-center gap-2">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 bg-white transition-colors ${
+                    isPastOrCurrent ? 'border-noir-950 text-noir-950' : 'border-cream-300 text-noir-300'
+                  }`}>
+                    <div className={`w-2.5 h-2.5 rounded-full ${isPastOrCurrent ? 'bg-noir-950' : 'bg-transparent'}`} />
+                  </div>
+                  <span className={`text-[11px] font-medium uppercase tracking-wider ${
+                    isPastOrCurrent ? 'text-noir-950' : 'text-noir-400'
+                  }`}>
+                    {step}
+                  </span>
                 </div>
-                <span className={`text-xs font-medium ${i === 0 ? 'text-noir-900' : 'text-noir-400'}`}>{step}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
-        <button className="px-8 py-3 border border-noir-900 text-noir-900 rounded-sm font-medium hover:bg-cream-100 transition-colors">
-          Download Design Proof
-        </button>
-        <Link href="/orders" className="px-8 py-3 bg-noir-950 text-cream-50 rounded-sm font-medium text-center hover:bg-noir-900 transition-colors">
+        <Link 
+          href="/orders" 
+          className="px-8 py-3 bg-noir-950 text-cream-50 rounded-sm font-medium text-xs uppercase tracking-widest text-center hover:bg-noir-900 transition-colors shadow-xs"
+        >
           View My Orders
+        </Link>
+        <Link 
+          href="/" 
+          className="px-8 py-3 border border-cream-300 text-noir-900 rounded-sm font-medium text-xs uppercase tracking-widest hover:bg-cream-100 transition-colors text-center"
+        >
+          Return to Storefront
         </Link>
       </div>
     </div>
