@@ -35,8 +35,8 @@ export default function BookDetailPage() {
   const router = useRouter();
   const slugParam = (params?.slug as string) || "travel-series-paris";
 
-  const fallback = useMemo(
-    () => getFallbackProduct(slugParam) || fallbackCatalog[0],
+  const fallback: FallbackBook = useMemo(
+    () => (getFallbackProduct(slugParam) || fallbackCatalog[0]) as FallbackBook,
     [slugParam]
   );
   const [book, setBook] = useState<FallbackBook>(fallback);
@@ -62,7 +62,7 @@ export default function BookDetailPage() {
 
   // Fetch product by slug with fallback
   useEffect(() => {
-    const fb = getFallbackProduct(slugParam) || fallbackCatalog[0];
+    const fb: FallbackBook = (getFallbackProduct(slugParam) || fallbackCatalog[0]) as FallbackBook;
     setBook(fb);
 
     api
@@ -761,7 +761,7 @@ export default function BookDetailPage() {
               </Link>
 
               {/* Secondary CTA: Smart Creation with AI */}
-              <Link
+              {/* <Link
                 href={`/upload/new-project?template=${encodeURIComponent(currentBook.slug)}&pages=${selectedPages}&size=${encodeURIComponent(selectedSize)}&mode=ai`}
                 className="w-full py-3.5 px-6 rounded-full bg-white hover:bg-neutral-50 border-2 border-neutral-900 text-neutral-950 text-center text-sm font-semibold tracking-tight transition-all duration-200 flex items-center justify-center gap-2 shadow-2xs"
               >
@@ -776,7 +776,7 @@ export default function BookDetailPage() {
                 >
                   or start from scratch with blank canvas
                 </Link>
-              </div>
+              </div> */}
             </div>
 
             {/* Key Features Bullet List */}

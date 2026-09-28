@@ -42,3 +42,7 @@ tmp/
 
 # Coverage
 coverage/
+
+# Logs
+logs/
+*.log

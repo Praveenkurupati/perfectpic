@@ -68,7 +68,44 @@ export const adminApi = {
   
   // Projects
   getProjects: () => fetcher<{ projects: any[] }>('/projects', { headers: authHeaders() }),
-  
+
+  // Customers
+  getCustomers: (search?: string) => {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    return fetcher<{ customers: any[]; total: number }>(`/customers${params}`, { headers: authHeaders() });
+  },
+
+  // Production Queue
+  getProductionQueue: () => fetcher<{ columns: any[]; queue: any[] }>('/production', { headers: authHeaders() }),
+  advanceProduction: (orderId: string, status: string) =>
+    fetcher<any>(`/production/${orderId}/status`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ status }),
+    }),
+
+  // Support Tickets
+  getTickets: (status?: string) => {
+    const params = status && status !== 'All' ? `?status=${encodeURIComponent(status)}` : '';
+    return fetcher<{ tickets: any[]; total: number }>(`/tickets${params}`, { headers: authHeaders() });
+  },
+  createTicket: (data: any) =>
+    fetcher<any>('/tickets', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updateTicketStatus: (id: string, status: string) =>
+    fetcher<any>(`/tickets/${id}/status`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ status }),
+    }),
+
+  // Analytics & Dashboard
+  getDashboardStats: () => fetcher<any>('/analytics/dashboard', { headers: authHeaders() }),
+  getRevenueTrend: () => fetcher<any>('/analytics/revenue', { headers: authHeaders() }),
+
   // Health
   health: () => fetcher<{ status: string }>('/health'),
 };

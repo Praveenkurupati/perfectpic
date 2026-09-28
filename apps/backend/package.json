@@ -25,6 +25,7 @@
     "mongoose": "^9.10.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^10.0.12",
     "razorpay": "^2.9.4",
     "zod": "^3.23.8"
   },
@@ -38,6 +39,7 @@
     "@types/mongoose": "^5.11.97",
     "@types/morgan": "^1.9.9",
     "@types/multer": "^1.4.12",
+    "@types/nodemailer": "^8.0.2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
