@@ -9,6 +9,8 @@ export interface IUser {
   password?: string;
   role: 'admin' | 'user';
   avatar?: string;
+  provider?: 'local' | 'google' | 'apple' | 'otp';
+  providerId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -29,9 +31,11 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
       index: true 
     },
     phone: { type: String, trim: true, default: '' },
-    password: { type: String, required: true },
+    password: { type: String, default: '' },
     role: { type: String, enum: ['admin', 'user'], default: 'user', index: true },
-    avatar: { type: String, default: '' }
+    avatar: { type: String, default: '' },
+    provider: { type: String, default: 'local' },
+    providerId: { type: String, default: '' }
   },
   {
     timestamps: true,

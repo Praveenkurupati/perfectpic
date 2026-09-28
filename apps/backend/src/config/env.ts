@@ -32,6 +32,19 @@ export const env = {
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || '',
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
   S3_BUCKET: process.env.S3_BUCKET || 'perfectpic-assets-production',
+
+  // Frontend URL
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+
+  // OAuth 2.0 (Google & Apple)
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback',
+  APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID || '',
+  APPLE_TEAM_ID: process.env.APPLE_TEAM_ID || '',
+  APPLE_KEY_ID: process.env.APPLE_KEY_ID || '',
+  APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY || '',
+  APPLE_CALLBACK_URL: process.env.APPLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/apple/callback',
   
   isDev: process.env.NODE_ENV !== 'production',
   isProd: process.env.NODE_ENV === 'production',

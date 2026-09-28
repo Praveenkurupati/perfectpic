@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Lock, Mail, ArrowRight, ShieldCheck, UserCheck, AlertCircle, KeyRound, CheckCircle2, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { api } from "@/lib/api";
+import OAuthButtons from "@/components/auth/OAuthButtons";
 
 function LoginForm() {
   const router = useRouter();
@@ -27,6 +28,28 @@ function LoginForm() {
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [detectedDevOtp, setDetectedDevOtp] = useState<string | null>(null);
+
+  // Check for OAuth redirect token
+  useEffect(() => {
+    const oauthToken = searchParams.get("oauth_token");
+    if (oauthToken) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pp_token", oauthToken);
+        localStorage.setItem("token", oauthToken);
+      }
+      api.getMe()
+        .then((res) => {
+          if (res && res.user) {
+            login(res.user, oauthToken);
+            router.push(redirectUrl);
+          }
+        })
+        .catch((err) => {
+          console.error("OAuth token verification failed:", err);
+          setErrorMsg("Failed to complete OAuth authentication. Please try again.");
+        });
+    }
+  }, [searchParams, login, redirectUrl, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +138,12 @@ function LoginForm() {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-6 shadow-luxury-md border border-cream-200 rounded-sm sm:px-10">
+          {/* OAuth 2.0 Fast Sign In */}
+          <OAuthButtons
+            redirectUrl={redirectUrl}
+            onError={(msg) => setErrorMsg(msg)}
+          />
+
           {/* Tabs */}
           <div className="flex border-b border-cream-200 mb-6">
             <button

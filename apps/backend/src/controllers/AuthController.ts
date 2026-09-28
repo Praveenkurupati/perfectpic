@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/AuthService';
 import { OtpService } from '../services/OtpService';
+import { OAuthService } from '../services/OAuthService';
 import { UserRepository } from '../repositories/UserRepository';
 import { signToken } from '../utils/jwt';
 import { ApiResponse } from '../utils/apiResponse';
@@ -143,6 +144,97 @@ export class AuthController {
     try {
       const { users, total } = await UserRepository.findAll(50, 0);
       return res.status(200).json({ users, total });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async getOAuthConfig(req: Request, res: Response, next: NextFunction) {
+    try {
+      const config = OAuthService.getOAuthConfig();
+      return res.status(200).json(config);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async googleInit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const redirect = (req.query.redirect as string) || '/';
+      const authUrl = OAuthService.getGoogleAuthUrl(redirect);
+      return res.redirect(authUrl);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async googleCallback(req: Request, res: Response, next: NextFunction) {
+    try {
+      const code = (req.query.code as string) || '';
+      const state = (req.query.state as string) || '/';
+      const redirectUrl = decodeURIComponent(state);
+
+      const result = await OAuthService.handleGoogleCallback(code, redirectUrl);
+      const frontendRedirect = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
+      return res.redirect(frontendRedirect);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async appleInit(req: Request, res: Response, next: NextFunction) {
+    try {
+      const redirect = (req.query.redirect as string) || '/';
+      const authUrl = OAuthService.getAppleAuthUrl(redirect);
+      return res.redirect(authUrl);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async appleCallback(req: Request, res: Response, next: NextFunction) {
+    try {
+      const state = (req.body.state as string) || '/';
+      const redirectUrl = decodeURIComponent(state);
+      const email = req.body.email || 'apple.user@perfectpic.in';
+      const name = req.body.user ? `${req.body.user.name?.firstName || ''} ${req.body.user.name?.lastName || ''}`.trim() : 'Apple Customer';
+
+      const result = await OAuthService.authenticateOAuthUser({
+        provider: 'apple',
+        email,
+        name: name || 'Apple Customer',
+        providerId: req.body.sub || 'apple_' + Date.now(),
+      });
+
+      const frontendRedirect = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
+      return res.redirect(frontendRedirect);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async oauthLogin(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { provider, email, name, avatar, providerId, idToken } = req.body;
+      if (!provider || !['google', 'apple'].includes(provider)) {
+        throw ApiError.badRequest('Supported OAuth providers are "google" and "apple".');
+      }
+
+      const result = await OAuthService.authenticateOAuthUser({
+        provider,
+        email,
+        name,
+        avatar,
+        providerId,
+        idToken,
+      });
+
+      return res.status(200).json({
+        token: result.token,
+        user: result.user,
+        isNewUser: result.isNewUser,
+        message: `${provider === 'google' ? 'Google' : 'Apple'} authentication successful`,
+      });
     } catch (err) {
       next(err);
     }

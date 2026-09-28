@@ -91,6 +91,18 @@ export const api = {
   getMe: () => fetcher<{ user: any }>('/auth/me', { headers: authHeaders() }),
   logout: () => fetcher<any>('/auth/logout', { method: 'POST', headers: authHeaders() }),
 
+  // OAuth 2.0 (Google & Apple)
+  oauthLogin: (data: { provider: 'google' | 'apple'; email: string; name?: string; avatar?: string; providerId?: string; idToken?: string }) =>
+    fetcher<{ token: string; user: any; message: string }>('/auth/oauth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getOAuthConfig: () =>
+    fetcher<{
+      google: { enabled: boolean; clientId?: string | null; callbackUrl?: string };
+      apple: { enabled: boolean; clientId?: string | null; callbackUrl?: string };
+    }>('/auth/oauth/config'),
+
   // Projects & Drafts
   getProjects: () => fetcher<{ projects: any[] }>('/projects', { headers: authHeaders() }),
   getProject: (id: string) => fetcher<any>(`/projects/${id}`, { headers: authHeaders() }),

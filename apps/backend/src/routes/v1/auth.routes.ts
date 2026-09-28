@@ -20,6 +20,14 @@ router.post('/send-otp', AuthController.sendOtp);
 // Verify OTP
 router.post('/verify-otp', AuthController.verifyOtp);
 
+// OAuth 2.0 (Google & Apple)
+router.get('/oauth/config', AuthController.getOAuthConfig);
+router.get('/google', AuthController.googleInit);
+router.get('/google/callback', AuthController.googleCallback);
+router.get('/apple', AuthController.appleInit);
+router.post('/apple/callback', AuthController.appleCallback);
+router.post('/oauth/login', AuthController.oauthLogin);
+
 // Current User Profile
 router.get('/me', authenticate, AuthController.getMe);
 
