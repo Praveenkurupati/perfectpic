@@ -8,17 +8,12 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fallbackProjects = [
-    { id: 'proj-1', title: 'Baby First Year', updatedAt: new Date().toISOString(), status: 'Draft', coverUrl: null },
-    { id: 'proj-2', title: 'Japan 2025', updatedAt: new Date(Date.now() - 90*24*60*60*1000).toISOString(), status: 'Completed', coverUrl: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=300&auto=format&fit=crop' },
-  ];
-
   useEffect(() => {
     api.getProjects()
       .then(res => setProjects(res.projects || []))
       .catch(err => {
-        console.error("Failed to fetch projects, using mock data", err);
-        setProjects(fallbackProjects);
+        console.warn("Failed to fetch projects from server:", err);
+        setProjects([]);
       })
       .finally(() => setLoading(false));
   }, []);

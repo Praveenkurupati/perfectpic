@@ -7,17 +7,12 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fallbackOrders = [
-    { id: 'WB-8491', title: 'Our Wedding', createdAt: '2026-09-26T00:00:00.000Z', total: 3099, status: 'Production', coverUrl: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop' },
-    { id: 'WB-7201', title: 'Bali Trip 2025', createdAt: '2026-01-14T00:00:00.000Z', total: 2499, status: 'Delivered', coverUrl: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop' },
-  ];
-
   useEffect(() => {
     api.getOrders()
       .then(res => setOrders(res.orders || []))
       .catch(err => {
-        console.error("Failed to fetch orders, using mock data", err);
-        setOrders(fallbackOrders);
+        console.warn("Failed to fetch orders from server:", err);
+        setOrders([]);
       })
       .finally(() => setLoading(false));
   }, []);

@@ -62,14 +62,17 @@ const mockOrders = [
 ];
 
 export class OrderRepository {
-  public static async findAll(filter: { status?: string; search?: string; limit?: number; skip?: number }) {
-    const { status, search, limit = 50, skip = 0 } = filter;
+  public static async findAll(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number }) {
+    const { status, search, customerEmail, limit = 50, skip = 0 } = filter;
 
     try {
       if (isDbConnected()) {
         const query: any = {};
         if (status && status !== 'all') {
           query.status = new RegExp(`^${status}$`, 'i');
+        }
+        if (customerEmail) {
+          query.customerEmail = new RegExp(`^${customerEmail.trim()}$`, 'i');
         }
         if (search) {
           const s = new RegExp(search.trim(), 'i');
@@ -88,6 +91,9 @@ export class OrderRepository {
     }
 
     let filtered = [...mockOrders];
+    if (customerEmail) {
+      filtered = filtered.filter((o) => o.customerEmail?.toLowerCase() === customerEmail.toLowerCase());
+    }
     if (status && status !== 'all') {
       filtered = filtered.filter((o) => o.status.toLowerCase() === status.toLowerCase());
     }

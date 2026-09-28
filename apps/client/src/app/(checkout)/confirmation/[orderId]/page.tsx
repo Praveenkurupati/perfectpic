@@ -9,21 +9,23 @@ import { CheckCircle2, PackageCheck, Printer, Truck, FileText } from 'lucide-rea
 
 export default function ConfirmationPage() {
   const params = useParams();
-  const orderId = (params?.orderId as string) || 'PP-8491';
+  const orderId = (params?.orderId as string) || '';
 
   const [order, setOrder] = useState<any>(null);
 
   useEffect(() => {
+    if (!orderId) return;
     api.getOrder(orderId)
       .then((res) => {
-        if (res) setOrder(res);
+        const orderData = res?.order || res;
+        if (orderData) setOrder(orderData);
       })
       .catch((err) => {
-        console.warn('Using local confirmation display:', err);
+        console.warn('Order confirmation lookup notice:', err);
       });
   }, [orderId]);
 
-  const displayTotal = order?.total || order?.amount || 1999;
+  const displayTotal = order?.total || order?.amount || 0;
   const displayDate = order?.createdAt 
     ? new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Today';

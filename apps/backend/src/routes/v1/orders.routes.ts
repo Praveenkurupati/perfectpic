@@ -1,11 +1,11 @@
-// apps/backend/src/routes/v1/orders.routes.ts
 import { Router } from 'express';
 import { OrderController } from '../../controllers/OrderController';
+import { optionalAuth } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-// List orders (public / authenticated)
-router.get('/', OrderController.getOrders);
+// List orders (authenticated customer filter or admin overview)
+router.get('/', optionalAuth, OrderController.getOrders);
 
 // Dashboard aggregate metrics for admin
 router.get('/stats', OrderController.getDashboardStats);

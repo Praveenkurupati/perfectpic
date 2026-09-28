@@ -15,7 +15,8 @@ export default function SettingsPage() {
             <label className="block text-xs uppercase tracking-wider mb-2 text-noir-600 font-medium">Name</label>
             <input 
               type="text" 
-              defaultValue={user?.name || "Customer"} 
+              defaultValue={user?.name || ""} 
+              placeholder="Your Name"
               className="w-full border border-cream-300 rounded-sm p-3 bg-cream-50 focus:border-foil-gold focus:outline-none text-sm text-noir-900" 
             />
           </div>
@@ -23,7 +24,8 @@ export default function SettingsPage() {
             <label className="block text-xs uppercase tracking-wider mb-2 text-noir-600 font-medium">Phone</label>
             <input 
               type="tel" 
-              defaultValue={user?.phone || "+91 98765 43210"} 
+              defaultValue={user?.phone || ""} 
+              placeholder="Your Phone Number"
               className="w-full border border-cream-300 rounded-sm p-3 bg-cream-50 focus:border-foil-gold focus:outline-none text-sm text-noir-900" 
             />
           </div>
@@ -31,7 +33,8 @@ export default function SettingsPage() {
             <label className="block text-xs uppercase tracking-wider mb-2 text-noir-600 font-medium">Email Address</label>
             <input 
               type="email" 
-              defaultValue={user?.email || "user@perfectpic.in"} 
+              defaultValue={user?.email || ""} 
+              placeholder="Your Email Address"
               className="w-full border border-cream-300 rounded-sm p-3 bg-cream-50 focus:border-foil-gold focus:outline-none text-sm text-noir-900" 
             />
           </div>
@@ -45,21 +48,11 @@ export default function SettingsPage() {
       <section className="bg-white p-6 md:p-8 rounded-sm shadow-luxury-xs border border-cream-200">
         <div className="flex justify-between items-center mb-6">
           <h2 className="font-serif text-2xl font-semibold text-noir-900">Saved Addresses</h2>
-          <button className="text-xs uppercase tracking-wider text-foil-gold hover:underline font-semibold">+ Add New</button>
         </div>
         
-        <div className="border border-cream-300 rounded-sm p-4 relative group bg-cream-50/50">
-          <div className="absolute top-4 right-4 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button className="text-xs text-noir-500 hover:text-noir-900">Edit</button>
-            <button className="text-xs text-red-500 hover:text-red-700">Delete</button>
-          </div>
-          <span className="text-[10px] uppercase tracking-widest bg-cream-200 text-noir-700 px-2 py-0.5 rounded font-semibold mb-2 inline-block">Default Address</span>
-          <p className="font-medium text-sm text-noir-900">{user?.name || "Customer"}</p>
-          <p className="text-xs text-noir-600 mt-1 leading-relaxed">
-            123 Luxury Lane, Block A<br/>
-            Bandra West, Mumbai 400050<br/>
-            Maharashtra, India
-          </p>
+        <div className="border border-dashed border-cream-300 rounded-sm p-6 text-center bg-cream-50/50">
+          <p className="text-sm text-noir-600">No saved addresses yet.</p>
+          <p className="text-xs text-noir-500 mt-1">Delivery addresses you enter during checkout will be saved here automatically.</p>
         </div>
       </section>
 

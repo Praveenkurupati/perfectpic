@@ -5,10 +5,19 @@ import { OrderService } from '../services/OrderService';
 export class OrderController {
   public static async getOrders(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status, search, limit, skip } = req.query;
+      const { status, search, limit, skip, customerEmail } = req.query;
+      const user = req.user;
+
+      let emailFilter = typeof customerEmail === 'string' ? customerEmail : undefined;
+      // If customer is authenticated and not admin, restrict view strictly to their own orders
+      if (user && user.role !== 'admin' && user.email) {
+        emailFilter = user.email;
+      }
+
       const result = await OrderService.getOrders({
         status: typeof status === 'string' ? status : undefined,
         search: typeof search === 'string' ? search : undefined,
+        customerEmail: emailFilter,
         limit: limit ? parseInt(limit as string, 10) : undefined,
         skip: skip ? parseInt(skip as string, 10) : undefined,
       });

@@ -5,7 +5,7 @@ import { mailService } from './MailService';
 import { logger } from '../utils/logger';
 
 export class OrderService {
-  public static async getOrders(filter: { status?: string; search?: string; limit?: number; skip?: number }) {
+  public static async getOrders(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number }) {
     return await OrderRepository.findAll(filter);
   }
 
@@ -19,7 +19,14 @@ export class OrderService {
 
   public static async createOrder(orderData: any) {
     if (!orderData.title) {
-      throw ApiError.badRequest('Order title is required.');
+      if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
+        const first = orderData.items[0];
+        orderData.title = orderData.items.length > 1
+          ? `${first.title || 'Photobook'} (+${orderData.items.length - 1} more)`
+          : (first.title || 'Custom Photobook Keepsake');
+      } else {
+        orderData.title = 'Custom Photobook Keepsake';
+      }
     }
 
     const order = await OrderRepository.create(orderData);

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/stores/useCartStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/lib/api';
-import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2, ShoppingBag } from 'lucide-react';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -13,13 +14,13 @@ export default function CheckoutPage() {
   const { user, isAuthenticated, initialize } = useAuthStore();
   const [mounted, setMounted] = useState(false);
 
-  // Form Fields
+  // Form Fields - clean initial states without mock defaults
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [pincode, setPincode] = useState('560001');
+  const [pincode, setPincode] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [cityState, setCityState] = useState('Bangalore, Karnataka');
+  const [cityState, setCityState] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express'>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -46,7 +47,7 @@ export default function CheckoutPage() {
     if (pincode && pincode.length === 6) {
       try {
         const res = await api.pincodeLookup(pincode);
-        if (res.city && res.state) {
+        if (res && res.city && res.state) {
           setCityState(`${res.city}, ${res.state}`);
         }
       } catch (err) {
@@ -57,8 +58,16 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (items.length === 0) {
+      setErrorMsg('Your cart is empty. Please add a photobook before checking out.');
+      return;
+    }
     if (!addressLine1.trim()) {
       setErrorMsg('Please enter your full delivery address.');
+      return;
+    }
+    if (!pincode.trim() || pincode.trim().length !== 6) {
+      setErrorMsg('Please enter a valid 6-digit PIN code.');
       return;
     }
 
@@ -67,7 +76,7 @@ export default function CheckoutPage() {
 
     try {
       const orderTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
-      const orderItems = items.length > 0 ? items.map(item => ({
+      const orderItems = items.map(item => ({
         id: item.id,
         title: item.title,
         quantity: item.quantity || 1,
@@ -75,33 +84,28 @@ export default function CheckoutPage() {
         dimensions: item.dimensions,
         pageCount: item.pageCount,
         thumbnail: item.thumbnail,
-      })) : [
-        {
-          id: 'item-default',
-          title: 'Custom Photobook Keepsake',
-          quantity: 1,
-          price: 1999,
-          dimensions: '8.25" × 8.25"',
-          pageCount: 32,
-          thumbnail: 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400',
-        }
-      ];
+      }));
+
+      const orderTitle = orderItems.length > 1
+        ? `${orderItems[0]?.title || 'Photobook'} (+${orderItems.length - 1} more)`
+        : (orderItems[0]?.title || 'Custom Photobook Keepsake');
 
       const res = await api.createOrder({
+        title: orderTitle,
         items: orderItems,
         total: orderTotal,
         amount: orderTotal,
-        customerName: fullName || user?.name || 'Valued Customer',
+        customerName: fullName.trim() || user?.name || 'Valued Customer',
         customerEmail: user?.email || 'customer@perfectpic.in',
-        customerPhone: phone || '+91 98765 43210',
+        customerPhone: phone.trim() || user?.phone || '',
         shippingAddress: {
-          fullName: fullName || user?.name,
-          phone: phone || user?.phone,
-          addressLine1,
-          landmark,
-          pincode,
-          city: cityState.split(',')[0]?.trim() || 'Bangalore',
-          state: cityState.split(',')[1]?.trim() || 'Karnataka',
+          fullName: fullName.trim() || user?.name,
+          phone: phone.trim() || user?.phone,
+          addressLine1: addressLine1.trim(),
+          landmark: landmark.trim(),
+          pincode: pincode.trim(),
+          city: cityState.split(',')[0]?.trim() || '',
+          state: cityState.split(',')[1]?.trim() || '',
         },
         deliveryOption,
       });
@@ -122,6 +126,28 @@ export default function CheckoutPage() {
         <div className="text-center">
           <p className="font-serif text-xl mb-2">Redirecting to sign in...</p>
           <p className="text-xs text-noir-500 uppercase tracking-widest">Please sign in to proceed with checkout</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="min-h-[75vh] bg-cream-50 font-sans text-noir-900 py-16 px-4 flex items-center justify-center">
+        <div className="max-w-md mx-auto text-center bg-white p-10 rounded-sm shadow-sm border border-cream-200">
+          <div className="w-16 h-16 rounded-full bg-cream-100 flex items-center justify-center mx-auto mb-5 text-noir-500">
+            <ShoppingBag className="w-8 h-8 stroke-[1.5]" />
+          </div>
+          <h1 className="font-serif text-3xl mb-3">Your Cart is Empty</h1>
+          <p className="text-sm text-noir-600 mb-8 leading-relaxed">
+            There are no photobooks in your cart to checkout. Please customize or select a photobook first.
+          </p>
+          <Link
+            href="/templates"
+            className="inline-block bg-noir-950 text-cream-50 px-8 py-3.5 rounded-sm text-xs font-semibold tracking-widest uppercase hover:bg-noir-900 transition-colors shadow-luxury-md"
+          >
+            Browse Photobooks
+          </Link>
         </div>
       </div>
     );
@@ -165,7 +191,7 @@ export default function CheckoutPage() {
                     type="tel" 
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
+                    placeholder="e.g. 9876543210"
                     className="w-full border border-cream-300 rounded-sm p-3 focus:border-noir-900 focus:outline-none bg-cream-50 text-sm" 
                     required 
                   />
@@ -177,7 +203,7 @@ export default function CheckoutPage() {
                     value={pincode}
                     onChange={(e) => setPincode(e.target.value)}
                     onBlur={handlePincodeBlur}
-                    placeholder="560001"
+                    placeholder="e.g. 560001"
                     maxLength={6}
                     className="w-full border border-cream-300 rounded-sm p-3 focus:border-noir-900 focus:outline-none bg-cream-50 text-sm" 
                     required 
@@ -200,6 +226,7 @@ export default function CheckoutPage() {
                     type="text" 
                     value={cityState}
                     onChange={(e) => setCityState(e.target.value)}
+                    placeholder="Auto-filled on PIN entry"
                     className="w-full border border-cream-300 rounded-sm p-3 focus:border-noir-900 focus:outline-none bg-cream-100 text-sm text-noir-700" 
                   />
                 </div>
@@ -283,7 +310,7 @@ export default function CheckoutPage() {
               
               <div className="space-y-3 pb-6 border-b border-cream-200 text-sm">
                 <div className="flex justify-between text-noir-600">
-                  <span>Subtotal ({items.length || 1} book)</span>
+                  <span>Subtotal ({items.length} {items.length === 1 ? 'book' : 'books'})</span>
                   <span>₹{getTotal().toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-noir-600">
