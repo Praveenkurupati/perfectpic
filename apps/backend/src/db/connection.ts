@@ -12,7 +12,8 @@ export async function connectDB() {
   try {
     mongoose.set('strictQuery', false);
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 10000,
+      dbName: 'perfectpic',
     });
     
     isConnected = true;
