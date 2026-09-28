@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { adminApi } from "@/lib/api";
-import { cn } from "@/lib/utils";
-import { Printer, Download, ChevronRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Printer, Download, ChevronRight, Loader2, CheckCircle2, FileText } from "lucide-react";
+import { generateAdminProductionPdf } from "@/lib/pdfGenerator";
 
 interface QueueItem {
   id: string;
@@ -29,6 +29,50 @@ export default function ProductionPage() {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [batchGenerating, setBatchGenerating] = useState(false);
+
+  const handleDownloadItemPdf = async (item: QueueItem) => {
+    try {
+      setDownloadingId(item.id);
+      await generateAdminProductionPdf({
+        orderNumber: item.orderNumber || item.id,
+        title: item.title,
+        customerName: item.customerName || 'Customer',
+        dimensions: item.dimensions || '8.25" × 8.25"',
+        pages: item.pages || 40,
+        status: item.status,
+        dueDate: item.dueDate,
+      });
+    } catch (err) {
+      console.error('Failed to generate print PDF:', err);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleBatchGeneratePdfs = async () => {
+    const targetItems = queue.length > 0 ? queue.slice(0, 3) : [];
+    if (targetItems.length === 0) return;
+    try {
+      setBatchGenerating(true);
+      for (const it of targetItems) {
+        await generateAdminProductionPdf({
+          orderNumber: it.orderNumber || it.id,
+          title: it.title,
+          customerName: it.customerName || 'Customer',
+          dimensions: it.dimensions || '8.25" × 8.25"',
+          pages: it.pages || 40,
+          status: it.status,
+          dueDate: it.dueDate,
+        });
+      }
+    } catch (err) {
+      console.error('Batch PDF generation notice:', err);
+    } finally {
+      setBatchGenerating(false);
+    }
+  };
 
   const fetchQueue = () => {
     adminApi.getProductionQueue()
@@ -84,8 +128,22 @@ export default function ProductionPage() {
           >
             Refresh Queue
           </button>
-          <button className="px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-sm font-medium hover:bg-noir-900 transition-colors">
-            Batch Generate PDFs
+          <button 
+            onClick={handleBatchGeneratePdfs}
+            disabled={batchGenerating}
+            className="inline-flex items-center space-x-1.5 px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-sm font-medium hover:bg-noir-900 transition-colors disabled:opacity-60"
+          >
+            {batchGenerating ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Generating Batch...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-3.5 h-3.5" />
+                <span>Batch Generate PDFs</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -135,9 +193,18 @@ export default function ProductionPage() {
                           {col.id === 'ready' && (
                             <button 
                               title="Download Print PDF"
-                              className="p-1 text-noir-400 hover:text-noir-950 transition-colors"
+                              disabled={downloadingId === item.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadItemPdf(item);
+                              }}
+                              className="p-1 text-noir-400 hover:text-noir-950 transition-colors disabled:opacity-60"
                             >
-                              <Download className="w-3.5 h-3.5" />
+                              {downloadingId === item.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" />
+                              ) : (
+                                <Download className="w-3.5 h-3.5" />
+                              )}
                             </button>
                           )}
                           <button 
@@ -170,7 +237,27 @@ export default function ProductionPage() {
                         <div className="text-xs text-noir-400">Due: Oct 28</div>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
                           {col.id === 'pending' && <button className="p-1 text-noir-400 hover:text-noir-950"><Printer className="w-3.5 h-3.5" /></button>}
-                          {col.id === 'ready' && <button className="p-1 text-noir-400 hover:text-noir-950"><Download className="w-3.5 h-3.5" /></button>}
+                          {col.id === 'ready' && (
+                            <button 
+                              title="Download Print PDF"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownloadItemPdf({
+                                  id: `WB-849${i}`,
+                                  orderNumber: `WB-849${i}`,
+                                  title: 'Paris Adventure Edition',
+                                  customerName: 'Customer',
+                                  dimensions: '8.25" × 8.25"',
+                                  pages: 40,
+                                  status: 'ready',
+                                  dueDate: 'Oct 28',
+                                });
+                              }}
+                              className="p-1 text-noir-400 hover:text-noir-950"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button className="p-1 text-noir-400 hover:text-noir-950"><ChevronRight className="w-3.5 h-3.5" /></button>
                         </div>
                       </div>

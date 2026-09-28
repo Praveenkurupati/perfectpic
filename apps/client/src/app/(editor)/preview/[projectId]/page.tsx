@@ -21,13 +21,16 @@ import {
   Truck, 
   Layers, 
   BookOpen,
-  Loader2 
+  Loader2,
+  Download,
+  FileText
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/useEditorStore';
 import { useCartStore } from '@/stores/useCartStore';
 import { api } from '@/lib/api';
 import { fallbackCatalog } from '@/features/catalog/data/catalogFallback';
 import BookFlipPreview from '@/features/preview/components/BookFlipPreview';
+import { generateBookProofPdf } from '@/lib/pdfGenerator';
 
 function PreviewContent() {
   const router = useRouter();
@@ -82,6 +85,7 @@ function PreviewContent() {
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Synchronize initial spread from editor store if available
   useEffect(() => {
@@ -177,6 +181,30 @@ function PreviewContent() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      const userPhotoUrls = Object.values(pagePhotos || {})
+        .filter((p: any) => p && typeof p.url === 'string')
+        .map((p: any) => p.url);
+      const allPhotos = userPhotoUrls.length > 0 ? userPhotoUrls : samplePhotos;
+      await generateBookProofPdf({
+        title: bookTitle,
+        subtitle,
+        dimensions,
+        pageCount,
+        theme: storeBookConfig.theme || 'Minimal Modern',
+        coverImage: coverImage || samplePhotos[0],
+        photos: allPhotos,
+        projectId,
+      });
+    } catch (err) {
+      console.error('PDF generation error:', err);
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-noir-950 text-cream-50 font-sans select-none overflow-hidden">
       {/* Top Header */}
@@ -241,6 +269,25 @@ function PreviewContent() {
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
             {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          </button>
+
+          <button 
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-noir-800 hover:bg-noir-700 text-cream-100 border border-noir-700 rounded-sm text-xs font-medium tracking-wide transition-colors disabled:opacity-50"
+            title="Download Print Proof PDF"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <Loader2 size={13} className="animate-spin text-foil-gold" />
+                <span className="hidden sm:inline">Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download size={13} className="text-foil-gold" />
+                <span className="hidden sm:inline">PDF Proof</span>
+              </>
+            )}
           </button>
 
           <Link
@@ -412,6 +459,37 @@ function PreviewContent() {
                   </div>
                 </li>
               </ul>
+            </div>
+
+            {/* PDF Proof Download Card */}
+            <div className="p-3.5 bg-noir-900 border border-noir-800 rounded-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-cream-100 flex items-center gap-1.5">
+                  <FileText size={14} className="text-foil-gold" />
+                  Print Proof PDF
+                </span>
+                <span className="text-[10px] font-mono text-noir-400">12K Indigo</span>
+              </div>
+              <p className="text-[11px] text-noir-400 leading-relaxed">
+                Download your complete lay-flat photobook layout with precision trim marks and archival color bars.
+              </p>
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                className="w-full py-2 bg-noir-800 hover:bg-noir-700 border border-noir-700 rounded-sm text-xs text-cream-100 font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              >
+                {isGeneratingPdf ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin text-foil-gold" />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} className="text-foil-gold" />
+                    <span>Download PDF Proof</span>
+                  </>
+                )}
+              </button>
             </div>
 
             {/* Shipping Trust Note */}

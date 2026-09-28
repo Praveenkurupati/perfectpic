@@ -5,13 +5,15 @@ import { motion } from 'motion/react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import { CheckCircle2, PackageCheck, Printer, Truck, FileText } from 'lucide-react';
+import { CheckCircle2, PackageCheck, Printer, Truck, FileText, Download, Loader2 } from 'lucide-react';
+import { generateOrderReceiptPdf } from '@/lib/pdfGenerator';
 
 export default function ConfirmationPage() {
   const params = useParams();
   const orderId = (params?.orderId as string) || '';
 
   const [order, setOrder] = useState<any>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -33,6 +35,17 @@ export default function ConfirmationPage() {
   const currentStatus = (order?.status || 'paid').toLowerCase();
   const stages = ['paid', 'production', 'printing', 'dispatched', 'delivered'];
   const currentStageIndex = Math.max(0, stages.indexOf(currentStatus));
+
+  const handleDownloadReceipt = async () => {
+    try {
+      setIsDownloadingPdf(true);
+      await generateOrderReceiptPdf(order || { orderNumber: orderId, total: displayTotal });
+    } catch (err) {
+      console.error('Invoice download error:', err);
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-16 px-4 flex flex-col items-center">
@@ -99,16 +112,33 @@ export default function ConfirmationPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <button
+          onClick={handleDownloadReceipt}
+          disabled={isDownloadingPdf}
+          className="w-full sm:w-auto px-8 py-3 bg-foil-gold text-noir-950 rounded-sm font-bold text-xs uppercase tracking-widest text-center hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+        >
+          {isDownloadingPdf ? (
+            <>
+              <Loader2 size={14} className="animate-spin" />
+              <span>Generating Invoice...</span>
+            </>
+          ) : (
+            <>
+              <Download size={14} />
+              <span>Download PDF Receipt</span>
+            </>
+          )}
+        </button>
         <Link 
           href="/orders" 
-          className="px-8 py-3 bg-noir-950 text-cream-50 rounded-sm font-medium text-xs uppercase tracking-widest text-center hover:bg-noir-900 transition-colors shadow-xs"
+          className="w-full sm:w-auto px-8 py-3 bg-noir-950 text-cream-50 rounded-sm font-medium text-xs uppercase tracking-widest text-center hover:bg-noir-900 transition-colors shadow-xs"
         >
           View My Orders
         </Link>
         <Link 
           href="/" 
-          className="px-8 py-3 border border-cream-300 text-noir-900 rounded-sm font-medium text-xs uppercase tracking-widest hover:bg-cream-100 transition-colors text-center"
+          className="w-full sm:w-auto px-8 py-3 border border-cream-300 text-noir-900 rounded-sm font-medium text-xs uppercase tracking-widest hover:bg-cream-100 transition-colors text-center"
         >
           Return to Storefront
         </Link>

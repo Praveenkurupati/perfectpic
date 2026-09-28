@@ -1,6 +1,7 @@
 // apps/backend/src/controllers/OrderController.ts
 import { Request, Response, NextFunction } from 'express';
 import { OrderService } from '../services/OrderService';
+import { PdfService } from '../services/PdfService';
 
 export class OrderController {
   public static async getOrders(req: Request, res: Response, next: NextFunction) {
@@ -32,6 +33,20 @@ export class OrderController {
       const id = String(req.params.id);
       const order = await OrderService.getOrderById(id);
       return res.status(200).json(order);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async downloadOrderPdf(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const pdfBuffer = await PdfService.generateOrderPdfBuffer(id);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="PerfectPic-Order-${id}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      return res.status(200).send(pdfBuffer);
     } catch (err) {
       next(err);
     }

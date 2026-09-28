@@ -381,8 +381,7 @@ export default function BookDetailPage() {
                     <div className="absolute inset-y-0 right-2 w-[1px] bg-black/25" />
                   </div>
                   <p className="text-xs text-neutral-600 mt-4 text-center font-medium">
-                    Reinforced Archival Spine with Seamless Lay-Flat Core (Zero
-                    Handcraft)
+                    Reinforced Archival Spine with Precision Lay-Flat Binding Core
                   </p>
                 </div>
               )}

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
+import { Download } from 'lucide-react';
+import { generateOrderReceiptPdf } from '@/lib/pdfGenerator';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -72,11 +74,21 @@ export default function OrdersPage() {
                     </div>
                   </div>
 
-                  <div className="flex md:flex-col items-center md:items-end justify-between gap-4 border-t md:border-t-0 pt-4 md:pt-0 border-cream-200">
+                  <div className="flex md:flex-col items-center md:items-end justify-between gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-cream-200">
                     <span className="font-serif text-xl">₹{(order.total || order.amount)?.toLocaleString('en-IN')}</span>
-                    <button className="text-sm font-medium border border-noir-900 px-4 py-2 rounded-sm hover:bg-cream-50 transition-colors">
-                      {order.status?.toLowerCase() === 'delivered' ? 'Order Again' : 'Track Order'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => generateOrderReceiptPdf(order)}
+                        className="text-xs font-medium border border-cream-300 px-3 py-2 rounded-sm hover:bg-cream-100 transition-colors flex items-center gap-1.5 text-noir-700"
+                        title="Download PDF Invoice"
+                      >
+                        <Download size={13} />
+                        <span>PDF Invoice</span>
+                      </button>
+                      <button className="text-xs font-semibold uppercase tracking-wider border border-noir-900 px-3 py-2 rounded-sm hover:bg-noir-950 hover:text-cream-50 transition-colors">
+                        {order.status?.toLowerCase() === 'delivered' ? 'Order Again' : 'Track Order'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
