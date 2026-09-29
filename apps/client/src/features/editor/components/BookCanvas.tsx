@@ -1,7 +1,9 @@
 'use client';
 
-import { useEditorStore, Photo, PageLayout } from '@/stores/useEditorStore';
-import { ChevronLeft, ChevronRight, Image as ImageIcon, Trash2, Check, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { useEditorStore, Photo, PageLayout, SlotCropConfig } from '@/stores/useEditorStore';
+import { ChevronLeft, ChevronRight, Image as ImageIcon, Trash2, Check, Sparkles, Crop } from 'lucide-react';
+import PortionCutModal from './PortionCutModal';
 
 interface SlotProps {
   slotId: string;
@@ -9,10 +11,25 @@ interface SlotProps {
   isSelected: boolean;
   onSelect: (slotId: string) => void;
   onRemove: (slotId: string) => void;
+  onOpenCutModal?: (slotId: string, photo: Photo, label?: string) => void;
+  crop?: SlotCropConfig;
   label?: string;
 }
 
-function PhotoSlot({ slotId, photo, isSelected, onSelect, onRemove, label }: SlotProps) {
+function PhotoSlot({
+  slotId,
+  photo,
+  isSelected,
+  onSelect,
+  onRemove,
+  onOpenCutModal,
+  crop,
+  label,
+}: SlotProps) {
+  const focalX = crop?.x ?? 50;
+  const focalY = crop?.y ?? 50;
+  const zoom = crop?.zoom ?? 1;
+
   return (
     <div
       onClick={(e) => {
@@ -30,18 +47,37 @@ function PhotoSlot({ slotId, photo, isSelected, onSelect, onRemove, label }: Slo
           <img
             src={photo.url}
             alt={label || 'Slot Photo'}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            style={{
+              objectFit: 'cover',
+              objectPosition: `${focalX}% ${focalY}%`,
+              transform: `scale(${zoom})`,
+              transformOrigin: `${focalX}% ${focalY}%`,
+            }}
+            className="w-full h-full transition-transform duration-300"
           />
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+            {onOpenCutModal && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenCutModal(slotId, photo, label);
+                }}
+                className="px-2 py-1 bg-white/95 text-noir-900 rounded-sm text-[10px] font-semibold hover:bg-white flex items-center gap-1 shadow-sm transition-all hover:scale-105"
+                title="Cut / Choose Portion"
+              >
+                <Crop size={11} className="text-foil-gold" />
+                <span>Cut / Portion</span>
+              </button>
+            )}
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onRemove(slotId);
               }}
-              className="px-2.5 py-1 bg-red-600/90 text-white rounded-sm text-[11px] font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm"
+              className="px-2 py-1 bg-red-600/90 text-white rounded-sm text-[10px] font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
               title="Remove photo"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
               <span>Remove</span>
             </button>
           </div>
@@ -63,21 +99,27 @@ function RenderPageSlots({
   selectedSlot,
   onSelectSlot,
   slotPhotos,
+  slotCrops,
   pagePhotos,
   onRemovePhoto,
+  onOpenCutModal,
 }: {
   pageNum: number;
   layout: PageLayout;
   selectedSlot: string | null;
   onSelectSlot: (slotId: string) => void;
   slotPhotos: Record<string, Photo | null>;
+  slotCrops: Record<string, SlotCropConfig>;
   pagePhotos: Record<number, Photo | null>;
   onRemovePhoto: (slotId: string) => void;
+  onOpenCutModal?: (slotId: string, photo: Photo, label?: string) => void;
 }) {
   const getPhoto = (subIndex: number) => {
     const slotId = `${pageNum}_${subIndex}`;
     return slotPhotos[slotId] || (subIndex === 0 ? pagePhotos[pageNum] || null : null);
   };
+
+  const getCrop = (slotId: string) => slotCrops[slotId] || { position: 'center', x: 50, y: 50, zoom: 1 };
 
   if (layout === '2-photo-v') {
     return (
@@ -85,17 +127,21 @@ function RenderPageSlots({
         <PhotoSlot
           slotId={`${pageNum}_0`}
           photo={getPhoto(0)}
+          crop={getCrop(`${pageNum}_0`)}
           isSelected={selectedSlot === `${pageNum}_0`}
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
+          onOpenCutModal={onOpenCutModal}
           label="Top Slot"
         />
         <PhotoSlot
           slotId={`${pageNum}_1`}
           photo={getPhoto(1)}
+          crop={getCrop(`${pageNum}_1`)}
           isSelected={selectedSlot === `${pageNum}_1`}
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
+          onOpenCutModal={onOpenCutModal}
           label="Bottom Slot"
         />
       </div>
@@ -108,17 +154,21 @@ function RenderPageSlots({
         <PhotoSlot
           slotId={`${pageNum}_0`}
           photo={getPhoto(0)}
+          crop={getCrop(`${pageNum}_0`)}
           isSelected={selectedSlot === `${pageNum}_0`}
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
+          onOpenCutModal={onOpenCutModal}
           label="Left Slot"
         />
         <PhotoSlot
           slotId={`${pageNum}_1`}
           photo={getPhoto(1)}
+          crop={getCrop(`${pageNum}_1`)}
           isSelected={selectedSlot === `${pageNum}_1`}
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
+          onOpenCutModal={onOpenCutModal}
           label="Right Slot"
         />
       </div>
@@ -131,26 +181,32 @@ function RenderPageSlots({
         <PhotoSlot
           slotId={`${pageNum}_0`}
           photo={getPhoto(0)}
+          crop={getCrop(`${pageNum}_0`)}
           isSelected={selectedSlot === `${pageNum}_0`}
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
+          onOpenCutModal={onOpenCutModal}
           label="Featured Slot"
         />
         <div className="grid grid-rows-2 gap-2">
           <PhotoSlot
             slotId={`${pageNum}_1`}
             photo={getPhoto(1)}
+            crop={getCrop(`${pageNum}_1`)}
             isSelected={selectedSlot === `${pageNum}_1`}
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
             label="Slot 2"
           />
           <PhotoSlot
             slotId={`${pageNum}_2`}
             photo={getPhoto(2)}
+            crop={getCrop(`${pageNum}_2`)}
             isSelected={selectedSlot === `${pageNum}_2`}
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
             label="Slot 3"
           />
         </div>
@@ -166,9 +222,11 @@ function RenderPageSlots({
             key={idx}
             slotId={`${pageNum}_${idx}`}
             photo={getPhoto(idx)}
+            crop={getCrop(`${pageNum}_${idx}`)}
             isSelected={selectedSlot === `${pageNum}_${idx}`}
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
             label={`Slot ${idx + 1}`}
           />
         ))}
@@ -184,9 +242,11 @@ function RenderPageSlots({
             key={idx}
             slotId={`${pageNum}_${idx}`}
             photo={getPhoto(idx)}
+            crop={getCrop(`${pageNum}_${idx}`)}
             isSelected={selectedSlot === `${pageNum}_${idx}`}
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
             label={`Slot ${idx + 1}`}
           />
         ))}
@@ -201,9 +261,11 @@ function RenderPageSlots({
         <PhotoSlot
           slotId={`${pageNum}`}
           photo={fullPhoto}
+          crop={getCrop(`${pageNum}`) || getCrop(`${pageNum}_0`)}
           isSelected={selectedSlot === `${pageNum}` || selectedSlot === `${pageNum}_0`}
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
+          onOpenCutModal={onOpenCutModal}
           label={`Full Bleed Page ${pageNum}`}
         />
       </div>
@@ -217,9 +279,11 @@ function RenderPageSlots({
       <PhotoSlot
         slotId={`${pageNum}`}
         photo={singlePhoto}
+        crop={getCrop(`${pageNum}`) || getCrop(`${pageNum}_0`)}
         isSelected={selectedSlot === `${pageNum}` || selectedSlot === `${pageNum}_0`}
         onSelect={onSelectSlot}
         onRemove={onRemovePhoto}
+        onOpenCutModal={onOpenCutModal}
         label={`Page ${pageNum} Photo`}
       />
     </div>
@@ -233,6 +297,8 @@ export default function BookCanvas() {
     setCurrentSpreadIndex,
     pagePhotos,
     slotPhotos,
+    slotCrops,
+    setSlotCrop,
     pageLayouts,
     pageBackgrounds,
     coverConfig,
@@ -242,6 +308,26 @@ export default function BookCanvas() {
     template,
     bookConfig,
   } = useEditorStore();
+
+  const [cutModalState, setCutModalState] = useState<{
+    isOpen: boolean;
+    slotId: string;
+    photo: Photo | null;
+    label?: string;
+  }>({
+    isOpen: false,
+    slotId: '',
+    photo: null,
+  });
+
+  const handleOpenCutModal = (slotId: string, photo: Photo, label?: string) => {
+    setCutModalState({
+      isOpen: true,
+      slotId,
+      photo,
+      label,
+    });
+  };
 
   const totalSpreads = Math.ceil(pageCount / 2);
   const isCover = currentSpreadIndex === 0;
@@ -356,7 +442,17 @@ export default function BookCanvas() {
               {/* Cover Photo Slot (Gallery Centered) */}
               <div className="flex-1 my-4 bg-white/10 rounded-sm overflow-hidden relative border border-white/20 shadow-inner group">
                 {coverPhoto ? (
-                  <img src={coverPhoto.url} alt="Cover" className="w-full h-full object-cover" />
+                  <img
+                    src={coverPhoto.url}
+                    alt="Cover"
+                    style={{
+                      objectFit: 'cover',
+                      objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
+                      transform: `scale(${slotCrops['0']?.zoom ?? 1})`,
+                      transformOrigin: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
+                    }}
+                    className="w-full h-full transition-transform duration-300"
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-white/60 p-4 text-center">
                     <ImageIcon size={32} className="mb-2" />
@@ -364,8 +460,29 @@ export default function BookCanvas() {
                   </div>
                 )}
                 {coverPhoto && (
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <span className="text-xs text-white bg-black/60 px-3 py-1.5 rounded-sm">Click tray photo to replace</span>
+                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenCutModal('0', coverPhoto, 'Front Cover');
+                      }}
+                      className="px-2.5 py-1 bg-white/95 text-noir-900 rounded-sm text-[11px] font-semibold hover:bg-white flex items-center gap-1 shadow-sm transition-all hover:scale-105"
+                      title="Cut / Choose Portion"
+                    >
+                      <Crop size={12} className="text-foil-gold" />
+                      <span>Cut / Portion</span>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        assignPhotoToSlot('0', null);
+                      }}
+                      className="px-2.5 py-1 bg-red-600/90 text-white rounded-sm text-[11px] font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
+                      title="Remove Cover Photo"
+                    >
+                      <Trash2 size={12} />
+                      <span>Remove</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -404,9 +521,11 @@ export default function BookCanvas() {
               <PhotoSlot
                 slotId={`spread_${currentSpreadIndex}`}
                 photo={slotPhotos[`spread_${currentSpreadIndex}`] || slotPhotos[`${leftPageNum}_0`] || pagePhotos[leftPageNum] || null}
+                crop={slotCrops[`spread_${currentSpreadIndex}`] || slotCrops[`${leftPageNum}_0`]}
                 isSelected={selectedSlot === `spread_${currentSpreadIndex}`}
                 onSelect={(id) => setSelectedSlot(id)}
                 onRemove={(id) => assignPhotoToSlot(id, null)}
+                onOpenCutModal={handleOpenCutModal}
                 label="Grand Panoramic Photo (Spans Across Both Pages)"
               />
             </div>
@@ -453,8 +572,10 @@ export default function BookCanvas() {
                 selectedSlot={selectedSlot}
                 onSelectSlot={(id) => setSelectedSlot(id)}
                 slotPhotos={slotPhotos}
+                slotCrops={slotCrops}
                 pagePhotos={pagePhotos}
                 onRemovePhoto={(id) => assignPhotoToSlot(id, null)}
+                onOpenCutModal={handleOpenCutModal}
               />
 
               {/* Bottom Editorial Footnote */}
@@ -495,8 +616,10 @@ export default function BookCanvas() {
                 selectedSlot={selectedSlot}
                 onSelectSlot={(id) => setSelectedSlot(id)}
                 slotPhotos={slotPhotos}
+                slotCrops={slotCrops}
                 pagePhotos={pagePhotos}
                 onRemovePhoto={(id) => assignPhotoToSlot(id, null)}
+                onOpenCutModal={handleOpenCutModal}
               />
 
               {/* Bottom Editorial Footnote */}
@@ -547,6 +670,19 @@ export default function BookCanvas() {
           <ChevronRight size={20} />
         </button>
       </div>
+
+      {/* Interactive Image Cut & Portion Selection Modal */}
+      {cutModalState.isOpen && cutModalState.photo && (
+        <PortionCutModal
+          isOpen={cutModalState.isOpen}
+          onClose={() => setCutModalState({ isOpen: false, slotId: '', photo: null })}
+          slotId={cutModalState.slotId}
+          photo={cutModalState.photo}
+          label={cutModalState.label}
+          currentCrop={slotCrops[cutModalState.slotId]}
+          onApplyCrop={(slotId, crop) => setSlotCrop(slotId, crop)}
+        />
+      )}
     </div>
   );
 }

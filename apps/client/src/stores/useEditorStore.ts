@@ -33,6 +33,25 @@ export interface CoverConfig {
   backgroundColor?: string;
 }
 
+export type PhotoCropPosition =
+  | 'center'
+  | 'left'
+  | 'right'
+  | 'top'
+  | 'bottom'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'custom';
+
+export interface SlotCropConfig {
+  position: PhotoCropPosition;
+  x: number; // 0 to 100% (default 50)
+  y: number; // 0 to 100% (default 50)
+  zoom: number; // 1.0 to 3.0 (default 1.0)
+}
+
 interface EditorState {
   canvas: any | null;
   selectedObjectId: string | null;
@@ -47,6 +66,7 @@ interface EditorState {
   selectedSlot: string | null; // e.g. "1" or "1_0" or "1_1"
   pagePhotos: Record<number, Photo | null>; // legacy page number -> Photo
   slotPhotos: Record<string, Photo | null>; // slotId -> Photo
+  slotCrops: Record<string, SlotCropConfig>; // slotId -> SlotCropConfig
   pageLayouts: Record<number, PageLayout>; // pageNumber -> PageLayout
   pageBackgrounds: Record<number, string>; // pageNumber -> Background color
   coverConfig: CoverConfig;
@@ -83,6 +103,7 @@ interface EditorState {
   updateCoverConfig: (config: Partial<CoverConfig>) => void;
   assignPhotoToSlot: (slotId: string, photo: Photo | null) => void;
   assignPhotoToPage: (pageNumber: number, photo: Photo | null) => void;
+  setSlotCrop: (slotId: string, crop: Partial<SlotCropConfig>) => void;
   autoPopulatePages: () => void;
   clearPagePhoto: (pageNumber: number) => void;
   setPhotos: (photos: Photo[]) => void;
@@ -134,6 +155,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   selectedSlot: '1', // Default focus on Page 1
   pagePhotos: {},
   slotPhotos: {},
+  slotCrops: {},
   pageLayouts: {},
   pageBackgrounds: {},
   coverConfig: {
@@ -266,6 +288,24 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   assignPhotoToPage: (pageNumber, photo) => {
     get().assignPhotoToSlot(pageNumber.toString(), photo);
   },
+
+  setSlotCrop: (slotId, crop) => set((state) => {
+    const existing = state.slotCrops[slotId] || { position: 'center', x: 50, y: 50, zoom: 1 };
+    return {
+      slotCrops: {
+        ...state.slotCrops,
+        [slotId]: {
+          ...existing,
+          ...crop,
+          // Constrain coordinates and zoom
+          x: crop.x !== undefined ? Math.max(0, Math.min(100, Math.round(crop.x))) : existing.x,
+          y: crop.y !== undefined ? Math.max(0, Math.min(100, Math.round(crop.y))) : existing.y,
+          zoom: crop.zoom !== undefined ? Math.max(1, Math.min(3, Math.round(crop.zoom * 100) / 100)) : existing.zoom,
+        },
+      },
+      autoSaveStatus: 'saved',
+    };
+  }),
 
   clearPagePhoto: (pageNumber) => set((state) => {
     const updatedPagePhotos = { ...state.pagePhotos };

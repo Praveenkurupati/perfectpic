@@ -76,7 +76,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
         pages: order?.pageCount || 40,
         status: order?.status || 'Production',
         coverImage: order?.coverUrl || order?.thumbnail,
+        coverConfig: order?.coverConfig,
         photos: order?.photos || [],
+        slotPhotos: order?.slotPhotos,
+        slotCrops: order?.slotCrops,
+        pageLayouts: order?.pageLayouts,
+        pageBackgrounds: order?.pageBackgrounds,
         dueDate: 'Immediate Print Run',
       });
     } catch (err) {

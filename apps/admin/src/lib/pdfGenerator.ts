@@ -21,6 +21,7 @@ export interface AdminPrintPdfOptions {
   photos?: string[];
   pagePhotos?: Record<number, { url: string } | null>;
   slotPhotos?: Record<string, { url: string } | null>;
+  slotCrops?: Record<string, { position?: string; x?: number; y?: number; zoom?: number }>;
   pageLayouts?: Record<number, string>;
   pageBackgrounds?: Record<number, string>;
   dueDate?: string;
@@ -110,6 +111,84 @@ async function getBase64Image(url: string): Promise<string | null> {
   });
 }
 
+/**
+ * Proportionally pre-crops an image to exactly match target slot dimensions.
+ * Eliminates distortion / squeezing and respects user focal point and zoom.
+ */
+async function getCroppedBase64Image(
+  url: string,
+  targetW: number,
+  targetH: number,
+  crop?: { position?: string; x?: number; y?: number; zoom?: number }
+): Promise<string | null> {
+  if (!url || typeof window === 'undefined') return null;
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      img.onload = () => {
+        try {
+          const naturalW = img.naturalWidth || 800;
+          const naturalH = img.naturalHeight || 800;
+          const targetAspect = targetW / targetH;
+          const imgAspect = naturalW / naturalH;
+
+          const zoom = Math.max(1, Math.min(3, crop?.zoom ?? 1.0));
+          const focalX = Math.max(0, Math.min(100, crop?.x ?? 50)) / 100;
+          const focalY = Math.max(0, Math.min(100, crop?.y ?? 50)) / 100;
+
+          let cropW: number;
+          let cropH: number;
+
+          if (imgAspect > targetAspect) {
+            // Image is wider than slot: limit by height, crop horizontal sides
+            cropH = naturalH / zoom;
+            cropW = cropH * targetAspect;
+          } else {
+            // Image is taller than slot: limit by width, crop vertical top/bottom
+            cropW = naturalW / zoom;
+            cropH = cropW / targetAspect;
+          }
+
+          cropW = Math.min(naturalW, cropW);
+          cropH = Math.min(naturalH, cropH);
+
+          const maxSourceX = naturalW - cropW;
+          const maxSourceY = naturalH - cropH;
+          const sourceX = Math.max(0, Math.min(maxSourceX, maxSourceX * focalX));
+          const sourceY = Math.max(0, Math.min(maxSourceY, maxSourceY * focalY));
+
+          // Set canvas output resolution for crisp print
+          const canvasW = Math.max(800, Math.min(2400, Math.round(cropW)));
+          const canvasH = Math.round(canvasW / targetAspect);
+
+          const canvas = document.createElement('canvas');
+          canvas.width = canvasW;
+          canvas.height = canvasH;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, sourceX, sourceY, cropW, cropH, 0, 0, canvasW, canvasH);
+            resolve(canvas.toDataURL('image/jpeg', 0.92));
+            return;
+          }
+        } catch {
+          // Handled via fallback
+        }
+        resolve(null);
+      };
+
+      img.onerror = () => resolve(null);
+      img.src = url;
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 async function drawPhotoSlot(
   doc: jsPDF,
   url: string,
@@ -119,14 +198,22 @@ async function drawPhotoSlot(
   h: number,
   imageCache: Map<string, Promise<string | null>>,
   label?: string,
-  noBorder?: boolean
+  noBorder?: boolean,
+  crop?: { position?: string; x?: number; y?: number; zoom?: number }
 ): Promise<void> {
   let base64: string | null = null;
   if (url) {
-    if (!imageCache.has(url)) {
-      imageCache.set(url, getBase64Image(url));
+    const cacheKey = `${url}_${Math.round(w * 10)}x${Math.round(h * 10)}_${crop?.x ?? 50}_${crop?.y ?? 50}_${crop?.zoom ?? 1}`;
+    if (!imageCache.has(cacheKey)) {
+      imageCache.set(
+        cacheKey,
+        getCroppedBase64Image(url, w, h, crop).then(async (cropped) => {
+          if (cropped) return cropped;
+          return getBase64Image(url);
+        })
+      );
     }
-    base64 = await imageCache.get(url)!;
+    base64 = await imageCache.get(cacheKey)!;
   }
 
   if (base64) {
@@ -169,6 +256,7 @@ async function drawPageLayoutSlots(
   H: number,
   isRightPage: boolean,
   getSlotPhotoUrl: (pageNum: number, subIndex: number) => string,
+  getSlotCrop: (pageNum: number, subIndex: number) => { position?: string; x?: number; y?: number; zoom?: number } | undefined,
   imageCache: Map<string, Promise<string | null>>
 ): Promise<void> {
   switch (layout) {
@@ -178,41 +266,41 @@ async function drawPageLayoutSlots(
       const w = 210;
       const h = 210;
       const url = getSlotPhotoUrl(pageNum, 0);
-      await drawPhotoSlot(doc, url, x, y, w, h, imageCache, undefined, true);
+      await drawPhotoSlot(doc, url, x, y, w, h, imageCache, undefined, true, getSlotCrop(pageNum, 0));
       break;
     }
 
     case '2-photo-v': {
-      const gap = 4;
+      const gap = 3.5;
       const slotH = (H - gap) / 2;
       const url0 = getSlotPhotoUrl(pageNum, 0);
       const url1 = getSlotPhotoUrl(pageNum, 1);
-      await drawPhotoSlot(doc, url0, originX, originY, W, slotH, imageCache, `P.${pageNum} Top`);
-      await drawPhotoSlot(doc, url1, originX, originY + slotH + gap, W, slotH, imageCache, `P.${pageNum} Bottom`);
+      await drawPhotoSlot(doc, url0, originX, originY, W, slotH, imageCache, `P.${pageNum} Top`, false, getSlotCrop(pageNum, 0));
+      await drawPhotoSlot(doc, url1, originX, originY + slotH + gap, W, slotH, imageCache, `P.${pageNum} Bottom`, false, getSlotCrop(pageNum, 1));
       break;
     }
 
     case '2-photo-h': {
-      const gap = 4;
+      const gap = 3.5;
       const slotW = (W - gap) / 2;
       const url0 = getSlotPhotoUrl(pageNum, 0);
       const url1 = getSlotPhotoUrl(pageNum, 1);
-      await drawPhotoSlot(doc, url0, originX, originY, slotW, H, imageCache, `P.${pageNum} Left`);
-      await drawPhotoSlot(doc, url1, originX + slotW + gap, originY, slotW, H, imageCache, `P.${pageNum} Right`);
+      await drawPhotoSlot(doc, url0, originX, originY, slotW, H, imageCache, `P.${pageNum} Left`, false, getSlotCrop(pageNum, 0));
+      await drawPhotoSlot(doc, url1, originX + slotW + gap, originY, slotW, H, imageCache, `P.${pageNum} Right`, false, getSlotCrop(pageNum, 1));
       break;
     }
 
     case '3-photo': {
-      const gap = 4;
+      const gap = 3.5;
       const heroW = (W - gap) / 2;
       const duoH = (H - gap) / 2;
       const duoX = originX + heroW + gap;
       const url0 = getSlotPhotoUrl(pageNum, 0);
       const url1 = getSlotPhotoUrl(pageNum, 1);
       const url2 = getSlotPhotoUrl(pageNum, 2);
-      await drawPhotoSlot(doc, url0, originX, originY, heroW, H, imageCache, `P.${pageNum} Hero`);
-      await drawPhotoSlot(doc, url1, duoX, originY, heroW, duoH, imageCache, `P.${pageNum} Top`);
-      await drawPhotoSlot(doc, url2, duoX, originY + duoH + gap, heroW, duoH, imageCache, `P.${pageNum} Bottom`);
+      await drawPhotoSlot(doc, url0, originX, originY, heroW, H, imageCache, `P.${pageNum} Hero`, false, getSlotCrop(pageNum, 0));
+      await drawPhotoSlot(doc, url1, duoX, originY, heroW, duoH, imageCache, `P.${pageNum} Top`, false, getSlotCrop(pageNum, 1));
+      await drawPhotoSlot(doc, url2, duoX, originY + duoH + gap, heroW, duoH, imageCache, `P.${pageNum} Bottom`, false, getSlotCrop(pageNum, 2));
       break;
     }
 
@@ -226,7 +314,7 @@ async function drawPageLayoutSlots(
           const x = originX + c * (slotW + gap);
           const y = originY + r * (slotH + gap);
           const url = getSlotPhotoUrl(pageNum, idx);
-          await drawPhotoSlot(doc, url, x, y, slotW, slotH, imageCache, `P.${pageNum} #${idx + 1}`);
+          await drawPhotoSlot(doc, url, x, y, slotW, slotH, imageCache, `P.${pageNum} #${idx + 1}`, false, getSlotCrop(pageNum, idx));
         }
       }
       break;
@@ -243,7 +331,7 @@ async function drawPageLayoutSlots(
           const x = originX + c * (slotW + gapX);
           const y = originY + r * (slotH + gapY);
           const url = getSlotPhotoUrl(pageNum, idx);
-          await drawPhotoSlot(doc, url, x, y, slotW, slotH, imageCache, `P.${pageNum} #${idx + 1}`);
+          await drawPhotoSlot(doc, url, x, y, slotW, slotH, imageCache, `P.${pageNum} #${idx + 1}`, false, getSlotCrop(pageNum, idx));
         }
       }
       break;
@@ -251,14 +339,8 @@ async function drawPageLayoutSlots(
 
     case '1-photo':
     default: {
-      const padX = 6;
-      const padY = 6;
-      const slotX = originX + padX;
-      const slotY = originY + padY;
-      const slotW = W - padX * 2;
-      const slotH = H - padY * 2;
       const url = getSlotPhotoUrl(pageNum, 0);
-      await drawPhotoSlot(doc, url, slotX, slotY, slotW, slotH, imageCache, `P.${pageNum} Classic`);
+      await drawPhotoSlot(doc, url, originX, originY, W, H, imageCache, `P.${pageNum} Classic`, false, getSlotCrop(pageNum, 0));
       break;
     }
   }
@@ -281,6 +363,7 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
     photos = [],
     pagePhotos = {},
     slotPhotos = {},
+    slotCrops = {},
     pageLayouts = {},
     pageBackgrounds = {},
     dueDate = 'Immediate',
@@ -306,6 +389,13 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
     return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
   };
 
+  const getSlotCrop = (pageNum: number, subIndex: number) => {
+    const slotId = `${pageNum}_${subIndex}`;
+    if (slotCrops && slotCrops[slotId]) return slotCrops[slotId];
+    if (subIndex === 0 && slotCrops && slotCrops[String(pageNum)]) return slotCrops[String(pageNum)];
+    return undefined;
+  };
+
   const getPanoramicPhotoUrl = (spreadIndex: number, leftPageNum: number): string => {
     const spreadSlotId = `spread_${spreadIndex}`;
     if (slotPhotos && slotPhotos[spreadSlotId]?.url) return slotPhotos[spreadSlotId]!.url;
@@ -316,6 +406,14 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
       return photos[idx] || photos[0]!;
     }
     return 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop';
+  };
+
+  const getPanoramicCrop = (spreadIndex: number, leftPageNum: number) => {
+    const spreadSlotId = `spread_${spreadIndex}`;
+    if (slotCrops && slotCrops[spreadSlotId]) return slotCrops[spreadSlotId];
+    if (slotCrops && slotCrops[`${leftPageNum}_0`]) return slotCrops[`${leftPageNum}_0`];
+    if (slotCrops && slotCrops[String(leftPageNum)]) return slotCrops[String(leftPageNum)];
+    return undefined;
   };
 
   const doc = new jsPDF({
@@ -378,7 +476,8 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
   const imgY = 82;
   const imgW = 160;
   const imgH = 105;
-  await drawPhotoSlot(doc, coverUrl, imgX, imgY, imgW, imgH, imageCache, 'Cover Plate High Resolution');
+  const coverCrop = slotCrops['0'] || slotCrops['cover'];
+  await drawPhotoSlot(doc, coverUrl, imgX, imgY, imgW, imgH, imageCache, 'Cover Plate High Resolution', false, coverCrop);
 
   // Footer Job Barcode
   doc.setFont('courier', 'normal');
@@ -420,33 +519,37 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
       // TWO PAGES FULL IMAGE: ZERO MARGIN, ZERO TEXT, ZERO PAGE NUMBERS
       // -------------------------------------------------------------
       const panoUrl = getPanoramicPhotoUrl(s, leftPageNum);
-      await drawPhotoSlot(doc, panoUrl, 0, 0, 420, 210, imageCache, undefined, true);
+      const panoCrop = getPanoramicCrop(s, leftPageNum);
+      await drawPhotoSlot(doc, panoUrl, 0, 0, 420, 210, imageCache, undefined, true, panoCrop);
     } else {
       // -------------------------------------------------------------
       // SEPARATE PAGES: MULTI-PHOTO EDITORIAL LAYOUTS
+      // 40% DECREASED MARGINS: Outer from 18mm -> 11mm, Spine/Top from 16mm -> 10mm
+      // Expanded content area: 189mm x 186mm
       // -------------------------------------------------------------
-      const originY = 16;
-      const W = 176;
-      const H = 176;
+      const originY = 10;
+      const W = 189;
+      const H = 186;
 
       // Draw subtle center fold guide ONLY if neither page is full bleed
       if (leftLayout !== '1-photo-full' && rightLayout !== '1-photo-full') {
         doc.setDrawColor(225, 220, 210);
         doc.setLineWidth(0.2);
-        doc.line(210, 12, 210, 198);
+        doc.line(210, 10, 210, 200);
       }
 
-      // Draw Left Page Layout Slots
+      // Draw Left Page Layout Slots (originX = 11mm, outer margin = 11mm, spine margin = 10mm)
       await drawPageLayoutSlots(
         doc,
         leftPageNum,
         leftLayout,
-        18,
+        11,
         originY,
         W,
         H,
         false,
         getSlotPhotoUrl,
+        getSlotCrop,
         imageCache
       );
 
@@ -455,20 +558,21 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
         doc.setFont('times', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(110, 110, 110);
-        doc.text(String(leftPageNum), 18, 201);
+        doc.text(String(leftPageNum), 11, 203);
       }
 
-      // Draw Right Page Layout Slots
+      // Draw Right Page Layout Slots (originX = 220mm, spine margin = 10mm, outer margin = 11mm)
       await drawPageLayoutSlots(
         doc,
         rightPageNum,
         rightLayout,
-        226,
+        220,
         originY,
         W,
         H,
         true,
         getSlotPhotoUrl,
+        getSlotCrop,
         imageCache
       );
 
@@ -477,7 +581,7 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
         doc.setFont('times', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(110, 110, 110);
-        doc.text(String(rightPageNum), 402, 201, { align: 'right' });
+        doc.text(String(rightPageNum), 409, 203, { align: 'right' });
       }
     }
   }

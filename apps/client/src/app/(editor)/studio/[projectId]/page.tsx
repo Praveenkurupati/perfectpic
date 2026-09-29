@@ -30,6 +30,7 @@ function StudioContent() {
     template,
     pagePhotos,
     slotPhotos,
+    slotCrops,
     pageLayouts,
     pageBackgrounds,
     coverConfig
@@ -106,6 +107,7 @@ function StudioContent() {
         photos: allPhotos,
         pagePhotos,
         slotPhotos,
+        slotCrops,
         pageLayouts,
         pageBackgrounds,
         projectId,

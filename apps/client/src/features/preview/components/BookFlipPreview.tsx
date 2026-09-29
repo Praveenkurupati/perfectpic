@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, BookOpen, Sparkles, Layers } from 'lucide-react';
-import { Photo, PageLayout, CoverConfig } from '@/stores/useEditorStore';
+import { Photo, PageLayout, CoverConfig, SlotCropConfig } from '@/stores/useEditorStore';
 
 interface BookFlipPreviewProps {
   currentSpread: number; // 0 = Cover, 1 = Pages 1-2, ..., totalSpreads + 1 = Back
@@ -12,6 +12,7 @@ interface BookFlipPreviewProps {
   pageCount: number;
   pagePhotos?: Record<number, Photo | null>;
   slotPhotos?: Record<string, Photo | null>;
+  slotCrops?: Record<string, SlotCropConfig>;
   pageLayouts?: Record<number, PageLayout>;
   pageBackgrounds?: Record<number, string>;
   coverConfig?: CoverConfig;
@@ -32,6 +33,7 @@ export default function BookFlipPreview({
   pageCount,
   pagePhotos = {},
   slotPhotos = {},
+  slotCrops = {},
   pageLayouts = {},
   pageBackgrounds = {},
   coverConfig,
@@ -111,27 +113,50 @@ export default function BookFlipPreview({
     'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
 
   // Sub-component to render photo slot inside the 3D preview
-  const RenderPreviewSlot = ({ url, label }: { url: string; label?: string }) => (
-    <div className="w-full h-full rounded-xs overflow-hidden shadow-sm border border-noir-200/60 bg-cream-100 relative group">
-      <img
-        src={url}
-        alt={label || 'Photo'}
-        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-      />
-      <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-xs rounded-xs text-[8px] font-mono text-cream-100 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-        12K Indigo • 300 DPI
+  const RenderPreviewSlot = ({
+    url,
+    label,
+    crop,
+  }: {
+    url: string;
+    label?: string;
+    crop?: SlotCropConfig;
+  }) => {
+    const focalX = crop?.x ?? 50;
+    const focalY = crop?.y ?? 50;
+    const zoom = crop?.zoom ?? 1;
+
+    return (
+      <div className="w-full h-full rounded-xs overflow-hidden shadow-sm border border-noir-200/60 bg-cream-100 relative group">
+        <img
+          src={url}
+          alt={label || 'Photo'}
+          style={{
+            objectFit: 'cover',
+            objectPosition: `${focalX}% ${focalY}%`,
+            transform: `scale(${zoom})`,
+            transformOrigin: `${focalX}% ${focalY}%`,
+          }}
+          className="w-full h-full transition-transform duration-300"
+        />
+        <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-xs rounded-xs text-[8px] font-mono text-cream-100 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          12K Indigo • 300 DPI
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Render multi-photo layouts matching the Studio Editor design
   const renderLayoutContent = (pageNum: number, layout: PageLayout) => {
+    const getCrop = (subIndex: number) =>
+      slotCrops[`${pageNum}_${subIndex}`] || (subIndex === 0 ? slotCrops[`${pageNum}`] : undefined);
+
     switch (layout) {
       case '1-photo-full': {
         const url = getSlotPhotoUrl(pageNum, 0);
         return (
           <div className="flex-1 -mx-8 -my-6 md:-mx-10 md:-my-8 h-[calc(100%+3rem)] md:h-[calc(100%+4rem)] overflow-hidden">
-            <RenderPreviewSlot url={url} label={`Full Bleed Page ${pageNum}`} />
+            <RenderPreviewSlot url={url} label={`Full Bleed Page ${pageNum}`} crop={getCrop(0)} />
           </div>
         );
       }
@@ -139,8 +164,8 @@ export default function BookFlipPreview({
       case '2-photo-v': {
         return (
           <div className="flex-1 my-2 grid grid-rows-2 gap-2 h-full">
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Top Slot" />
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Slot" />
+            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Top Slot" crop={getCrop(0)} />
+            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Slot" crop={getCrop(1)} />
           </div>
         );
       }
@@ -148,8 +173,8 @@ export default function BookFlipPreview({
       case '2-photo-h': {
         return (
           <div className="flex-1 my-2 grid grid-cols-2 gap-2 h-full">
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Left Slot" />
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Right Slot" />
+            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Left Slot" crop={getCrop(0)} />
+            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Right Slot" crop={getCrop(1)} />
           </div>
         );
       }
@@ -157,10 +182,10 @@ export default function BookFlipPreview({
       case '3-photo': {
         return (
           <div className="flex-1 my-2 grid grid-cols-2 gap-2 h-full">
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Hero Slot" />
+            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Hero Slot" crop={getCrop(0)} />
             <div className="grid grid-rows-2 gap-2 h-full">
-              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Top Slot" />
-              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Slot" />
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Top Slot" crop={getCrop(1)} />
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Slot" crop={getCrop(2)} />
             </div>
           </div>
         );
@@ -174,6 +199,7 @@ export default function BookFlipPreview({
                 key={idx}
                 url={getSlotPhotoUrl(pageNum, idx)}
                 label={`Slot ${idx + 1}`}
+                crop={getCrop(idx)}
               />
             ))}
           </div>
@@ -188,6 +214,7 @@ export default function BookFlipPreview({
                 key={idx}
                 url={getSlotPhotoUrl(pageNum, idx)}
                 label={`Slot ${idx + 1}`}
+                crop={getCrop(idx)}
               />
             ))}
           </div>
@@ -200,14 +227,7 @@ export default function BookFlipPreview({
         return (
           <div className="flex-1 my-3 flex items-center justify-center h-full">
             <div className="w-full h-[330px] rounded-xs overflow-hidden shadow-md border border-noir-200/60 bg-cream-100 relative group">
-              <img
-                src={url}
-                alt={`Page ${pageNum}`}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-              />
-              <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-xs rounded-xs text-[9px] font-mono text-cream-100 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
-                12K Indigo Press • 300 DPI
-              </div>
+              <RenderPreviewSlot url={url} label={`Page ${pageNum}`} crop={getCrop(0)} />
             </div>
           </div>
         );
@@ -264,7 +284,13 @@ export default function BookFlipPreview({
                 <img
                   src={effectiveCover}
                   alt={displayTitle}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  style={{
+                    objectFit: 'cover',
+                    objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
+                    transform: `scale(${slotCrops['0']?.zoom ?? 1})`,
+                    transformOrigin: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
+                  }}
+                  className="w-full h-full transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent pointer-events-none" />
               </div>
@@ -315,7 +341,13 @@ export default function BookFlipPreview({
                   <img
                     src={getPanoramicPhotoUrl(currentSpread, leftPageNumber)}
                     alt={`Panoramic Spread ${leftPageNumber}-${rightPageNumber}`}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                    style={{
+                      objectFit: 'cover',
+                      objectPosition: `${(slotCrops[`spread_${currentSpread}`]?.x ?? slotCrops[`${leftPageNumber}_0`]?.x ?? slotCrops[`${leftPageNumber}`]?.x ?? 50)}% ${(slotCrops[`spread_${currentSpread}`]?.y ?? slotCrops[`${leftPageNumber}_0`]?.y ?? slotCrops[`${leftPageNumber}`]?.y ?? 50)}%`,
+                      transform: `scale(${slotCrops[`spread_${currentSpread}`]?.zoom ?? slotCrops[`${leftPageNumber}_0`]?.zoom ?? slotCrops[`${leftPageNumber}`]?.zoom ?? 1})`,
+                      transformOrigin: `${(slotCrops[`spread_${currentSpread}`]?.x ?? slotCrops[`${leftPageNumber}_0`]?.x ?? slotCrops[`${leftPageNumber}`]?.x ?? 50)}% ${(slotCrops[`spread_${currentSpread}`]?.y ?? slotCrops[`${leftPageNumber}_0`]?.y ?? slotCrops[`${leftPageNumber}`]?.y ?? 50)}%`,
+                    }}
+                    className="w-full h-full transition-transform duration-500"
                   />
                   <div className="absolute bottom-2 left-3 px-2 py-0.5 bg-black/60 backdrop-blur-xs rounded-xs text-[9px] font-mono text-cream-100 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity">
                     12K Ultra-HD Panoramic • Zero Gutter Loss

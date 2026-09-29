@@ -44,6 +44,7 @@ function PreviewContent() {
     currentSpreadIndex, 
     pagePhotos, 
     slotPhotos,
+    slotCrops,
     pageLayouts,
     pageBackgrounds,
     coverConfig,
@@ -205,6 +206,7 @@ function PreviewContent() {
         photos: allPhotos,
         pagePhotos,
         slotPhotos,
+        slotCrops,
         pageLayouts,
         pageBackgrounds,
         projectId,
@@ -324,6 +326,7 @@ function PreviewContent() {
               pageCount={pageCount}
               pagePhotos={pagePhotos}
               slotPhotos={slotPhotos}
+              slotCrops={slotCrops}
               pageLayouts={pageLayouts}
               pageBackgrounds={pageBackgrounds}
               coverConfig={coverConfig}
