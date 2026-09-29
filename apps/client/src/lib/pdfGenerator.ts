@@ -4,13 +4,75 @@ import { jsPDF } from 'jspdf';
 export interface BookPdfOptions {
   title: string;
   subtitle?: string;
+  seriesLabel?: string;
   dimensions?: string;
   pageCount?: number;
   theme?: string;
   coverImage?: string;
+  coverColor?: string;
+  coverConfig?: {
+    title?: string;
+    subtitle?: string;
+    spineText?: string;
+    foilColor?: 'gold' | 'silver' | 'rose-gold' | 'black';
+    backgroundColor?: string;
+  };
   photos?: string[];
+  pagePhotos?: Record<number, { url: string } | null>;
+  slotPhotos?: Record<string, { url: string } | null>;
+  pageLayouts?: Record<number, string>;
+  pageBackgrounds?: Record<number, string>;
   spreads?: any[];
   projectId?: string;
+}
+
+/**
+ * Converts a hex color string to RGB tuple.
+ */
+function hexToRgb(hex?: string, fallback: [number, number, number] = [250, 248, 245]): [number, number, number] {
+  if (!hex || typeof hex !== 'string') return fallback;
+  let c = hex.replace('#', '').trim();
+  if (c.length === 3) {
+    c = c.split('').map((x) => x + x).join('');
+  }
+  if (c.length !== 6) return fallback;
+  const num = parseInt(c, 16);
+  if (isNaN(num)) return fallback;
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+/**
+ * Returns RGB tuple for metallic foil simulation.
+ */
+function getFoilRgb(foilColor?: string): [number, number, number] {
+  switch (foilColor) {
+    case 'silver':
+      return [200, 205, 215];
+    case 'rose-gold':
+      return [218, 150, 148];
+    case 'black':
+      return [26, 26, 26];
+    case 'gold':
+    default:
+      return [212, 175, 55];
+  }
+}
+
+/**
+ * Returns human-readable layout label for spread headers.
+ */
+function getLayoutDisplayName(layout: string): string {
+  switch (layout) {
+    case '1-photo-full': return 'Full Bleed';
+    case '2-photo-v': return 'Stacked Duo';
+    case '2-photo-h': return 'Side-by-Side';
+    case '3-photo': return 'Hero + Duo';
+    case '4-photo': return '2×2 Grid';
+    case '6-photo-grid': return '3×2 Grid';
+    case '2-page-panoramic': return 'Panoramic Spread';
+    case '1-photo':
+    default: return 'Classic Gallery';
+  }
 }
 
 /**
@@ -67,245 +129,551 @@ async function getBase64Image(url: string): Promise<string | null> {
 }
 
 /**
+ * Draws a single photo slot into the PDF.
+ * If image fails or is unavailable, renders a museum archival placeholder plate.
+ */
+async function drawPhotoSlot(
+  doc: jsPDF,
+  url: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  imageCache: Map<string, Promise<string | null>>,
+  label?: string
+): Promise<void> {
+  let base64: string | null = null;
+  if (url) {
+    if (!imageCache.has(url)) {
+      imageCache.set(url, getBase64Image(url));
+    }
+    base64 = await imageCache.get(url)!;
+  }
+
+  if (base64) {
+    try {
+      const format = base64.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+      doc.addImage(base64, format, x, y, w, h, undefined, 'FAST');
+      doc.setDrawColor(215, 210, 200);
+      doc.setLineWidth(0.25);
+      doc.rect(x, y, w, h);
+      return;
+    } catch {
+      // Fall through to placeholder plate
+    }
+  }
+
+  // Museum Archival Photo Plate fallback
+  doc.setFillColor(242, 239, 234);
+  doc.rect(x, y, w, h, 'F');
+  doc.setDrawColor(210, 205, 195);
+  doc.setLineWidth(0.25);
+  doc.rect(x, y, w, h);
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(Math.max(6, Math.min(8.5, Math.round(w / 14))));
+  doc.setTextColor(140, 135, 130);
+  doc.text(label || 'Archival Photo Plate', x + w / 2, y + h / 2, { align: 'center' });
+}
+
+/**
+ * Renders page slots according to the selected layout geometry.
+ */
+async function drawPageLayoutSlots(
+  doc: jsPDF,
+  pageNum: number,
+  layout: string,
+  originX: number,
+  originY: number,
+  W: number,
+  H: number,
+  isRightPage: boolean,
+  getSlotPhotoUrl: (pageNum: number, subIndex: number) => string,
+  imageCache: Map<string, Promise<string | null>>
+): Promise<void> {
+  switch (layout) {
+    case '1-photo-full': {
+      const x = isRightPage ? 210 : 0;
+      const y = 0;
+      const w = 210;
+      const h = 210;
+      const url = getSlotPhotoUrl(pageNum, 0);
+      await drawPhotoSlot(doc, url, x, y, w, h, imageCache, `Full Bleed Page ${pageNum}`);
+      break;
+    }
+
+    case '2-photo-v': {
+      const gap = 4;
+      const slotH = (H - gap) / 2;
+      const url0 = getSlotPhotoUrl(pageNum, 0);
+      const url1 = getSlotPhotoUrl(pageNum, 1);
+      await drawPhotoSlot(doc, url0, originX, originY, W, slotH, imageCache, `Page ${pageNum} Top`);
+      await drawPhotoSlot(doc, url1, originX, originY + slotH + gap, W, slotH, imageCache, `Page ${pageNum} Bottom`);
+      break;
+    }
+
+    case '2-photo-h': {
+      const gap = 4;
+      const slotW = (W - gap) / 2;
+      const url0 = getSlotPhotoUrl(pageNum, 0);
+      const url1 = getSlotPhotoUrl(pageNum, 1);
+      await drawPhotoSlot(doc, url0, originX, originY, slotW, H, imageCache, `Page ${pageNum} Left`);
+      await drawPhotoSlot(doc, url1, originX + slotW + gap, originY, slotW, H, imageCache, `Page ${pageNum} Right`);
+      break;
+    }
+
+    case '3-photo': {
+      const gap = 4;
+      const heroW = (W - gap) / 2;
+      const duoH = (H - gap) / 2;
+      const duoX = originX + heroW + gap;
+      const url0 = getSlotPhotoUrl(pageNum, 0);
+      const url1 = getSlotPhotoUrl(pageNum, 1);
+      const url2 = getSlotPhotoUrl(pageNum, 2);
+      await drawPhotoSlot(doc, url0, originX, originY, heroW, H, imageCache, `Page ${pageNum} Hero`);
+      await drawPhotoSlot(doc, url1, duoX, originY, heroW, duoH, imageCache, `Page ${pageNum} Top`);
+      await drawPhotoSlot(doc, url2, duoX, originY + duoH + gap, heroW, duoH, imageCache, `Page ${pageNum} Bottom`);
+      break;
+    }
+
+    case '4-photo': {
+      const gap = 3.5;
+      const slotW = (W - gap) / 2;
+      const slotH = (H - gap) / 2;
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < 2; c++) {
+          const idx = r * 2 + c;
+          const x = originX + c * (slotW + gap);
+          const y = originY + r * (slotH + gap);
+          const url = getSlotPhotoUrl(pageNum, idx);
+          await drawPhotoSlot(doc, url, x, y, slotW, slotH, imageCache, `Page ${pageNum} Slot ${idx + 1}`);
+        }
+      }
+      break;
+    }
+
+    case '6-photo-grid': {
+      const gapX = 3;
+      const gapY = 3;
+      const slotW = (W - 2 * gapX) / 3;
+      const slotH = (H - gapY) / 2;
+      for (let r = 0; r < 2; r++) {
+        for (let c = 0; c < 3; c++) {
+          const idx = r * 3 + c;
+          const x = originX + c * (slotW + gapX);
+          const y = originY + r * (slotH + gapY);
+          const url = getSlotPhotoUrl(pageNum, idx);
+          await drawPhotoSlot(doc, url, x, y, slotW, slotH, imageCache, `Page ${pageNum} Slot ${idx + 1}`);
+        }
+      }
+      break;
+    }
+
+    case '1-photo':
+    default: {
+      const padX = 6;
+      const padY = 6;
+      const slotX = originX + padX;
+      const slotY = originY + padY;
+      const slotW = W - padX * 2;
+      const slotH = H - padY * 2;
+      const url = getSlotPhotoUrl(pageNum, 0);
+      await drawPhotoSlot(doc, url, slotX, slotY, slotW, slotH, imageCache, `Page ${pageNum} Classic`);
+      break;
+    }
+  }
+}
+
+/**
  * Generates and triggers download of a high-resolution, print-ready 3D Proof PDF.
- * Format: 210mm x 210mm Square Lay-Flat Photobook (HP Indigo Press 12K Standard)
+ * Format: 210mm x 210mm Square Lay-Flat Photobook (HP Indigo Press 12K Standard).
+ * Inside spreads are rendered as true 420mm x 210mm continuous 180° layflat double-page spreads.
  */
 export async function generateBookProofPdf(options: BookPdfOptions): Promise<void> {
   const {
     title = 'Heirloom Custom Photobook',
     subtitle = 'Curated Monograph Edition',
+    seriesLabel = 'THE TRAVEL SERIES',
     dimensions = '8.25" × 8.25"',
-    pageCount = 40,
+    pageCount = 32,
     theme = 'Minimal Modern',
     coverImage,
+    coverColor = '#F8BAC7',
+    coverConfig,
     photos = [],
+    pagePhotos = {},
+    slotPhotos = {},
+    pageLayouts = {},
+    pageBackgrounds = {},
+    projectId = 'PP-PROOF',
   } = options;
 
-  // Initialize Square 210mm x 210mm document
+  const imageCache = new Map<string, Promise<string | null>>();
+
+  const displayTitle = coverConfig?.title || title;
+  const displaySubtitle = coverConfig?.subtitle || subtitle;
+  const foilColor = coverConfig?.foilColor || 'gold';
+  const [foilR, foilG, foilB] = getFoilRgb(foilColor);
+  const effectiveCoverBgHex = coverConfig?.backgroundColor || coverColor || '#1A1A1A';
+  const [coverBgR, coverBgG, coverBgB] = hexToRgb(effectiveCoverBgHex, [26, 26, 26]);
+
+  // Photo resolution helpers mirroring BookFlipPreview
+  const getSlotPhotoUrl = (pageNum: number, subIndex: number): string => {
+    const slotId = `${pageNum}_${subIndex}`;
+    if (slotPhotos && slotPhotos[slotId]?.url) {
+      return slotPhotos[slotId]!.url;
+    }
+    if (subIndex === 0 && pagePhotos && pagePhotos[pageNum]?.url) {
+      return pagePhotos[pageNum]!.url;
+    }
+    if (photos && photos.length > 0) {
+      const idx = (pageNum * 3 + subIndex) % photos.length;
+      return photos[idx] || photos[0]!;
+    }
+    return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
+  };
+
+  const getPanoramicPhotoUrl = (spreadIndex: number, leftPageNum: number): string => {
+    const spreadSlotId = `spread_${spreadIndex}`;
+    if (slotPhotos && slotPhotos[spreadSlotId]?.url) {
+      return slotPhotos[spreadSlotId]!.url;
+    }
+    if (slotPhotos && slotPhotos[`${leftPageNum}_0`]?.url) {
+      return slotPhotos[`${leftPageNum}_0`]!.url;
+    }
+    if (pagePhotos && pagePhotos[leftPageNum]?.url) {
+      return pagePhotos[leftPageNum]!.url;
+    }
+    if (photos && photos.length > 0) {
+      const idx = (spreadIndex - 1) % photos.length;
+      return photos[idx] || photos[0]!;
+    }
+    return 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop';
+  };
+
+  const effectiveCoverUrl =
+    slotPhotos['0']?.url ||
+    pagePhotos[0]?.url ||
+    coverImage ||
+    photos[0] ||
+    'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
+
+  // Initialize Square 210mm x 210mm document for Front Cover
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
     format: [210, 210],
   });
 
-  const width = 210;
-  const height = 210;
-
   // ----------------------------------------------------------------------
   // PAGE 1: FRONT HARDCOVER PROOF
   // ----------------------------------------------------------------------
-  // Deep luxury background
-  doc.setFillColor(26, 26, 26);
-  doc.rect(0, 0, width, height, 'F');
+  doc.setFillColor(coverBgR, coverBgG, coverBgB);
+  doc.rect(0, 0, 210, 210, 'F');
 
-  // Embossed gold foil border
-  doc.setDrawColor(212, 175, 55);
-  doc.setLineWidth(0.6);
-  doc.rect(12, 12, width - 24, height - 24);
+  // Left spine crease & 3D shadow simulation
+  doc.setFillColor(0, 0, 0);
+  doc.rect(0, 0, 8, 210, 'F');
+  const isCoverLight = (coverBgR * 299 + coverBgG * 587 + coverBgB * 114) / 1000 > 160;
+  doc.setDrawColor(isCoverLight ? 170 : 55, isCoverLight ? 170 : 55, isCoverLight ? 170 : 55);
+  doc.setLineWidth(0.35);
+  doc.line(8, 0, 8, 210);
 
-  // Press standard header
-  doc.setFont('times', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(212, 175, 55);
-  doc.text('PERFECTPIC • 12K ULTRA-HD INDIGO PRESS PROOF', width / 2, 22, { align: 'center' });
+  // Metallic foil embossed frame
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.65);
+  doc.rect(14, 12, 182, 186);
 
-  doc.setFontSize(7);
-  doc.setTextColor(160, 160, 160);
-  doc.text('180° LAY-FLAT ARCHIVAL BINDING • ZERO GUTTER LOSS', width / 2, 27, { align: 'center' });
-
-  // Cover Photo
-  let coverBase64: string | null = null;
-  if (coverImage) {
-    coverBase64 = await getBase64Image(coverImage);
-  }
-  if (!coverBase64 && photos.length > 0 && photos[0]) {
-    coverBase64 = await getBase64Image(photos[0]);
-  }
-
-  const coverImgX = 35;
-  const coverImgY = 35;
-  const coverImgW = 140;
-  const coverImgH = 100;
-
-  if (coverBase64) {
-    try {
-      doc.addImage(coverBase64, 'JPEG', coverImgX, coverImgY, coverImgW, coverImgH);
-      // Border around photo
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(0.3);
-      doc.rect(coverImgX, coverImgY, coverImgW, coverImgH);
-    } catch {
-      // Fallback frame
-      doc.setFillColor(45, 45, 45);
-      doc.rect(coverImgX, coverImgY, coverImgW, coverImgH, 'F');
-    }
-  } else {
-    doc.setFillColor(45, 45, 45);
-    doc.rect(coverImgX, coverImgY, coverImgW, coverImgH, 'F');
-    doc.setFontSize(10);
-    doc.setTextColor(200, 200, 200);
-    doc.text('COVER PHOTOGRAPH', width / 2, coverImgY + coverImgH / 2, { align: 'center' });
-  }
-
-  // Cover Typography
-  doc.setFont('times', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(250, 248, 245);
-  doc.text(title, width / 2, 155, { align: 'center' });
-
-  doc.setFont('times', 'italic');
-  doc.setFontSize(10);
-  doc.setTextColor(212, 175, 55);
-  doc.text(subtitle, width / 2, 163, { align: 'center' });
-
-  // Metadata Footer
+  // Header typography
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(160, 160, 160);
-  doc.text(`${pageCount} PAGES • ${dimensions} • THEME: ${theme.toUpperCase()}`, width / 2, 185, { align: 'center' });
-  doc.text('CERTIFIED PAN-INDIA ARCHIVAL EDITION • WWW.PERFECTPIC.IN', width / 2, 190, { align: 'center' });
+  doc.setTextColor(isCoverLight ? 90 : 180, isCoverLight ? 90 : 180, isCoverLight ? 90 : 180);
+  doc.text((seriesLabel || 'THE TRAVEL SERIES').toUpperCase(), 105, 22, { align: 'center' });
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text(displayTitle.toUpperCase(), 105, 30, { align: 'center' });
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(isCoverLight ? 70 : 210, isCoverLight ? 70 : 210, isCoverLight ? 70 : 210);
+  doc.text(displaySubtitle, 105, 36, { align: 'center' });
+
+  // Center Archival Photo
+  const coverImgX = 30;
+  const coverImgY = 44;
+  const coverImgW = 150;
+  const coverImgH = 112;
+  await drawPhotoSlot(doc, effectiveCoverUrl, coverImgX, coverImgY, coverImgW, coverImgH, imageCache, displayTitle);
+
+  // Specifications footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(isCoverLight ? 80 : 180, isCoverLight ? 80 : 180, isCoverLight ? 80 : 180);
+  doc.text(`${pageCount} PAGES • ${dimensions} • THEME: ${theme.toUpperCase()}`, 105, 178, { align: 'center' });
+
+  doc.setFontSize(7);
+  doc.setTextColor(isCoverLight ? 110 : 150, isCoverLight ? 110 : 150, isCoverLight ? 110 : 150);
+  doc.text('180° LAY-FLAT ARCHIVAL BINDING • ZERO GUTTER LOSS • 12K INDIGO PRESS', 105, 184, { align: 'center' });
+  doc.text('CERTIFIED PAN-INDIA ARCHIVAL EDITION • WWW.PERFECTPIC.IN', 105, 189, { align: 'center' });
 
   // ----------------------------------------------------------------------
-  // PAGES 2 - 5: SAMPLE INSIDE SPREAD PAGES (1 PHOTO PER PAGE)
+  // PAGES 2 to N: INSIDE SPREADS (TRUE 420mm × 210mm CONTINUOUS SPREADS)
   // ----------------------------------------------------------------------
-  const sampleSpreadCount = Math.min(4, Math.max(2, Math.ceil(photos.length / 2)));
-  
-  for (let s = 1; s <= sampleSpreadCount; s++) {
-    doc.addPage([210, 210], 'portrait');
+  const totalSpreads = Math.ceil(pageCount / 2);
 
-    // Archival ivory page background
-    doc.setFillColor(250, 248, 245);
-    doc.rect(0, 0, width, height, 'F');
+  for (let s = 1; s <= totalSpreads; s++) {
+    // Add true 420mm x 210mm landscape spread
+    doc.addPage([420, 210], 'landscape');
 
-    // Precision cutting crop marks
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.2);
-    doc.line(8, 0, 8, 8);
-    doc.line(0, 8, 8, 8);
-    doc.line(width - 8, 0, width - 8, 8);
-    doc.line(width, 8, width - 8, 8);
-    doc.line(8, height, 8, height - 8);
-    doc.line(0, height - 8, 8, height - 8);
-    doc.line(width - 8, height, width - 8, height - 8);
-    doc.line(width, height - 8, width - 8, height - 8);
-
-    // Spread title & page counter
     const leftPageNum = (s - 1) * 2 + 1;
     const rightPageNum = leftPageNum + 1;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(140, 140, 140);
-    doc.text(`SPREAD ${s} OF ${Math.ceil(pageCount / 2)} • 1 PHOTO PER PAGE ARCHIVAL LAYOUT`, 20, 15);
-    doc.text(`12K INDIGO PRESS 300 DPI`, width - 20, 15, { align: 'right' });
+    const leftLayout = pageLayouts[leftPageNum] || '1-photo';
+    const rightLayout = pageLayouts[rightPageNum] || '1-photo';
+    const isPanoramic = leftLayout === '2-page-panoramic' || rightLayout === '2-page-panoramic';
 
-    // Single photo per page museum white border
-    const photoIdx = (s - 1) % (photos.length || 1);
-    const photoUrl = photos[photoIdx] || coverImage;
-    const photoBase64 = photoUrl ? await getBase64Image(photoUrl) : null;
+    // Page Backgrounds
+    const [lR, lG, lB] = hexToRgb(pageBackgrounds[leftPageNum], [250, 248, 245]);
+    const [rR, rG, rB] = hexToRgb(pageBackgrounds[rightPageNum], [250, 248, 245]);
 
-    const innerImgX = 25;
-    const innerImgY = 25;
-    const innerImgW = 160;
-    const innerImgH = 145;
+    doc.setFillColor(lR, lG, lB);
+    doc.rect(0, 0, 210, 210, 'F');
 
-    if (photoBase64) {
-      try {
-        doc.addImage(photoBase64, 'JPEG', innerImgX, innerImgY, innerImgW, innerImgH);
-        // Clean fine border
-        doc.setDrawColor(225, 220, 210);
-        doc.setLineWidth(0.3);
-        doc.rect(innerImgX, innerImgY, innerImgW, innerImgH);
-      } catch {
-        doc.setFillColor(235, 230, 220);
-        doc.rect(innerImgX, innerImgY, innerImgW, innerImgH, 'F');
-      }
+    doc.setFillColor(rR, rG, rB);
+    doc.rect(210, 0, 210, 210, 'F');
+
+    // 180° Center layflat seam score line
+    doc.setDrawColor(215, 210, 200);
+    doc.setLineWidth(0.25);
+    doc.line(210, 0, 210, 210);
+
+    // Precision cutting crop marks
+    doc.setDrawColor(190, 185, 175);
+    doc.setLineWidth(0.2);
+    // Top-left
+    doc.line(8, 0, 8, 8); doc.line(0, 8, 8, 8);
+    // Top-right
+    doc.line(412, 0, 412, 8); doc.line(420, 8, 412, 8);
+    // Bottom-left
+    doc.line(8, 210, 8, 202); doc.line(0, 202, 8, 202);
+    // Bottom-right
+    doc.line(412, 210, 412, 202); doc.line(420, 202, 412, 202);
+
+    if (isPanoramic) {
+      // -------------------------------------------------------------
+      // OPTION A: 2-PAGE CONTINUOUS PANORAMIC SPREAD
+      // -------------------------------------------------------------
+      // Top header
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`${displayTitle} • PANORAMIC CONTINUOUS SPREAD`, 18, 14);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text(`180° LAY-FLAT PANORAMIC SPREAD (PAGES ${leftPageNum}–${rightPageNum})`, 210, 14, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.text('12K INDIGO PRESS • 300 DPI', 402, 14, { align: 'right' });
+
+      // Grand continuous photo across 384mm width
+      const panoX = 18;
+      const panoY = 19;
+      const panoW = 384;
+      const panoH = 170;
+      const panoUrl = getPanoramicPhotoUrl(s, leftPageNum);
+      await drawPhotoSlot(doc, panoUrl, panoX, panoY, panoW, panoH, imageCache, `Panoramic Spread (Pages ${leftPageNum}–${rightPageNum})`);
+
+      // Overlay center fold line on top of photo
+      doc.setDrawColor(255, 255, 255);
+      doc.setLineWidth(0.35);
+      doc.line(210, panoY, 210, panoY + panoH);
+
+      // Bottom footer
+      doc.setFont('times', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(70, 70, 70);
+      doc.text(String(leftPageNum).padStart(2, '0'), 18, 199);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(140, 140, 140);
+      doc.text('ARCHIVAL 200 GSM MATTE • CONTINUOUS LAYFLAT SPREAD • ZERO GUTTER LOSS', 210, 199, { align: 'center' });
+
+      doc.setFont('times', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(70, 70, 70);
+      doc.text(String(rightPageNum).padStart(2, '0'), 402, 199, { align: 'right' });
     } else {
-      doc.setFillColor(240, 237, 230);
-      doc.rect(innerImgX, innerImgY, innerImgW, innerImgH, 'F');
-      doc.setFont('times', 'italic');
-      doc.setFontSize(11);
-      doc.setTextColor(120, 120, 120);
-      doc.text(`Photobook Spread Plate ${s}`, width / 2, innerImgY + innerImgH / 2, { align: 'center' });
+      // -------------------------------------------------------------
+      // OPTION B: SEPARATE PAGES WITH MULTI-PHOTO EDITORIAL LAYOUTS
+      // -------------------------------------------------------------
+      const originY = 19;
+      const W = 174;
+      const H = 170;
+
+      // Left Page Top Bar
+      if (leftLayout !== '1-photo-full') {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(120, 120, 120);
+        doc.text(displayTitle, 18, 14);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(getLayoutDisplayName(leftLayout).toUpperCase(), 192, 14, { align: 'right' });
+      }
+
+      // Draw Left Page Layout Slots
+      await drawPageLayoutSlots(
+        doc,
+        leftPageNum,
+        leftLayout,
+        18,
+        originY,
+        W,
+        H,
+        false,
+        getSlotPhotoUrl,
+        imageCache
+      );
+
+      // Left Page Bottom Bar
+      if (leftLayout !== '1-photo-full') {
+        doc.setFont('times', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(70, 70, 70);
+        doc.text(String(leftPageNum).padStart(2, '0'), 18, 199);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(140, 140, 140);
+        doc.text('ARCHIVAL 200 GSM MATTE', 192, 199, { align: 'right' });
+      }
+
+      // Right Page Top Bar
+      if (rightLayout !== '1-photo-full') {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.5);
+        doc.setTextColor(120, 120, 120);
+        doc.text(getLayoutDisplayName(rightLayout).toUpperCase(), 228, 14);
+
+        doc.setFont('helvetica', 'normal');
+        doc.text(displaySubtitle, 402, 14, { align: 'right' });
+      }
+
+      // Draw Right Page Layout Slots
+      await drawPageLayoutSlots(
+        doc,
+        rightPageNum,
+        rightLayout,
+        228,
+        originY,
+        W,
+        H,
+        true,
+        getSlotPhotoUrl,
+        imageCache
+      );
+
+      // Right Page Bottom Bar
+      if (rightLayout !== '1-photo-full') {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(140, 140, 140);
+        doc.text('180° LAY-FLAT PUR BINDING', 228, 199);
+
+        doc.setFont('times', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(70, 70, 70);
+        doc.text(String(rightPageNum).padStart(2, '0'), 402, 199, { align: 'right' });
+      }
+
+      // Calibration color swatches at bottom center
+      const swatches = ['#222222', '#00A4E4', '#E6007E', '#FFDF00', '#2E7D32', '#D4AF37'];
+      swatches.forEach((col, idx) => {
+        doc.setFillColor(col);
+        doc.rect(194 + idx * 5.5, 196, 4, 3, 'F');
+      });
     }
-
-    // Color calibration swatches at bottom margin
-    const colors = ['#222222', '#00A4E4', '#E6007E', '#FFDF00', '#2E7D32', '#D4AF37'];
-    colors.forEach((col, idx) => {
-      doc.setFillColor(col);
-      doc.rect(25 + idx * 6, 185, 4.5, 4.5, 'F');
-    });
-
-    // Page numbers
-    doc.setFont('times', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(80, 80, 80);
-    doc.text(`— ${leftPageNum.toString().padStart(2, '0')} —`, width / 2, 188, { align: 'center' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
-    doc.setTextColor(160, 160, 160);
-    doc.text(`PERFECTPIC ARCHIVAL 200 GSM MATTE • 180° LAY-FLAT PUR BINDING`, width - 25, 188, { align: 'right' });
   }
 
   // ----------------------------------------------------------------------
-  // FINAL PAGE: BACK HARDCOVER & CERTIFICATION
+  // FINAL PAGE: BACK HARDCOVER & ARCHIVAL CERTIFICATION
   // ----------------------------------------------------------------------
   doc.addPage([210, 210], 'portrait');
-  doc.setFillColor(26, 26, 26);
-  doc.rect(0, 0, width, height, 'F');
+  doc.setFillColor(coverBgR, coverBgG, coverBgB);
+  doc.rect(0, 0, 210, 210, 'F');
 
-  // Debossed Gold Insignia
-  doc.setDrawColor(212, 175, 55);
-  doc.setLineWidth(0.6);
-  doc.rect(12, 12, width - 24, height - 24);
+  // Right spine crease & shadow simulation (for back cover)
+  doc.setFillColor(0, 0, 0);
+  doc.rect(202, 0, 8, 210, 'F');
+  doc.setDrawColor(isCoverLight ? 170 : 55, isCoverLight ? 170 : 55, isCoverLight ? 170 : 55);
+  doc.setLineWidth(0.35);
+  doc.line(202, 0, 202, 210);
+
+  // Debossed Gold Insignia frame
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.65);
+  doc.rect(14, 12, 182, 186);
 
   doc.setFont('times', 'bold');
   doc.setFontSize(16);
-  doc.setTextColor(250, 248, 245);
-  doc.text('PERFECTPIC', width / 2, 85, { align: 'center' });
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text(displayTitle.toUpperCase(), 105, 45, { align: 'center' });
+
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.3);
+  doc.line(80, 51, 130, 51);
 
   doc.setFont('times', 'italic');
   doc.setFontSize(10);
-  doc.setTextColor(212, 175, 55);
-  doc.text('Fine Art Photobook Bindery', width / 2, 93, { align: 'center' });
+  doc.setTextColor(isCoverLight ? 70 : 210, isCoverLight ? 70 : 210, isCoverLight ? 70 : 210);
+  doc.text('“Every journey deserves a permanent place in print.”', 105, 59, { align: 'center' });
 
-  doc.setDrawColor(212, 175, 55);
-  doc.setLineWidth(0.3);
-  doc.line(85, 100, 125, 100);
+  // Archival Bindery Seal
+  doc.setFont('times', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(isCoverLight ? 30 : 245, isCoverLight ? 30 : 245, isCoverLight ? 30 : 245);
+  doc.text('PERFECTPIC ARCHIVAL PRESS', 105, 88, { align: 'center' });
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9);
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text('Fine Art Photobook Bindery • Made in India', 105, 95, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  doc.setTextColor(180, 180, 180);
-  doc.text('ARCHIVAL GRADE PUR-MELT LAY-FLAT BINDING', width / 2, 110, { align: 'center' });
-  doc.text('ACID-FREE CERTIFIED 200 GSM HEAVYWEIGHT MATTE', width / 2, 116, { align: 'center' });
-  doc.text('HP INDIGO 12000 DIGITAL PRESS • 100% ZERO GUTTER LOSS', width / 2, 122, { align: 'center' });
-  doc.text('PAN-INDIA ZERO-DEFECT QUALITY GUARANTEE', width / 2, 128, { align: 'center' });
+  doc.setTextColor(isCoverLight ? 90 : 170, isCoverLight ? 90 : 170, isCoverLight ? 90 : 170);
+  doc.text('ARCHIVAL GRADE PUR-MELT LAY-FLAT 180° BINDING', 105, 108, { align: 'center' });
+  doc.text('ACID-FREE CERTIFIED 200 GSM HEAVYWEIGHT MATTE', 105, 114, { align: 'center' });
+  doc.text('HP INDIGO 12000 DIGITAL PRESS • 100% ZERO GUTTER LOSS', 105, 120, { align: 'center' });
+  doc.text('PAN-INDIA ZERO-DEFECT QUALITY GUARANTEE', 105, 126, { align: 'center' });
 
-  // Mock Barcode / Print ISBN
+  // Print ISBN Barcode Box
   doc.setFillColor(255, 255, 255);
-  doc.rect(width / 2 - 25, 150, 50, 22, 'F');
+  doc.rect(105 - 25, 142, 50, 22, 'F');
   
-  // Barcode lines
   doc.setFillColor(0, 0, 0);
   for (let b = 0; b < 36; b++) {
     const barW = (b % 3 === 0) ? 1.4 : 0.7;
-    doc.rect(width / 2 - 22 + b * 1.2, 153, barW, 12, 'F');
+    doc.rect(105 - 22 + b * 1.2, 145, barW, 12, 'F');
   }
   doc.setFont('courier', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(0, 0, 0);
-  const serialNo = `PP-ISBN-${Math.floor(100000 + Math.random() * 900000)}`;
-  doc.text(serialNo, width / 2, 169, { align: 'center' });
+  const cleanProjId = (projectId || 'PROOF').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+  const serialNo = `PP-ISBN-${cleanProjId}-26`;
+  doc.text(serialNo, 105, 161, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(140, 140, 140);
-  doc.text('Bengaluru • Mumbai • New Delhi • Hyderabad', width / 2, 188, { align: 'center' });
+  doc.setTextColor(isCoverLight ? 110 : 140, isCoverLight ? 110 : 140, isCoverLight ? 110 : 140);
+  doc.text('Bengaluru • Mumbai • New Delhi • Hyderabad • Chennai', 105, 185, { align: 'center' });
 
   // Trigger download
-  const cleanTitle = title.replace(/[^a-zA-Z0-9_-]/g, '_');
-  doc.save(`${cleanTitle}_Print_Proof.pdf`);
+  const cleanTitle = displayTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+  doc.save(`${cleanTitle}_12K_Print_Proof.pdf`);
 }
 
 /**

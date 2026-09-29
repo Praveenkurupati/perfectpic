@@ -195,11 +195,18 @@ function PreviewContent() {
       await generateBookProofPdf({
         title: bookTitle,
         subtitle,
+        seriesLabel,
         dimensions,
         pageCount,
         theme: storeBookConfig.theme || 'Minimal Modern',
         coverImage: coverImage || samplePhotos[0],
+        coverColor,
+        coverConfig,
         photos: allPhotos,
+        pagePhotos,
+        slotPhotos,
+        pageLayouts,
+        pageBackgrounds,
         projectId,
       });
     } catch (err) {
