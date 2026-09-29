@@ -18,11 +18,13 @@ export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const { user, isAuthenticated, logout, initialize } = useAuthStore();
   const { items } = useCartStore();
 
   useEffect(() => {
+    setMounted(true);
     initialize();
   }, [initialize]);
 
@@ -36,6 +38,7 @@ export function Header() {
 
   const isHome = pathname === "/";
   const loginRedirectUrl = `/login?redirect=${encodeURIComponent(pathname || '/')}`;
+  const isUserAuthenticated = mounted && isAuthenticated && !!user;
 
   return (
     <header
@@ -86,17 +89,17 @@ export function Header() {
           <Link href="/faq" className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
             FAQs
           </Link>
-          <Link href={isAuthenticated ? "/projects" : loginRedirectUrl} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
+          <Link href={isUserAuthenticated ? "/projects" : loginRedirectUrl} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
             My Projects
           </Link>
-          <Link href={isAuthenticated ? "/orders" : loginRedirectUrl} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
+          <Link href={isUserAuthenticated ? "/orders" : loginRedirectUrl} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700 hover:text-noir-950 transition-colors">
             Track Orders
           </Link>
         </nav>
 
         {/* Actions */}
         <div className="flex items-center space-x-4 md:space-x-5">
-          {isAuthenticated && user ? (
+          {isUserAuthenticated ? (
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
@@ -189,7 +192,7 @@ export function Header() {
 
           <Link href="/cart" className="relative text-noir-900 hover:text-noir-700 transition-colors">
             <ShoppingCart size={20} />
-            {items.length > 0 && (
+            {mounted && items.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-noir-950 text-cream-50 text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
                 {items.length}
               </span>
@@ -207,7 +210,7 @@ export function Header() {
           className="md:hidden bg-cream-50 border-b border-cream-300 px-4 py-6"
         >
           <nav className="flex flex-col space-y-4">
-            {isAuthenticated && user && (
+            {isUserAuthenticated && user && (
               <div className="pb-3 border-b border-cream-200">
                 <p className="text-sm font-semibold text-noir-900">{user.name}</p>
                 <p className="text-xs text-noir-500">{user.email || user.phone}</p>
@@ -217,7 +220,7 @@ export function Header() {
             <Link href="/templates" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Templates</Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Pricing</Link>
             <Link href="/faq" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">FAQs</Link>
-            {isAuthenticated ? (
+            {isUserAuthenticated ? (
               <>
                 <Link href="/orders" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Orders</Link>
                 <Link href="/projects" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Projects</Link>
@@ -225,7 +228,7 @@ export function Header() {
                 <Link href="/settings" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Account Settings</Link>
               </>
             ) : null}
-            {isAuthenticated ? (
+            {isUserAuthenticated ? (
               <button
                 onClick={() => {
                   logout();

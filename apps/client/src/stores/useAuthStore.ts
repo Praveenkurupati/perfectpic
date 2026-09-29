@@ -48,12 +48,10 @@ const getStoredAuth = () => {
   }
 };
 
-const initialAuth = getStoredAuth();
-
 export const useAuthStore = create<AuthState>((set) => ({
-  user: initialAuth.user,
-  token: initialAuth.token,
-  isAuthenticated: initialAuth.isAuthenticated,
+  user: null,
+  token: null,
+  isAuthenticated: false,
   guestSessionId: null,
   
   identifier: '',
