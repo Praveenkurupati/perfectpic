@@ -15,7 +15,15 @@ export interface Photo {
   name?: string;
 }
 
-export type PageLayout = '1-photo' | '2-photo-v' | '2-photo-h' | '3-photo' | '4-photo';
+export type PageLayout = 
+  | '1-photo' 
+  | '1-photo-full' 
+  | '2-page-panoramic' 
+  | '2-photo-v' 
+  | '2-photo-h' 
+  | '3-photo' 
+  | '4-photo' 
+  | '6-photo-grid';
 
 export interface CoverConfig {
   title: string;

@@ -176,6 +176,40 @@ function RenderPageSlots({
     );
   }
 
+  if (layout === '6-photo-grid') {
+    return (
+      <div className="flex-1 my-2 grid grid-cols-3 grid-rows-2 gap-1.5 h-full">
+        {[0, 1, 2, 3, 4, 5].map((idx) => (
+          <PhotoSlot
+            key={idx}
+            slotId={`${pageNum}_${idx}`}
+            photo={getPhoto(idx)}
+            isSelected={selectedSlot === `${pageNum}_${idx}`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            label={`Slot ${idx + 1}`}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (layout === '1-photo-full') {
+    const fullPhoto = slotPhotos[`${pageNum}_0`] || slotPhotos[`${pageNum}`] || pagePhotos[pageNum] || null;
+    return (
+      <div className="flex-1 -mx-8 -my-6 md:-mx-10 md:-my-8 h-[calc(100%+3rem)] md:h-[calc(100%+4rem)]">
+        <PhotoSlot
+          slotId={`${pageNum}`}
+          photo={fullPhoto}
+          isSelected={selectedSlot === `${pageNum}` || selectedSlot === `${pageNum}_0`}
+          onSelect={onSelectSlot}
+          onRemove={onRemovePhoto}
+          label={`Full Bleed Page ${pageNum}`}
+        />
+      </div>
+    );
+  }
+
   // Default: '1-photo'
   const singlePhoto = slotPhotos[`${pageNum}_0`] || slotPhotos[`${pageNum}`] || pagePhotos[pageNum] || null;
   return (
@@ -347,7 +381,50 @@ export default function BookCanvas() {
         {/* ======================================================== */}
         {/* 2. OPEN TWO-PAGE SPREAD VIEW (Dynamic Multi-Photo Layouts) */}
         {/* ======================================================== */}
-        {!isCover && !isBack && (
+        {!isCover && !isBack && (leftLayout === '2-page-panoramic' || rightLayout === '2-page-panoramic') && (
+          <div
+            onClick={() => setSelectedSlot(`spread_${currentSpreadIndex}`)}
+            className={`relative shadow-luxury-2xl bg-white rounded-sm flex flex-col justify-between w-[840px] h-[480px] border border-cream-300 overflow-hidden p-6 md:p-8 cursor-pointer transition-all ${
+              selectedSlot === `spread_${currentSpreadIndex}`
+                ? 'ring-2 ring-inset ring-foil-gold'
+                : 'hover:bg-cream-50/20'
+            }`}
+            style={{ backgroundColor: leftBg }}
+          >
+            {/* Top Spread Bar */}
+            <div className="flex justify-between items-center text-[10px] text-noir-500 uppercase tracking-widest font-mono z-30">
+              <span className="font-bold bg-noir-950 text-foil-gold px-2 py-0.5 rounded-xs">
+                Two-Page Panoramic Spread (Pages {leftPageNum} – {rightPageNum})
+              </span>
+              <span className="text-noir-400">180° Zero-Gutter Lay-Flat Spanning</span>
+            </div>
+
+            {/* Seamless Panoramic Slot Spanning Both Pages */}
+            <div className="flex-1 my-3 relative h-full">
+              <PhotoSlot
+                slotId={`spread_${currentSpreadIndex}`}
+                photo={slotPhotos[`spread_${currentSpreadIndex}`] || slotPhotos[`${leftPageNum}_0`] || pagePhotos[leftPageNum] || null}
+                isSelected={selectedSlot === `spread_${currentSpreadIndex}`}
+                onSelect={(id) => setSelectedSlot(id)}
+                onRemove={(id) => assignPhotoToSlot(id, null)}
+                label="Grand Panoramic Photo (Spans Across Both Pages)"
+              />
+            </div>
+
+            {/* Spine Center Fold Guide Line */}
+            <div className="absolute inset-y-0 left-1/2 w-[1px] bg-black/25 pointer-events-none z-20 border-r border-dashed border-white/60" />
+            <div className="absolute inset-y-0 left-1/2 -ml-4 w-8 bg-gradient-to-r from-black/10 via-transparent to-black/10 pointer-events-none z-10" />
+
+            {/* Bottom Editorial Footnote */}
+            <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif z-30">
+              <span>— Page {leftPageNum} —</span>
+              <span className="text-[9px] uppercase tracking-wider text-noir-400 font-mono">180° Layflat Panoramic View</span>
+              <span>— Page {rightPageNum} —</span>
+            </div>
+          </div>
+        )}
+
+        {!isCover && !isBack && leftLayout !== '2-page-panoramic' && rightLayout !== '2-page-panoramic' && (
           <div className="relative shadow-luxury-2xl bg-white rounded-sm flex w-[840px] h-[480px] border border-cream-300 overflow-hidden">
             {/* ----------------- LEFT PAGE ----------------- */}
             <div

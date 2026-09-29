@@ -28,7 +28,16 @@ export async function generateRealisticEvents(count: number = 160) {
     { name: 'campaign', label: 'Travel Influencer', weight: 0.05 },
   ];
 
-  const layouts = ['1-photo', '2-photo-v', '2-photo-h', '3-photo', '4-photo'];
+  const layouts = [
+    '1-photo',
+    '1-photo-full',
+    '2-page-panoramic',
+    '2-photo-v',
+    '2-photo-h',
+    '3-photo',
+    '4-photo',
+    '6-photo-grid',
+  ];
   const foils = ['gold', 'silver', 'rose-gold', 'black'];
   const templates = ['sri-lanka-travel', 'colombia-adventure', 'annapurna-base-camp', 'first-anniversary'];
 

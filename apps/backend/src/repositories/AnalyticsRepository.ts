@@ -510,10 +510,13 @@ export class AnalyticsRepository {
     // Layout popularity normalization
     const layoutNames: Record<string, string> = {
       '1-photo': '1-photo (Classic Gallery)',
+      '1-photo-full': '1-photo (Full Bleed)',
+      '2-page-panoramic': '2-page-panoramic (Panoramic Spread)',
       '2-photo-v': '2-photo-v (Stacked)',
       '2-photo-h': '2-photo-h (Side-by-Side)',
       '3-photo': '3-photo (Hero + Duo)',
       '4-photo': '4-photo (2×2 Grid Collage)',
+      '6-photo-grid': '6-photo-grid (3×2 Mini Gallery)',
     };
 
     const totalLayoutSelections = layoutDocs.reduce((acc, l) => acc + l.count, 0) || 1;

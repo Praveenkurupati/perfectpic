@@ -24,7 +24,8 @@ export default function PhotoTray() {
     assignPhotoToSlot,
     currentSpreadIndex,
     pageCount,
-    pagePhotos
+    pagePhotos,
+    pageLayouts
   } = useEditorStore();
 
   const displayPhotos: Photo[] = photos.length > 0 ? photos : defaultSamplePhotos;
@@ -38,10 +39,16 @@ export default function PhotoTray() {
   const leftPageNum = (currentSpreadIndex - 1) * 2 + 1;
   const rightPageNum = (currentSpreadIndex - 1) * 2 + 2;
   const isInsideSpread = currentSpreadIndex > 0 && currentSpreadIndex <= Math.ceil(pageCount / 2);
+  const isPanoramic = isInsideSpread && (pageLayouts[leftPageNum] === '2-page-panoramic' || pageLayouts[rightPageNum] === '2-page-panoramic');
 
   // Handle clicking a photo to place it
   const handlePhotoClick = (photo: Photo) => {
-    const targetSlot = selectedSlot || (currentSpreadIndex === 0 ? '0' : leftPageNum.toString());
+    const defaultSlot = currentSpreadIndex === 0
+      ? '0'
+      : isPanoramic
+      ? `spread_${currentSpreadIndex}`
+      : leftPageNum.toString();
+    const targetSlot = selectedSlot || defaultSlot;
     assignPhotoToSlot(targetSlot, photo);
   };
 
@@ -65,14 +72,20 @@ export default function PhotoTray() {
           <span className="text-[11px] font-bold uppercase tracking-wider text-noir-900">
             Photos ({displayPhotos.length})
           </span>
-          {selectedSlot !== null && (
+          {selectedSlot !== null ? (
             <span className="text-[10px] text-foil-gold font-semibold uppercase tracking-wider font-mono">
-              Target: Page {selectedSlot}
+              Target: {selectedSlot.startsWith('spread_') ? 'Panoramic Spread' : `Slot ${selectedSlot}`}
             </span>
-          )}
+          ) : isPanoramic ? (
+            <span className="text-[10px] text-foil-gold font-semibold uppercase tracking-wider font-mono">
+              Target: Panoramic Spread
+            </span>
+          ) : null}
         </div>
         <p className="text-[11px] text-noir-500 leading-tight">
-          Click any photo to assign into the active page (1 photo per page standard).
+          {isPanoramic
+            ? 'Click any photo to span across the double-page panoramic spread.'
+            : 'Click any photo to assign into the active page or selected layout slot.'}
         </p>
       </div>
 
@@ -106,7 +119,7 @@ export default function PhotoTray() {
               key={photo.id} 
               onClick={() => handlePhotoClick(photo)}
               className="aspect-square bg-cream-100 rounded-sm relative group overflow-hidden cursor-pointer shadow-xs border border-cream-300 hover:border-foil-gold transition-all"
-              title="Click to place on target page"
+              title="Click to place on target page or slot"
             >
               <img 
                 src={photo.url} 
@@ -125,18 +138,32 @@ export default function PhotoTray() {
               <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-1">
                 {isInsideSpread && (
                   <div className="flex gap-1 w-full">
-                    <button
-                      onClick={(e) => handlePlaceLeft(e, photo)}
-                      className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
-                    >
-                      P.{leftPageNum}
-                    </button>
-                    <button
-                      onClick={(e) => handlePlaceRight(e, photo)}
-                      className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
-                    >
-                      P.{rightPageNum}
-                    </button>
+                    {isPanoramic ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          assignPhotoToSlot(`spread_${currentSpreadIndex}`, photo);
+                        }}
+                        className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
+                      >
+                        Place Panoramic Spread
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => handlePlaceLeft(e, photo)}
+                          className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
+                        >
+                          P.{leftPageNum}
+                        </button>
+                        <button
+                          onClick={(e) => handlePlaceRight(e, photo)}
+                          className="flex-1 py-1 bg-white/90 hover:bg-white text-noir-900 rounded-[2px] text-[10px] font-bold shadow-xs transition-colors"
+                        >
+                          P.{rightPageNum}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
                 <span className="text-[10px] text-white font-medium">Click to place</span>
