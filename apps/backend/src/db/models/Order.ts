@@ -17,6 +17,7 @@ export interface IOrder extends Document {
   itemsCount?: number;
   shippingAddress?: any;
   paymentDetails?: any;
+  review?: any;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,7 +38,8 @@ const OrderSchema: Schema = new Schema(
     pageCount: { type: Number, default: 40 },
     itemsCount: { type: Number, default: 1 },
     shippingAddress: { type: Object },
-    paymentDetails: { type: Object }
+    paymentDetails: { type: Object },
+    review: { type: Object }
   },
   {
     timestamps: true,

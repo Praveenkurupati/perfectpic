@@ -133,6 +133,44 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     }),
+  submitReview: (orderId: string, data: any) =>
+    fetcher<{ message: string; review: any }>(`/orders/${orderId}/review`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  getOrderReview: (orderId: string) =>
+    fetcher<{ review: any }>(`/orders/${orderId}/review`, {
+      headers: authHeaders(),
+    }),
+
+  // Customer Addresses
+  getAddresses: () =>
+    fetcher<{ addresses: any[]; total?: number }>('/addresses', {
+      headers: authHeaders(),
+    }),
+  createAddress: (data: any) =>
+    fetcher<{ address: any; message: string }>('/addresses', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updateAddress: (id: string, data: any) =>
+    fetcher<{ address: any; message: string }>(`/addresses/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  deleteAddress: (id: string) =>
+    fetcher<{ message: string }>(`/addresses/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  setDefaultAddress: (id: string) =>
+    fetcher<{ message: string; addresses: any[] }>(`/addresses/${id}/default`, {
+      method: 'PUT',
+      headers: authHeaders(),
+    }),
 
   // Shipping & Pincodes
   calculateShipping: (data?: any) =>

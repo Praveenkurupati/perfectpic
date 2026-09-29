@@ -11,6 +11,7 @@ import uploadRoutes from './upload.routes';
 import paymentRoutes from './payments.routes';
 import shippingRoutes from './shipping.routes';
 import analyticsRoutes from './analytics.routes';
+import addressesRoutes from './addresses.routes';
 
 const v1Router = Router();
 
@@ -26,5 +27,6 @@ v1Router.use('/upload', uploadRoutes);
 v1Router.use('/payments', paymentRoutes);
 v1Router.use('/shipping', shippingRoutes);
 v1Router.use('/analytics', analyticsRoutes);
+v1Router.use('/addresses', addressesRoutes);
 
 export default v1Router;

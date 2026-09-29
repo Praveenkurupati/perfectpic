@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Package, FolderOpen, Settings, LogOut, User as UserIcon } from "lucide-react";
+import { Package, FolderOpen, Settings, LogOut, User as UserIcon, MapPin } from "lucide-react";
 import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -50,6 +50,7 @@ export default function AccountLayout({
   const navLinks = [
     { href: "/orders", label: "My Orders", icon: Package },
     { href: "/projects", label: "Saved Projects", icon: FolderOpen },
+    { href: "/addresses", label: "Saved Addresses", icon: MapPin },
     { href: "/settings", label: "Account Settings", icon: Settings },
   ];
 

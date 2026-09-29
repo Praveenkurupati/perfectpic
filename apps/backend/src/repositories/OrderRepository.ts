@@ -195,6 +195,23 @@ export class OrderRepository {
     return null;
   }
 
+  public static async updateReview(idParam: string, reviewData: any) {
+    if (isDbConnected()) {
+      let query: any = { orderNumber: idParam };
+      if (mongoose.isValidObjectId(idParam)) {
+        query = { $or: [{ _id: idParam }, { orderNumber: idParam }] };
+      }
+      return await Order.findOneAndUpdate(query, { review: reviewData }, { new: true });
+    }
+
+    const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
+    if (index !== -1) {
+      (mockOrders[index] as any).review = reviewData;
+      return mockOrders[index];
+    }
+    return null;
+  }
+
   public static async getDashboardStats() {
     let totalRevenue = 1864500;
     let totalOrders = 1247;

@@ -16,6 +16,7 @@ import {
 import { api } from "@/lib/api";
 import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
 import ExploreCard from "@/features/catalog/components/ExploreCard";
+import { TestimonialsMarquee } from "@/features/landing/components/TestimonialsMarquee";
 
 // Top 5 Indian photobooks prioritized for India launch
 const fallbackTemplates: BookItem[] = [
@@ -606,69 +607,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="py-24 bg-cream-50 border-t border-cream-200">
-        <div className="container mx-auto px-4 md:px-8 max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="font-serif text-4xl md:text-5xl text-noir-900 mb-4">
-              Loved by 10,000+ Indian Explorers & Families
-            </h2>
-            <div className="flex items-center justify-center space-x-2 text-noir-900">
-              <span className="font-bold text-xl">4.9</span>
-              <div className="flex text-foil-gold">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star key={s} size={20} fill="currentColor" />
-                ))}
-              </div>
-              <span className="text-noir-700">on Google Reviews</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                name: "Priya S. (Bengaluru)",
-                text: "The print quality blew me away. The Kudremukh trek photos look even better than on my iPhone screen. Worth every single rupee.",
-              },
-              {
-                name: "Rahul M. (Mumbai)",
-                text: "Our Kerala trip photobook was delivered in 4 days. Non-tearable pages and seamless lay-flat make it look like a luxury gallery volume.",
-              },
-              {
-                name: "Neha K. (Delhi)",
-                text: "The Himalayan trek edition is stunning. Big bold spreads, no crease obstruction in the center, and the cover foil gives it an heirloom feel.",
-              },
-            ].map((review, i) => (
-              <div
-                key={i}
-                className="bg-white p-8 border border-cream-300 shadow-luxury-sm rounded-sm"
-              >
-                <div className="flex text-foil-gold mb-4">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star key={s} size={16} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="text-noir-700 italic mb-6">
-                  &ldquo;{review.text}&rdquo;
-                </p>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 bg-cream-300 rounded-full flex items-center justify-center text-noir-900 font-bold font-serif mr-3">
-                    {review.name.charAt(0)}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-noir-900 text-sm">
-                      {review.name}
-                    </div>
-                    <div className="text-xs text-green-600 flex items-center">
-                      <Check size={10} className="mr-1" /> Verified Buyer
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Social Proof: Infinite Testimonials Marquee */}
+      <TestimonialsMarquee />
 
       {/* Final CTA */}
       <section className="py-32 bg-noir-950 text-cream-50 text-center relative overflow-hidden">

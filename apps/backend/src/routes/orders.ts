@@ -211,4 +211,63 @@ router.put(['/:id/status', '/:id'], async (req, res) => {
   res.status(404).json({ error: 'Order not found' });
 });
 
+// GET /api/orders/:id/review
+router.get('/:id/review', async (req, res) => {
+  const idParam = req.params.id;
+
+  try {
+    if (isDbConnected()) {
+      let filter: any = { orderNumber: idParam };
+      if (mongoose.isValidObjectId(idParam)) {
+        filter = { $or: [{ orderNumber: idParam }, { _id: idParam }] };
+      }
+      const order = await Order.findOne(filter);
+      if (order) {
+        return res.json({ review: (order as any).review || null });
+      }
+    }
+  } catch (err) {
+    console.error('MongoDB get order review error:', err);
+  }
+
+  const found = mockOrders.find(o => o.id === idParam || o.orderNumber === idParam);
+  if (found) {
+    return res.json({ review: (found as any).review || null });
+  }
+
+  res.status(404).json({ error: 'Order not found' });
+});
+
+// POST /api/orders/:id/review
+router.post('/:id/review', async (req, res) => {
+  const idParam = req.params.id;
+  const reviewData = {
+    ...req.body,
+    submittedAt: new Date().toISOString()
+  };
+
+  try {
+    if (isDbConnected()) {
+      let filter: any = { orderNumber: idParam };
+      if (mongoose.isValidObjectId(idParam)) {
+        filter = { $or: [{ orderNumber: idParam }, { _id: idParam }] };
+      }
+      const updated = await Order.findOneAndUpdate(filter, { review: reviewData }, { new: true });
+      if (updated) {
+        return res.json({ message: 'Review submitted successfully', review: reviewData });
+      }
+    }
+  } catch (err) {
+    console.error('MongoDB submit review error:', err);
+  }
+
+  const orderIndex = mockOrders.findIndex(o => o.id === idParam || o.orderNumber === idParam);
+  if (orderIndex !== -1) {
+    (mockOrders[orderIndex] as any).review = reviewData;
+    return res.json({ message: 'Review submitted successfully', review: reviewData });
+  }
+
+  res.status(404).json({ error: 'Order not found' });
+});
+
 export default router;

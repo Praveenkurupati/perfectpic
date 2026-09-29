@@ -16,6 +16,10 @@ router.get('/:id', OrderController.getOrderById);
 // Download order PDF invoice/summary
 router.get('/:id/pdf', OrderController.downloadOrderPdf);
 
+// Order Review & Rating endpoints
+router.get('/:id/review', OrderController.getOrderReview);
+router.post('/:id/review', OrderController.submitOrderReview);
+
 // Create new customer order
 router.post('/', OrderController.createOrder);
 

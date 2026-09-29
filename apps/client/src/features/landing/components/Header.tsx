@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, User as UserIcon, Menu, X, ChevronDown, LogOut, Package, FolderOpen, Shield } from "lucide-react";
+import { ShoppingCart, User as UserIcon, Menu, X, ChevronDown, LogOut, Package, FolderOpen, Shield, MapPin, Settings } from "lucide-react";
 import { m } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -121,6 +121,14 @@ export function Header() {
                     )}
                   </div>
                   <Link 
+                    href="/orders" 
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-cream-100 transition-colors"
+                  >
+                    <Package size={14} className="mr-2.5 text-noir-500" />
+                    My Orders
+                  </Link>
+                  <Link 
                     href="/projects" 
                     onClick={() => setUserDropdownOpen(false)}
                     className="flex items-center px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-cream-100 transition-colors"
@@ -129,12 +137,20 @@ export function Header() {
                     My Projects
                   </Link>
                   <Link 
-                    href="/orders" 
+                    href="/addresses" 
                     onClick={() => setUserDropdownOpen(false)}
                     className="flex items-center px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-cream-100 transition-colors"
                   >
-                    <Package size={14} className="mr-2.5 text-noir-500" />
-                    Track Orders
+                    <MapPin size={14} className="mr-2.5 text-noir-500" />
+                    Saved Addresses
+                  </Link>
+                  <Link 
+                    href="/settings" 
+                    onClick={() => setUserDropdownOpen(false)}
+                    className="flex items-center px-4 py-2 text-xs font-medium uppercase tracking-wider hover:bg-cream-100 transition-colors"
+                  >
+                    <Settings size={14} className="mr-2.5 text-noir-500" />
+                    Account Settings
                   </Link>
                   {user.role === 'admin' && (
                     <a 
@@ -201,8 +217,14 @@ export function Header() {
             <Link href="/templates" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Templates</Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Pricing</Link>
             <Link href="/faq" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">FAQs</Link>
-            <Link href={isAuthenticated ? "/projects" : loginRedirectUrl} onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Projects</Link>
-            <Link href={isAuthenticated ? "/orders" : loginRedirectUrl} onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Track Orders</Link>
+            {isAuthenticated ? (
+              <>
+                <Link href="/orders" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Orders</Link>
+                <Link href="/projects" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Projects</Link>
+                <Link href="/addresses" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Saved Addresses</Link>
+                <Link href="/settings" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Account Settings</Link>
+              </>
+            ) : null}
             {isAuthenticated ? (
               <button
                 onClick={() => {

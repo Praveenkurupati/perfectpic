@@ -87,6 +87,29 @@ export class OrderController {
       next(err);
     }
   }
+
+  public static async submitOrderReview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const review = await OrderService.submitReview(id, req.body);
+      return res.status(200).json({
+        message: 'Review submitted successfully',
+        review,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async getOrderReview(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const review = await OrderService.getOrderReview(id);
+      return res.status(200).json({ review });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export default OrderController;

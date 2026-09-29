@@ -6,13 +6,15 @@ import { useCartStore } from '@/stores/useCartStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
-import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2, ShoppingBag, MapPin } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
+import { useAddressStore } from '@/stores/useAddressStore';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, getTotal, clearCart } = useCartStore();
   const { user, isAuthenticated, initialize } = useAuthStore();
+  const { addresses, loadAddresses } = useAddressStore();
   const [mounted, setMounted] = useState(false);
 
   // Form Fields - clean initial states without mock defaults
@@ -28,15 +30,30 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     initialize();
+    loadAddresses();
     setMounted(true);
-  }, [initialize]);
+  }, [initialize, loadAddresses]);
 
   useEffect(() => {
     if (user) {
-      if (user.name) setFullName(user.name);
-      if (user.phone) setPhone(user.phone);
+      if (user.name && !fullName) setFullName(user.name);
+      if (user.phone && !phone) setPhone(user.phone);
     }
-  }, [user]);
+  }, [user, fullName, phone]);
+
+  useEffect(() => {
+    if (addresses.length > 0 && !addressLine1) {
+      const def = addresses.find(a => a.isDefault) || addresses[0];
+      if (def) {
+        if (!fullName) setFullName(def.fullName);
+        if (!phone) setPhone(def.phone);
+        setPincode(def.pincode);
+        setAddressLine1(def.addressLine1);
+        if (def.landmark) setLandmark(def.landmark);
+        setCityState(`${def.city}, ${def.state}`);
+      }
+    }
+  }, [addresses, addressLine1, fullName, phone]);
 
   useEffect(() => {
     if (mounted && !isAuthenticated) {
@@ -182,7 +199,57 @@ export default function CheckoutPage() {
           <form onSubmit={handlePlaceOrder} className="space-y-10">
             {/* Address */}
             <section className="bg-white p-8 rounded-sm shadow-sm border border-cream-200">
-              <h2 className="font-serif text-2xl mb-6">Delivery Address</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-serif text-2xl text-noir-900">Delivery Address</h2>
+                {addresses.length > 0 && (
+                  <Link href="/addresses" className="text-xs text-foil-gold font-semibold uppercase tracking-wider hover:underline flex items-center gap-1">
+                    <MapPin size={12} />
+                    <span>Manage Addresses</span>
+                  </Link>
+                )}
+              </div>
+
+              {addresses.length > 0 && (
+                <div className="mb-6 p-3 bg-cream-50/70 border border-cream-200 rounded-sm">
+                  <p className="text-[11px] uppercase tracking-wider font-semibold text-noir-600 mb-2">
+                    Select from Saved Addresses
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {addresses.map(addr => {
+                      const isSelected = addressLine1 === addr.addressLine1 && pincode === addr.pincode;
+                      return (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          onClick={() => {
+                            setFullName(addr.fullName);
+                            setPhone(addr.phone);
+                            setPincode(addr.pincode);
+                            setAddressLine1(addr.addressLine1);
+                            setLandmark(addr.landmark || '');
+                            setCityState(`${addr.city}, ${addr.state}`);
+                          }}
+                          className={`text-left p-2.5 rounded-sm border transition-all text-xs ${
+                            isSelected 
+                              ? 'border-noir-900 bg-white shadow-sm ring-1 ring-noir-900' 
+                              : 'border-cream-300 hover:border-cream-400 bg-white/70'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between font-semibold text-noir-900 mb-0.5">
+                            <span className="truncate">{addr.fullName}</span>
+                            <span className="capitalize text-[10px] px-1.5 py-0.2 bg-cream-200 text-noir-700 rounded text-[9px] font-mono">
+                              {addr.type}
+                            </span>
+                          </div>
+                          <p className="text-noir-600 text-[11px] truncate">{addr.addressLine1}</p>
+                          <p className="text-noir-500 text-[10px]">{addr.city}, {addr.pincode}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-xs uppercase tracking-wider mb-1 text-noir-600 font-semibold">Full Name</label>

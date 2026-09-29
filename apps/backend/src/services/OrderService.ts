@@ -65,6 +65,29 @@ export class OrderService {
     return updated;
   }
 
+  public static async submitReview(id: string, reviewData: any) {
+    if (!reviewData.rating) {
+      throw ApiError.badRequest('Rating is required (1-5 stars).');
+    }
+    const payload = {
+      ...reviewData,
+      submittedAt: new Date().toISOString(),
+    };
+    const updated = await OrderRepository.updateReview(id, payload);
+    if (!updated) {
+      throw ApiError.notFound(`Order with ID '${id}' not found.`);
+    }
+    return payload;
+  }
+
+  public static async getOrderReview(id: string) {
+    const order = await OrderRepository.findById(id);
+    if (!order) {
+      throw ApiError.notFound(`Order with ID '${id}' not found.`);
+    }
+    return (order as any).review || null;
+  }
+
   public static async getDashboardStats() {
     return await OrderRepository.getDashboardStats();
   }
