@@ -104,6 +104,10 @@ async function seedDefaultData() {
         }
       ]);
     }
+
+    // Seed realistic User Behaviour interaction events if collection empty
+    const { seedAnalyticsCollection } = await import('../scripts/seedAnalytics');
+    await seedAnalyticsCollection();
   } catch (seedErr) {
     console.error('Error seeding MongoDB collections:', seedErr);
   }

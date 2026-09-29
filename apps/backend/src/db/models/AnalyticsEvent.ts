@@ -53,14 +53,19 @@ const AnalyticsEventSchema: Schema = new Schema(
         return ret;
       },
     },
+    collection: 'analytics_events',
   }
 );
 
-// Compound indexes for fast dashboard queries
+// Compound indexes for fast aggregation queries
 AnalyticsEventSchema.index({ timestamp: -1, isLoggedIn: 1 });
+AnalyticsEventSchema.index({ sessionId: 1, timestamp: 1 });
 AnalyticsEventSchema.index({ eventType: 1, timestamp: -1 });
 AnalyticsEventSchema.index({ source: 1, timestamp: -1 });
+AnalyticsEventSchema.index({ device: 1, timestamp: -1 });
+AnalyticsEventSchema.index({ 'metadata.layout': 1 });
+AnalyticsEventSchema.index({ 'metadata.foilColor': 1 });
 
 export const AnalyticsEvent: mongoose.Model<IAnalyticsEvent> =
   (mongoose.models.AnalyticsEvent as mongoose.Model<IAnalyticsEvent>) ||
-  mongoose.model<IAnalyticsEvent>('AnalyticsEvent', AnalyticsEventSchema);
+  mongoose.model<IAnalyticsEvent>('AnalyticsEvent', AnalyticsEventSchema, 'analytics_events');

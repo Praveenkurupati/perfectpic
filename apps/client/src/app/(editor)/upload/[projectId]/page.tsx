@@ -7,6 +7,7 @@ import { UploadCloud, Check, Trash2, Plus, Sparkles, ArrowRight, ArrowLeft, Load
 import { api } from '@/lib/api';
 import { useEditorStore } from '@/stores/useEditorStore';
 import { compressImage } from '@/lib/imageCompressor';
+import { trackEvent } from '@/lib/analytics';
 
 function UploadContent() {
   const router = useRouter();
@@ -131,6 +132,12 @@ function UploadContent() {
   };
 
   const handleContinue = () => {
+    trackEvent('photo_upload', `Uploaded ${photos.length} Photos`, {
+      photosCount: photos.length,
+      projectId,
+      pages: pageCountNum,
+      template: templateSlug || 'custom',
+    });
     router.push(`/processing/${projectId}?pages=${pageCountNum}`);
   };
 

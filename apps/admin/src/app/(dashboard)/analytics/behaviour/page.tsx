@@ -125,10 +125,12 @@ export default function UserBehaviourAnalyticsPage() {
 
   const [liveJourneys, setLiveJourneys] = useState<any[]>([]);
 
+  const [dataSource, setDataSource] = useState<string>("mongodb");
+
   // Fetch telemetry and behaviour metrics
-  const fetchBehaviourData = async () => {
+  const fetchBehaviourData = async (showSpinner: boolean = true) => {
     try {
-      setRefreshing(true);
+      if (showSpinner) setRefreshing(true);
       const res = await adminApi.getBehaviourAnalytics({
         userType,
         timeRange,
@@ -138,6 +140,7 @@ export default function UserBehaviourAnalyticsPage() {
 
       const data = res?.data || res;
       if (data) {
+        if (data.dataSource) setDataSource(data.dataSource);
         if (data.summary) setSummary(data.summary);
         if (data.funnel) setFunnel(data.funnel);
         if (data.sessionDurationDistribution) setSessionDurationDistribution(data.sessionDurationDistribution);
@@ -150,13 +153,22 @@ export default function UserBehaviourAnalyticsPage() {
       console.warn("Using offline cached behaviour analytics data:", err);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      if (showSpinner) setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchBehaviourData();
+    fetchBehaviourData(true);
   }, [userType, timeRange, device, source]);
+
+  // Live real-time polling every 8s when liveMode is on
+  useEffect(() => {
+    if (!liveMode) return;
+    const interval = setInterval(() => {
+      fetchBehaviourData(false);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [liveMode, userType, timeRange, device, source]);
 
   // Export CSV summary
   const handleExportCSV = () => {
@@ -187,8 +199,20 @@ export default function UserBehaviourAnalyticsPage() {
             <span className="text-[11px] font-semibold uppercase tracking-widest text-foil-gold bg-noir-950 px-2 py-0.5 rounded-sm">
               Telemetry & Funnel Intelligence
             </span>
+            <span className={cn(
+              "flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-0.5 rounded-full border",
+              dataSource === "mongodb"
+                ? "text-emerald-800 bg-emerald-50 border-emerald-300"
+                : "text-indigo-800 bg-indigo-50 border-indigo-300"
+            )}>
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                dataSource === "mongodb" ? "bg-emerald-500 animate-pulse" : "bg-indigo-500"
+              )} />
+              {dataSource === "mongodb" ? "MongoDB Atlas Live Aggregation" : "Live Real-Time Telemetry Stream"}
+            </span>
             {liveMode && (
-              <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50/60 border border-emerald-200 px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live Telemetry Active
               </span>
@@ -217,7 +241,7 @@ export default function UserBehaviourAnalyticsPage() {
           </button>
 
           <button
-            onClick={fetchBehaviourData}
+            onClick={() => fetchBehaviourData(true)}
             disabled={refreshing}
             className="px-3 py-2 text-xs font-medium rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 transition-all flex items-center gap-1.5 disabled:opacity-50"
             title="Refresh analytics data"

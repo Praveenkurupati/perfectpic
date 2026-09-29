@@ -21,12 +21,19 @@ export class AnalyticsController {
    */
   public static async ingestEvents(req: Request, res: Response) {
     try {
-      const payload = req.body;
-      const rawEvents = Array.isArray(payload.events) 
+      let payload = req.body;
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload);
+        } catch {
+          // ignore
+        }
+      }
+      const rawEvents = Array.isArray(payload?.events) 
         ? payload.events 
         : Array.isArray(payload) 
           ? payload 
-          : [payload];
+          : payload ? [payload] : [];
 
       const count = await AnalyticsRepository.recordEvents(rawEvents);
       return ApiResponse.success(res, { ingested: count }, 'Events ingested successfully');
