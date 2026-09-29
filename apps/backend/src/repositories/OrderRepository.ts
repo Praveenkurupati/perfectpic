@@ -1,6 +1,8 @@
 // apps/backend/src/repositories/OrderRepository.ts
 import mongoose from 'mongoose';
 import { Order, IOrder } from '../db/models/Order';
+import { User } from '../db/models/User';
+import { Product } from '../db/models/Product';
 import { isDbConnected } from '../db/connection';
 import { logger } from '../utils/logger';
 
@@ -162,8 +164,31 @@ export class OrderRepository {
     let totalRevenue = 1864500;
     let totalOrders = 1247;
     let pendingPrints = 23;
-    let activeTickets = 8;
+    let activeCustomers = 42;
     let recent = mockOrders;
+    let pipelineCounts: Record<string, number> = {
+      pending: 3,
+      confirmed: 2,
+      production: 4,
+      printing: 5,
+      qc: 2,
+      dispatched: 3,
+      delivered: 8,
+    };
+    let topProducts = [
+      { title: 'Kerala Gods Own Country', units: 48, revenue: 95952, category: 'South India' },
+      { title: 'Netravati Peak Cloud Trails', units: 42, revenue: 83958, category: 'South India' },
+      { title: 'Himalayan Summit Chronicles', units: 36, revenue: 89964, category: 'Himalayas' },
+      { title: 'Paris Journey Hardcover', units: 32, revenue: 63968, category: 'Global' },
+      { title: 'Rajasthan Land of Kings', units: 28, revenue: 69972, category: 'Heritage' },
+    ];
+    let topCities = [
+      { city: 'Bengaluru', orders: 420, revenue: 840000, share: 34 },
+      { city: 'Mumbai', orders: 280, revenue: 560000, share: 23 },
+      { city: 'New Delhi', orders: 210, revenue: 420000, share: 17 },
+      { city: 'Pune', orders: 125, revenue: 250000, share: 10 },
+      { city: 'Hyderabad', orders: 110, revenue: 220000, share: 9 },
+    ];
 
     if (isDbConnected()) {
       try {
@@ -177,35 +202,117 @@ export class OrderRepository {
           totalRevenue = agg[0].totalRevenue;
         }
 
-        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing'] } });
+        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing', 'qc'] } });
         pendingPrints = pending;
 
-        const docs = await Order.find().sort({ createdAt: -1 }).limit(5);
+        // User count
+        const userCount = await User.countDocuments();
+        if (userCount > 0) activeCustomers = userCount;
+
+        // Pipeline aggregation
+        const stageAgg = await Order.aggregate([
+          { $group: { _id: '$status', count: { $sum: 1 } } }
+        ]);
+        stageAgg.forEach((s: any) => {
+          if (s._id) pipelineCounts[s._id] = s.count;
+        });
+
+        // Top products aggregation
+        const prodAgg = await Order.aggregate([
+          { $group: { _id: '$title', units: { $sum: 1 }, revenue: { $sum: '$total' } } },
+          { $sort: { revenue: -1 } },
+          { $limit: 5 }
+        ]);
+        if (prodAgg && prodAgg.length > 0) {
+          topProducts = prodAgg.map((p: any) => ({
+            title: p._id || 'Custom Photobook Keepsake',
+            units: p.units,
+            revenue: p.revenue,
+            category: 'Luxury Edition',
+          }));
+        }
+
+        // Top cities aggregation
+        const cityAgg = await Order.aggregate([
+          { $match: { 'shippingAddress.city': { $exists: true, $ne: '' } } },
+          { $group: { _id: '$shippingAddress.city', orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
+          { $sort: { orders: -1 } },
+          { $limit: 5 }
+        ]);
+        if (cityAgg && cityAgg.length > 0) {
+          const totalCityOrders = cityAgg.reduce((acc: number, c: any) => acc + c.orders, 0) || 1;
+          topCities = cityAgg.map((c: any) => ({
+            city: c._id || 'Bengaluru',
+            orders: c.orders,
+            revenue: c.revenue,
+            share: Math.round((c.orders / totalCityOrders) * 100),
+          }));
+        }
+
+        const docs = await Order.find().sort({ createdAt: -1 }).limit(6);
         if (docs.length > 0) recent = docs as any;
       } catch (err: any) {
         logger.error('Error fetching aggregate dashboard stats:', err.message);
       }
     }
 
+    const aov = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 2150;
+    const repeatRate = 28.5; // Benchmark archival recurring rate
+
     const revenueData = [
-      { month: "Jan", revenue: 120000, orders: 85 },
-      { month: "Feb", revenue: 145000, orders: 98 },
-      { month: "Mar", revenue: 160000, orders: 110 },
-      { month: "Apr", revenue: 190000, orders: 135 },
-      { month: "May", revenue: 220000, orders: 160 },
-      { month: "Jun", revenue: 260000, orders: 185 },
-      { month: "Jul", revenue: 310000, orders: 215 },
+      { name: "Apr", revenue: 190000, orders: 85, aov: 2235 },
+      { name: "May", revenue: 240000, orders: 110, aov: 2181 },
+      { name: "Jun", revenue: 290000, orders: 130, aov: 2230 },
+      { name: "Jul", revenue: 340000, orders: 155, aov: 2193 },
+      { name: "Aug", revenue: 395000, orders: 175, aov: 2257 },
+      { name: "Sep", revenue: totalRevenue > 400000 ? totalRevenue : 465000, orders: totalOrders, aov: aov },
     ];
 
     return {
+      summary: {
+        totalRevenue,
+        totalOrders,
+        aov,
+        activeCustomers,
+        pendingPrints,
+        repeatRate,
+        grossMargin: '68.4%',
+      },
       stats: [
-        { label: "Total Orders", value: totalOrders.toLocaleString('en-IN'), trend: "+12%", trendUp: true },
-        { label: "Revenue", value: `₹${totalRevenue.toLocaleString('en-IN')}`, trend: "+8%", trendUp: true },
-        { label: "Pending Prints", value: pendingPrints.toString(), trend: "-5%", trendUp: true },
-        { label: "Active Tickets", value: activeTickets.toString(), trend: "+2", trendUp: false },
+        { 
+          label: "Gross Revenue", 
+          value: `₹${totalRevenue.toLocaleString('en-IN')}`, 
+          trend: "+14.8%", 
+          trendUp: true,
+          subtitle: "Direct online & studio sales"
+        },
+        { 
+          label: "Total Orders", 
+          value: totalOrders.toLocaleString('en-IN'), 
+          trend: "+11.2%", 
+          trendUp: true,
+          subtitle: "100% Layflat photobooks"
+        },
+        { 
+          label: "Average Order Value", 
+          value: `₹${aov.toLocaleString('en-IN')}`, 
+          trend: "+5.4%", 
+          trendUp: true,
+          subtitle: "High 10\" leather attachment"
+        },
+        { 
+          label: "Active Collectors", 
+          value: activeCustomers.toString(), 
+          trend: "+18%", 
+          trendUp: true,
+          subtitle: "Registered verified users"
+        },
       ],
-      recentOrders: recent,
+      pipeline: pipelineCounts,
+      topProducts,
+      topCities,
       revenueData,
+      recentOrders: recent,
     };
   }
 }
