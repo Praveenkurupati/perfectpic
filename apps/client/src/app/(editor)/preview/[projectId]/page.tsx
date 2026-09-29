@@ -43,6 +43,10 @@ function PreviewContent() {
     pageCount: storePageCount, 
     currentSpreadIndex, 
     pagePhotos, 
+    slotPhotos,
+    pageLayouts,
+    pageBackgrounds,
+    coverConfig,
     template: storeTemplate,
     bookConfig: storeBookConfig,
     setCurrentSpreadIndex 
@@ -231,7 +235,7 @@ function PreviewContent() {
               </span>
             </div>
             <p className="text-[11px] font-mono text-noir-400 mt-0.5">
-              {pageCount} Pages • {dimensions} • 1 Photo/Page • 180° Lay-Flat Zero Gutter Loss
+              {pageCount} Pages • {dimensions} • Editorial & Panoramic Layouts • 180° Lay-Flat Zero Gutter Loss
             </p>
           </div>
         </div>
@@ -312,6 +316,10 @@ function PreviewContent() {
               onSpreadChange={setCurrentSpread}
               pageCount={pageCount}
               pagePhotos={pagePhotos}
+              slotPhotos={slotPhotos}
+              pageLayouts={pageLayouts}
+              pageBackgrounds={pageBackgrounds}
+              coverConfig={coverConfig}
               samplePhotos={samplePhotos}
               bookTitle={bookTitle}
               seriesLabel={seriesLabel}
@@ -433,8 +441,8 @@ function PreviewContent() {
                 <li className="flex items-start gap-3">
                   <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <span className="font-semibold text-cream-100 block">Single-Photo Archival Margins</span>
-                    <span className="text-[11px] text-noir-400">Strictly 1 photo per page with museum white border.</span>
+                    <span className="font-semibold text-cream-100 block">Editorial Multi-Photo & Panoramic Spreads</span>
+                    <span className="text-[11px] text-noir-400">All grid collage and 180° panoramic spreads calibrated for print.</span>
                   </div>
                 </li>
                 <li className="flex items-start gap-3">
