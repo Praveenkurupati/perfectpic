@@ -140,7 +140,8 @@ async function drawPhotoSlot(
   w: number,
   h: number,
   imageCache: Map<string, Promise<string | null>>,
-  label?: string
+  label?: string,
+  noBorder?: boolean
 ): Promise<void> {
   let base64: string | null = null;
   if (url) {
@@ -154,9 +155,11 @@ async function drawPhotoSlot(
     try {
       const format = base64.startsWith('data:image/png') ? 'PNG' : 'JPEG';
       doc.addImage(base64, format, x, y, w, h, undefined, 'FAST');
-      doc.setDrawColor(215, 210, 200);
-      doc.setLineWidth(0.25);
-      doc.rect(x, y, w, h);
+      if (!noBorder) {
+        doc.setDrawColor(215, 210, 200);
+        doc.setLineWidth(0.25);
+        doc.rect(x, y, w, h);
+      }
       return;
     } catch {
       // Fall through to placeholder plate
@@ -166,14 +169,18 @@ async function drawPhotoSlot(
   // Museum Archival Photo Plate fallback
   doc.setFillColor(242, 239, 234);
   doc.rect(x, y, w, h, 'F');
-  doc.setDrawColor(210, 205, 195);
-  doc.setLineWidth(0.25);
-  doc.rect(x, y, w, h);
+  if (!noBorder) {
+    doc.setDrawColor(210, 205, 195);
+    doc.setLineWidth(0.25);
+    doc.rect(x, y, w, h);
+  }
 
-  doc.setFont('times', 'italic');
-  doc.setFontSize(Math.max(6, Math.min(8.5, Math.round(w / 14))));
-  doc.setTextColor(140, 135, 130);
-  doc.text(label || 'Archival Photo Plate', x + w / 2, y + h / 2, { align: 'center' });
+  if (label) {
+    doc.setFont('times', 'italic');
+    doc.setFontSize(Math.max(6, Math.min(8.5, Math.round(w / 14))));
+    doc.setTextColor(140, 135, 130);
+    doc.text(label, x + w / 2, y + h / 2, { align: 'center' });
+  }
 }
 
 /**
@@ -193,12 +200,13 @@ async function drawPageLayoutSlots(
 ): Promise<void> {
   switch (layout) {
     case '1-photo-full': {
+      // Full bleed across this 210mm x 210mm half page: ZERO margin, ZERO border, ZERO text
       const x = isRightPage ? 210 : 0;
       const y = 0;
       const w = 210;
       const h = 210;
       const url = getSlotPhotoUrl(pageNum, 0);
-      await drawPhotoSlot(doc, url, x, y, w, h, imageCache, `Full Bleed Page ${pageNum}`);
+      await drawPhotoSlot(doc, url, x, y, w, h, imageCache, undefined, true);
       break;
     }
 
@@ -449,79 +457,25 @@ export async function generateBookProofPdf(options: BookPdfOptions): Promise<voi
     doc.setLineWidth(0.25);
     doc.line(210, 0, 210, 210);
 
-    // Precision cutting crop marks
-    doc.setDrawColor(190, 185, 175);
-    doc.setLineWidth(0.2);
-    // Top-left
-    doc.line(8, 0, 8, 8); doc.line(0, 8, 8, 8);
-    // Top-right
-    doc.line(412, 0, 412, 8); doc.line(420, 8, 412, 8);
-    // Bottom-left
-    doc.line(8, 210, 8, 202); doc.line(0, 202, 8, 202);
-    // Bottom-right
-    doc.line(412, 210, 412, 202); doc.line(420, 202, 412, 202);
-
     if (isPanoramic) {
       // -------------------------------------------------------------
-      // OPTION A: 2-PAGE CONTINUOUS PANORAMIC SPREAD
+      // TWO PAGES FULL IMAGE: ZERO MARGIN, ZERO TEXT, ZERO PAGE NUMBERS
       // -------------------------------------------------------------
-      // Top header
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(110, 110, 110);
-      doc.text(`${displayTitle} • PANORAMIC CONTINUOUS SPREAD`, 18, 14);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text(`180° LAY-FLAT PANORAMIC SPREAD (PAGES ${leftPageNum}–${rightPageNum})`, 210, 14, { align: 'center' });
-
-      doc.setFont('helvetica', 'normal');
-      doc.text('12K INDIGO PRESS • 300 DPI', 402, 14, { align: 'right' });
-
-      // Grand continuous photo across 384mm width
-      const panoX = 18;
-      const panoY = 19;
-      const panoW = 384;
-      const panoH = 170;
       const panoUrl = getPanoramicPhotoUrl(s, leftPageNum);
-      await drawPhotoSlot(doc, panoUrl, panoX, panoY, panoW, panoH, imageCache, `Panoramic Spread (Pages ${leftPageNum}–${rightPageNum})`);
-
-      // Overlay center fold line on top of photo
-      doc.setDrawColor(255, 255, 255);
-      doc.setLineWidth(0.35);
-      doc.line(210, panoY, 210, panoY + panoH);
-
-      // Bottom footer
-      doc.setFont('times', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(70, 70, 70);
-      doc.text(String(leftPageNum).padStart(2, '0'), 18, 199);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(140, 140, 140);
-      doc.text('ARCHIVAL 200 GSM MATTE • CONTINUOUS LAYFLAT SPREAD • ZERO GUTTER LOSS', 210, 199, { align: 'center' });
-
-      doc.setFont('times', 'normal');
-      doc.setFontSize(8.5);
-      doc.setTextColor(70, 70, 70);
-      doc.text(String(rightPageNum).padStart(2, '0'), 402, 199, { align: 'right' });
+      await drawPhotoSlot(doc, panoUrl, 0, 0, 420, 210, imageCache, undefined, true);
     } else {
       // -------------------------------------------------------------
-      // OPTION B: SEPARATE PAGES WITH MULTI-PHOTO EDITORIAL LAYOUTS
+      // SEPARATE PAGES: MULTI-PHOTO EDITORIAL LAYOUTS
       // -------------------------------------------------------------
-      const originY = 19;
-      const W = 174;
-      const H = 170;
+      const originY = 16;
+      const W = 176;
+      const H = 176;
 
-      // Left Page Top Bar
-      if (leftLayout !== '1-photo-full') {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7.5);
-        doc.setTextColor(120, 120, 120);
-        doc.text(displayTitle, 18, 14);
-
-        doc.setFont('helvetica', 'bold');
-        doc.text(getLayoutDisplayName(leftLayout).toUpperCase(), 192, 14, { align: 'right' });
+      // Draw subtle center fold guide ONLY if neither page is full bleed
+      if (leftLayout !== '1-photo-full' && rightLayout !== '1-photo-full') {
+        doc.setDrawColor(225, 220, 210);
+        doc.setLineWidth(0.2);
+        doc.line(210, 12, 210, 198);
       }
 
       // Draw Left Page Layout Slots
@@ -538,28 +492,12 @@ export async function generateBookProofPdf(options: BookPdfOptions): Promise<voi
         imageCache
       );
 
-      // Left Page Bottom Bar
+      // ONLY give page number if margin is there (NOT full bleed)
       if (leftLayout !== '1-photo-full') {
         doc.setFont('times', 'normal');
         doc.setFontSize(8.5);
-        doc.setTextColor(70, 70, 70);
-        doc.text(String(leftPageNum).padStart(2, '0'), 18, 199);
-
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(140, 140, 140);
-        doc.text('ARCHIVAL 200 GSM MATTE', 192, 199, { align: 'right' });
-      }
-
-      // Right Page Top Bar
-      if (rightLayout !== '1-photo-full') {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7.5);
-        doc.setTextColor(120, 120, 120);
-        doc.text(getLayoutDisplayName(rightLayout).toUpperCase(), 228, 14);
-
-        doc.setFont('helvetica', 'normal');
-        doc.text(displaySubtitle, 402, 14, { align: 'right' });
+        doc.setTextColor(110, 110, 110);
+        doc.text(String(leftPageNum), 18, 201);
       }
 
       // Draw Right Page Layout Slots
@@ -567,7 +505,7 @@ export async function generateBookProofPdf(options: BookPdfOptions): Promise<voi
         doc,
         rightPageNum,
         rightLayout,
-        228,
+        226,
         originY,
         W,
         H,
@@ -576,25 +514,13 @@ export async function generateBookProofPdf(options: BookPdfOptions): Promise<voi
         imageCache
       );
 
-      // Right Page Bottom Bar
+      // ONLY give page number if margin is there (NOT full bleed)
       if (rightLayout !== '1-photo-full') {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(140, 140, 140);
-        doc.text('180° LAY-FLAT PUR BINDING', 228, 199);
-
         doc.setFont('times', 'normal');
         doc.setFontSize(8.5);
-        doc.setTextColor(70, 70, 70);
-        doc.text(String(rightPageNum).padStart(2, '0'), 402, 199, { align: 'right' });
+        doc.setTextColor(110, 110, 110);
+        doc.text(String(rightPageNum), 402, 201, { align: 'right' });
       }
-
-      // Calibration color swatches at bottom center
-      const swatches = ['#222222', '#00A4E4', '#E6007E', '#FFDF00', '#2E7D32', '#D4AF37'];
-      swatches.forEach((col, idx) => {
-        doc.setFillColor(col);
-        doc.rect(194 + idx * 5.5, 196, 4, 3, 'F');
-      });
     }
   }
 
