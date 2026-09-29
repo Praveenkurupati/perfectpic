@@ -110,15 +110,169 @@ class MailService {
   }
 
   public async sendOrderConfirmationEmail(toEmail: string, orderDetails: any): Promise<boolean> {
-    const subject = `Order Confirmed: ${orderDetails.orderNumber} - PerfectPic`;
+    const orderNumber = orderDetails.orderNumber || orderDetails.id || 'PP-ORDER';
+    const title = orderDetails.title || 'Custom Photobook Keepsake';
+    const total = (orderDetails.total || orderDetails.amount || 1999).toLocaleString('en-IN');
+    const customerName = orderDetails.customerName || 'Valued Collector';
+    const itemsCount = orderDetails.items?.length || 1;
+    const address = orderDetails.shippingAddress
+      ? `${orderDetails.shippingAddress.addressLine1 || ''}, ${orderDetails.shippingAddress.city || ''}, ${orderDetails.shippingAddress.state || ''} - ${orderDetails.shippingAddress.pincode || ''}`
+      : 'Address on file';
+
+    const subject = `Order Confirmed: #${orderNumber} — PerfectPic Keepsake in Production`;
+
     const html = `
-      <div style="font-family: sans-serif; padding: 20px;">
-        <h2>Order Confirmed!</h2>
-        <p>Thank you for choosing PerfectPic. Your order <strong>${orderDetails.orderNumber}</strong> is now in production.</p>
-        <p><strong>Item:</strong> ${orderDetails.title}</p>
-        <p><strong>Total:</strong> ₹${orderDetails.total?.toLocaleString('en-IN')}</p>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Order Confirmation #${orderNumber}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #faf8f5; margin: 0; padding: 24px 12px; color: #141413; }
+    .wrapper { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e5ded3; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+    .header { background: #141413; padding: 32px 24px; text-align: center; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase; color: #fbf9f5; margin: 0; font-family: Georgia, serif; }
+    .tagline { font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: #c5a880; margin-top: 6px; }
+    .content { padding: 36px 32px; }
+    .badge { display: inline-block; background: #faf4ea; color: #8a6d3b; border: 1px solid #e0d0b8; padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 2px; margin-bottom: 16px; }
+    .greeting { font-family: Georgia, serif; font-size: 24px; font-weight: 600; color: #141413; margin: 0 0 12px; }
+    .subtext { font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 28px; }
+    .order-box { background: #faf8f5; border: 1px solid #ede8de; border-radius: 6px; padding: 20px; margin-bottom: 28px; }
+    .order-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ede8de; font-size: 13px; }
+    .order-row:last-child { border-bottom: none; font-size: 15px; font-weight: 700; color: #141413; padding-top: 12px; }
+    .specs-grid { background: #ffffff; border: 1px solid #ede8de; border-radius: 4px; padding: 16px; margin: 16px 0; }
+    .specs-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; color: #888; margin-bottom: 8px; }
+    .specs-item { font-size: 13px; color: #333; line-height: 1.5; }
+    .delivery-box { background: #fdfaf6; border-left: 3px solid #c5a880; padding: 14px 18px; margin-bottom: 28px; }
+    .delivery-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #141413; margin-bottom: 4px; }
+    .delivery-text { font-size: 13px; color: #666; margin: 0; line-height: 1.5; }
+    .footer { background: #f7f4ee; padding: 24px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #e5ded3; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1 class="brand">PERFECTPIC</h1>
+      <div class="tagline">Archival Editions · HP Indigo Digital Press</div>
+    </div>
+    <div class="content">
+      <div class="badge">Order Confirmed & Queued</div>
+      <h2 class="greeting">Thank you, ${customerName}.</h2>
+      <p class="subtext">
+        Your photobook order <strong>#${orderNumber}</strong> has been received and queued for precision printing on our 12-color HP Indigo press.
+      </p>
+
+      <div class="order-box">
+        <div style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #141413;">
+          ${title}
+        </div>
+        <div class="specs-grid">
+          <div class="specs-title">Crafting Specifications</div>
+          <div class="specs-item">• Binding: 180° Lay-Flat Zero-Gutter PUR Polyurethane</div>
+          <div class="specs-item">• Paper: 200 GSM Archival Matte Velvet Synthetic</div>
+          <div class="specs-item">• Certified Longevity: ISO 9706 Acid-Free (200+ Year Durability)</div>
+          <div class="specs-item">• Total Books: ${itemsCount} Unit(s)</div>
+        </div>
+        <div class="order-row">
+          <span>Order Number:</span>
+          <span><strong>#${orderNumber}</strong></span>
+        </div>
+        <div class="order-row">
+          <span>Estimated Dispatch:</span>
+          <span>3–5 Business Days</span>
+        </div>
+        <div class="order-row">
+          <span>Total Paid:</span>
+          <span>₹${total}</span>
+        </div>
       </div>
+
+      <div class="delivery-box">
+        <div class="delivery-title">Delivery Destination</div>
+        <p class="delivery-text">${address}</p>
+      </div>
+
+      <p style="font-size: 12px; color: #777; line-height: 1.5; text-align: center;">
+        Need assistance with your order? Our concierge desk is available at <a href="mailto:support@perfectpic.in" style="color: #c5a880; text-decoration: none; font-weight: 600;">support@perfectpic.in</a>.
+      </p>
+    </div>
+    <div class="footer">
+      © 2026 PerfectPic India Pvt. Ltd. · 7-Day Free Reprint Guarantee<br>
+      Every book printed supports our 1-tree initiative across protected reserves.
+    </div>
+  </div>
+</body>
+</html>
     `;
+
+    return this.sendMail({ to: toEmail, subject, html });
+  }
+
+  public async sendDispatchEmail(toEmail: string, orderDetails: any, trackingInfo: { carrier: string; trackingNumber: string; trackingUrl: string }): Promise<boolean> {
+    const orderNumber = orderDetails.orderNumber || orderDetails.id || 'PP-ORDER';
+    const title = orderDetails.title || 'Custom Photobook Keepsake';
+    const customerName = orderDetails.customerName || 'Valued Collector';
+    const carrier = trackingInfo.carrier || 'BlueDart Express';
+    const trackingNumber = trackingInfo.trackingNumber || 'BD100982341IN';
+    const trackingUrl = trackingInfo.trackingUrl || `https://www.bluedart.com/tracking`;
+
+    const subject = `Your Keepsake Has Shipped! #${orderNumber} (${carrier} Tracking)`;
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Your Order Has Shipped</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #faf8f5; margin: 0; padding: 24px 12px; color: #141413; }
+    .wrapper { max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 8px; border: 1px solid #e5ded3; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+    .header { background: #141413; padding: 32px 24px; text-align: center; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: 0.3em; text-transform: uppercase; color: #fbf9f5; margin: 0; font-family: Georgia, serif; }
+    .tagline { font-size: 10px; text-transform: uppercase; letter-spacing: 0.2em; color: #c5a880; margin-top: 6px; }
+    .content { padding: 36px 32px; }
+    .badge { display: inline-block; background: #eaf6ea; color: #2e7d32; border: 1px solid #c8e6c9; padding: 4px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; border-radius: 2px; margin-bottom: 16px; }
+    .greeting { font-family: Georgia, serif; font-size: 24px; font-weight: 600; color: #141413; margin: 0 0 12px; }
+    .subtext { font-size: 14px; line-height: 1.6; color: #555; margin-bottom: 28px; }
+    .tracking-card { background: #faf8f5; border: 1px solid #ede8de; border-radius: 6px; padding: 24px; text-align: center; margin-bottom: 28px; }
+    .tracking-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; font-weight: 700; color: #888; margin-bottom: 6px; }
+    .tracking-no { font-family: 'Courier New', Courier, monospace; font-size: 22px; font-weight: 800; color: #141413; letter-spacing: 0.15em; margin-bottom: 18px; }
+    .track-btn { display: inline-block; background: #141413; color: #faf8f5; padding: 12px 28px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; text-decoration: none; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .footer { background: #f7f4ee; padding: 24px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #e5ded3; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1 class="brand">PERFECTPIC</h1>
+      <div class="tagline">Archival Editions · Dispatched for Safe Transit</div>
+    </div>
+    <div class="content">
+      <div class="badge">Dispatched & In Transit</div>
+      <h2 class="greeting">It&rsquo;s on the way, ${customerName}!</h2>
+      <p class="subtext">
+        Great news! Your archival photobook <strong>${title}</strong> (Order <strong>#${orderNumber}</strong>) has successfully cleared final quality inspection and is now in transit with our logistics partner.
+      </p>
+
+      <div class="tracking-card">
+        <div class="tracking-label">Carrier & AWB Number</div>
+        <div class="tracking-no">${carrier} · ${trackingNumber}</div>
+        <a href="${trackingUrl}" target="_blank" class="track-btn">Track Shipment Live</a>
+      </div>
+
+      <p style="font-size: 12px; color: #777; line-height: 1.5; text-align: center;">
+        Handled with protective moisture-sealed packaging and reinforced corner buffers to ensure pristine delivery.
+      </p>
+    </div>
+    <div class="footer">
+      © 2026 PerfectPic India Pvt. Ltd. · 7-Day Free Reprint Guarantee<br>
+      Questions? Reach our shipping desk at <a href="mailto:support@perfectpic.in" style="color: #c5a880; text-decoration: none;">support@perfectpic.in</a>.
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
     return this.sendMail({ to: toEmail, subject, html });
   }
 }

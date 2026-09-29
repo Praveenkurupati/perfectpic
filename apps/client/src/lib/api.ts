@@ -184,6 +184,23 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // Uploads
+  uploadPhoto: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const res = await fetch(`${API_BASE}/api/v1/upload/file`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to upload photo');
+    }
+    return res.json() as Promise<{ url: string; filename: string; originalName: string; size: number }>;
+  },
+
   // Health
   health: () => fetcher<{ status: string; database?: string; cache?: string }>('/health'),
 };

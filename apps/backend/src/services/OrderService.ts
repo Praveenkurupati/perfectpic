@@ -49,6 +49,19 @@ export class OrderService {
     if (!updated) {
       throw ApiError.notFound(`Order with ID '${id}' not found.`);
     }
+
+    // Trigger dispatch notification email when transitioned to dispatched
+    if (status.toLowerCase() === 'dispatched' && (updated as any).customerEmail) {
+      const trackingNumber = `BD${Math.floor(100000000 + Math.random() * 900000000)}IN`;
+      mailService.sendDispatchEmail((updated as any).customerEmail, updated, {
+        carrier: 'BlueDart Express',
+        trackingNumber,
+        trackingUrl: `https://www.bluedart.com/tracking?awb=${trackingNumber}`,
+      }).catch((err) => {
+        logger.error('Failed to send dispatch email:', err.message);
+      });
+    }
+
     return updated;
   }
 

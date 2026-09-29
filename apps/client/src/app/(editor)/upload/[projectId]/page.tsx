@@ -3,9 +3,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
-import { UploadCloud, Check, Trash2, Plus, Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
+import { UploadCloud, Check, Trash2, Plus, Sparkles, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useEditorStore } from '@/stores/useEditorStore';
+import { compressImage } from '@/lib/imageCompressor';
 
 function UploadContent() {
   const router = useRouter();
@@ -19,6 +20,9 @@ function UploadContent() {
   const { photos, setPhotos, addPhoto, removePhoto, setTemplate, setPageCount } = useEditorStore();
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [isDragging, setIsDragging] = useState(false);
 
   // Sync page count
   useEffect(() => {
@@ -57,18 +61,72 @@ function UploadContent() {
     }
   }, [templateSlug, setPhotos, setTemplate]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      Array.from(e.target.files).forEach((file, index) => {
-        const url = URL.createObjectURL(file);
+  const processFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (fileArray.length === 0) return;
+
+    setIsUploading(true);
+    const total = fileArray.length;
+
+    for (let i = 0; i < total; i++) {
+      const file = fileArray[i]!;
+      setUploadStatus(`Optimizing & uploading ${i + 1} of ${total} (${file.name})...`);
+
+      try {
+        // Step 1: Compress high-res camera shot client-side
+        const compressed = await compressImage(file, { maxDimension: 1800, quality: 0.82 });
+
+        // Step 2: Upload to backend persistent storage
+        let photoUrl = '';
+        try {
+          const res = await api.uploadPhoto(compressed);
+          photoUrl = res.url;
+        } catch {
+          // Graceful fallback if offline
+          photoUrl = URL.createObjectURL(compressed);
+        }
+
+        // Step 3: Add to project store
         addPhoto({
-          id: `upload-${Date.now()}-${index}`,
-          url,
+          id: `upload-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+          url: photoUrl,
           usedCount: 0,
           flagged: false,
           name: file.name
         });
-      });
+      } catch (err) {
+        console.error('Failed to process photo:', file.name, err);
+      }
+    }
+
+    setIsUploading(false);
+    setUploadStatus('');
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      processFiles(e.target.files);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processFiles(e.dataTransfer.files);
     }
   };
 
@@ -121,20 +179,42 @@ function UploadContent() {
           <div className="lg:col-span-3 space-y-8">
             
             {/* Drag & Drop Upload Zone */}
-            <label className="border-2 border-dashed border-cream-400 bg-white p-10 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group">
-              <div className="w-16 h-16 bg-cream-100 group-hover:bg-cream-200 rounded-full flex items-center justify-center mb-4 transition-colors">
-                <UploadCloud size={28} className="text-noir-900" />
-              </div>
-              <span className="bg-noir-950 text-cream-50 px-6 py-2.5 rounded-sm text-sm font-medium mb-3 shadow-sm">
-                Browse Files from Device
-              </span>
-              <p className="text-noir-700 text-sm font-medium">Or drag and drop photos directly here</p>
-              <p className="text-xs text-noir-500 mt-2">Supports high-res JPEG, PNG, HEIC, WebP</p>
+            <label
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed ${
+                isDragging ? 'border-foil-gold bg-cream-100 scale-[1.01]' : 'border-cream-400 bg-white'
+              } p-10 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group`}
+            >
+              {isUploading ? (
+                <div className="flex flex-col items-center">
+                  <div className="w-16 h-16 bg-cream-100 rounded-full flex items-center justify-center mb-4">
+                    <Loader2 size={28} className="text-foil-gold animate-spin" />
+                  </div>
+                  <span className="text-sm font-semibold text-noir-950 mb-1">
+                    Compressing & Uploading Photos
+                  </span>
+                  <p className="text-xs text-noir-500 font-mono animate-pulse">{uploadStatus}</p>
+                </div>
+              ) : (
+                <>
+                  <div className="w-16 h-16 bg-cream-100 group-hover:bg-cream-200 rounded-full flex items-center justify-center mb-4 transition-colors">
+                    <UploadCloud size={28} className="text-noir-900" />
+                  </div>
+                  <span className="bg-noir-950 text-cream-50 px-6 py-2.5 rounded-sm text-sm font-medium mb-3 shadow-sm group-hover:bg-noir-900 transition-colors">
+                    Browse Files from Device
+                  </span>
+                  <p className="text-noir-700 text-sm font-medium">Or drag and drop photos directly here</p>
+                  <p className="text-xs text-noir-500 mt-2">Auto-compressed for print quality • High-res JPEG, PNG, HEIC, WebP</p>
+                </>
+              )}
               <input 
                 type="file" 
                 multiple 
                 accept="image/*" 
                 onChange={handleFileUpload} 
+                disabled={isUploading}
                 className="hidden" 
               />
             </label>

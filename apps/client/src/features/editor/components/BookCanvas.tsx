@@ -1,20 +1,212 @@
 'use client';
 
-import { useEditorStore, Photo } from '@/stores/useEditorStore';
+import { useEditorStore, Photo, PageLayout } from '@/stores/useEditorStore';
 import { ChevronLeft, ChevronRight, Image as ImageIcon, Trash2, Check, Sparkles } from 'lucide-react';
 
+interface SlotProps {
+  slotId: string;
+  photo: Photo | null;
+  isSelected: boolean;
+  onSelect: (slotId: string) => void;
+  onRemove: (slotId: string) => void;
+  label?: string;
+}
+
+function PhotoSlot({ slotId, photo, isSelected, onSelect, onRemove, label }: SlotProps) {
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(slotId);
+      }}
+      className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center ${
+        isSelected
+          ? 'border-foil-gold ring-2 ring-foil-gold bg-amber-50/50 shadow-sm'
+          : 'border-cream-300 bg-[#faf8f5] hover:border-noir-900'
+      }`}
+    >
+      {photo ? (
+        <>
+          <img
+            src={photo.url}
+            alt={label || 'Slot Photo'}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+          />
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(slotId);
+              }}
+              className="px-2.5 py-1 bg-red-600/90 text-white rounded-sm text-[11px] font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm"
+              title="Remove photo"
+            >
+              <Trash2 size={12} />
+              <span>Remove</span>
+            </button>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-3 text-center text-cream-500 group-hover:text-noir-700 transition-colors">
+          <ImageIcon size={18} className="mb-1" />
+          <span className="text-[10px] font-semibold text-noir-600">{label || 'Empty Slot'}</span>
+          <span className="text-[9px] text-noir-400 mt-0.5">Click to place photo</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RenderPageSlots({
+  pageNum,
+  layout,
+  selectedSlot,
+  onSelectSlot,
+  slotPhotos,
+  pagePhotos,
+  onRemovePhoto,
+}: {
+  pageNum: number;
+  layout: PageLayout;
+  selectedSlot: string | null;
+  onSelectSlot: (slotId: string) => void;
+  slotPhotos: Record<string, Photo | null>;
+  pagePhotos: Record<number, Photo | null>;
+  onRemovePhoto: (slotId: string) => void;
+}) {
+  const getPhoto = (subIndex: number) => {
+    const slotId = `${pageNum}_${subIndex}`;
+    return slotPhotos[slotId] || (subIndex === 0 ? pagePhotos[pageNum] || null : null);
+  };
+
+  if (layout === '2-photo-v') {
+    return (
+      <div className="flex-1 my-2 grid grid-rows-2 gap-2 h-full">
+        <PhotoSlot
+          slotId={`${pageNum}_0`}
+          photo={getPhoto(0)}
+          isSelected={selectedSlot === `${pageNum}_0`}
+          onSelect={onSelectSlot}
+          onRemove={onRemovePhoto}
+          label="Top Slot"
+        />
+        <PhotoSlot
+          slotId={`${pageNum}_1`}
+          photo={getPhoto(1)}
+          isSelected={selectedSlot === `${pageNum}_1`}
+          onSelect={onSelectSlot}
+          onRemove={onRemovePhoto}
+          label="Bottom Slot"
+        />
+      </div>
+    );
+  }
+
+  if (layout === '2-photo-h') {
+    return (
+      <div className="flex-1 my-2 grid grid-cols-2 gap-2 h-full">
+        <PhotoSlot
+          slotId={`${pageNum}_0`}
+          photo={getPhoto(0)}
+          isSelected={selectedSlot === `${pageNum}_0`}
+          onSelect={onSelectSlot}
+          onRemove={onRemovePhoto}
+          label="Left Slot"
+        />
+        <PhotoSlot
+          slotId={`${pageNum}_1`}
+          photo={getPhoto(1)}
+          isSelected={selectedSlot === `${pageNum}_1`}
+          onSelect={onSelectSlot}
+          onRemove={onRemovePhoto}
+          label="Right Slot"
+        />
+      </div>
+    );
+  }
+
+  if (layout === '3-photo') {
+    return (
+      <div className="flex-1 my-2 grid grid-cols-2 gap-2 h-full">
+        <PhotoSlot
+          slotId={`${pageNum}_0`}
+          photo={getPhoto(0)}
+          isSelected={selectedSlot === `${pageNum}_0`}
+          onSelect={onSelectSlot}
+          onRemove={onRemovePhoto}
+          label="Featured Slot"
+        />
+        <div className="grid grid-rows-2 gap-2">
+          <PhotoSlot
+            slotId={`${pageNum}_1`}
+            photo={getPhoto(1)}
+            isSelected={selectedSlot === `${pageNum}_1`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            label="Slot 2"
+          />
+          <PhotoSlot
+            slotId={`${pageNum}_2`}
+            photo={getPhoto(2)}
+            isSelected={selectedSlot === `${pageNum}_2`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            label="Slot 3"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (layout === '4-photo') {
+    return (
+      <div className="flex-1 my-2 grid grid-cols-2 grid-rows-2 gap-2 h-full">
+        {[0, 1, 2, 3].map((idx) => (
+          <PhotoSlot
+            key={idx}
+            slotId={`${pageNum}_${idx}`}
+            photo={getPhoto(idx)}
+            isSelected={selectedSlot === `${pageNum}_${idx}`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            label={`Slot ${idx + 1}`}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  // Default: '1-photo'
+  const singlePhoto = slotPhotos[`${pageNum}_0`] || slotPhotos[`${pageNum}`] || pagePhotos[pageNum] || null;
+  return (
+    <div className="flex-1 my-3 h-full">
+      <PhotoSlot
+        slotId={`${pageNum}`}
+        photo={singlePhoto}
+        isSelected={selectedSlot === `${pageNum}` || selectedSlot === `${pageNum}_0`}
+        onSelect={onSelectSlot}
+        onRemove={onRemovePhoto}
+        label={`Page ${pageNum} Photo`}
+      />
+    </div>
+  );
+}
+
 export default function BookCanvas() {
-  const { 
-    pageCount, 
-    currentSpreadIndex, 
-    setCurrentSpreadIndex, 
-    pagePhotos, 
-    selectedSlot, 
+  const {
+    pageCount,
+    currentSpreadIndex,
+    setCurrentSpreadIndex,
+    pagePhotos,
+    slotPhotos,
+    pageLayouts,
+    pageBackgrounds,
+    coverConfig,
+    selectedSlot,
     setSelectedSlot,
-    assignPhotoToPage,
-    clearPagePhoto,
+    assignPhotoToSlot,
     template,
-    bookConfig
+    bookConfig,
   } = useEditorStore();
 
   const totalSpreads = Math.ceil(pageCount / 2);
@@ -24,12 +216,23 @@ export default function BookCanvas() {
   const leftPageNum = (currentSpreadIndex - 1) * 2 + 1;
   const rightPageNum = (currentSpreadIndex - 1) * 2 + 2;
 
-  const leftPhoto: Photo | null = pagePhotos[leftPageNum] || null;
-  const rightPhoto: Photo | null = pagePhotos[rightPageNum] || null;
-  const coverPhoto: Photo | null = pagePhotos[0] || (template?.coverImage ? { id: 'cover', url: template.coverImage, usedCount: 1, flagged: false } : null);
+  const coverPhoto: Photo | null =
+    slotPhotos['0'] ||
+    pagePhotos[0] ||
+    (template?.coverImage ? { id: 'cover', url: template.coverImage, usedCount: 1, flagged: false } : null);
 
-  const coverBg = template?.coverColor || '#F8BAC7';
-  const spineText = template?.spineText || 'PERFECTPIC';
+  const coverBg = coverConfig.backgroundColor || template?.coverColor || '#F8BAC7';
+  const spineText = coverConfig.spineText || template?.spineText || 'PERFECTPIC';
+  const coverTitle = coverConfig.title || template?.displayName || template?.title || 'Our Travel Journey';
+  const coverSubtitle = coverConfig.subtitle || template?.tagline || 'your journeys, perfectly told';
+
+  // Foil finish gradient styling
+  const foilClasses = {
+    gold: 'bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-100 text-transparent bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
+    silver: 'bg-gradient-to-r from-slate-100 via-slate-300 to-gray-100 text-transparent bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
+    'rose-gold': 'bg-gradient-to-r from-rose-200 via-rose-300 to-amber-100 text-transparent bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
+    black: 'text-noir-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)]',
+  }[coverConfig.foilColor || 'gold'];
 
   const handlePrev = () => {
     if (currentSpreadIndex > 0) {
@@ -43,6 +246,11 @@ export default function BookCanvas() {
     }
   };
 
+  const leftLayout = pageLayouts[leftPageNum] || '1-photo';
+  const rightLayout = pageLayouts[rightPageNum] || '1-photo';
+  const leftBg = pageBackgrounds[leftPageNum] || '#FFFFFF';
+  const rightBg = pageBackgrounds[rightPageNum] || '#FFFFFF';
+
   return (
     <div className="flex flex-col items-center justify-center w-full max-w-5xl select-none">
       {/* Top Spread Info & Status */}
@@ -52,12 +260,16 @@ export default function BookCanvas() {
             {isCover ? 'Front Cover' : isBack ? 'Back Cover' : `Pages ${leftPageNum} – ${rightPageNum} of ${pageCount}`}
           </span>
           <span className="text-noir-400">•</span>
-          <span className="text-noir-500 font-medium">1 photo per page (archival gallery margin)</span>
+          <span className="text-noir-500 font-medium">
+            {isCover
+              ? `Foil Finish: ${coverConfig.foilColor?.toUpperCase() || 'GOLD'}`
+              : `Layouts: P${leftPageNum} (${leftLayout}), P${rightPageNum} (${rightLayout})`}
+          </span>
         </div>
 
         <div className="flex items-center gap-3">
           <span className="text-[11px] text-noir-500">
-            Selected Slot: <strong className="text-noir-950 font-mono">{selectedSlot !== null ? `Page ${selectedSlot}` : 'None'}</strong>
+            Target Slot: <strong className="text-noir-950 font-mono">{selectedSlot || 'None'}</strong>
           </span>
         </div>
       </div>
@@ -78,16 +290,16 @@ export default function BookCanvas() {
         {/* 1. FRONT COVER VIEW */}
         {/* ======================================================== */}
         {isCover && (
-          <div 
-            onClick={() => setSelectedSlot(0)}
+          <div
+            onClick={() => setSelectedSlot('0')}
             className={`relative w-[420px] h-[520px] rounded-r-md shadow-luxury-xl border border-black/10 flex overflow-hidden cursor-pointer transition-all duration-300 ${
-              selectedSlot === 0 ? 'ring-2 ring-foil-gold ring-offset-4' : ''
+              selectedSlot === '0' ? 'ring-2 ring-foil-gold ring-offset-4' : ''
             }`}
             style={{ backgroundColor: coverBg }}
           >
             {/* Book Spine */}
             <div className="w-10 bg-black/15 flex items-center justify-center border-r border-black/15 relative overflow-hidden shrink-0">
-              <span className="text-[10px] font-bold text-white tracking-[0.3em] uppercase transform -rotate-90 whitespace-nowrap drop-shadow-sm">
+              <span className="text-[10px] font-bold text-white tracking-[0.3em] uppercase transform -rotate-90 whitespace-nowrap drop-shadow-sm font-mono">
                 {spineText}
               </span>
               <div className="absolute inset-y-0 right-0 w-[1px] bg-white/20" />
@@ -99,11 +311,11 @@ export default function BookCanvas() {
                 <span className="text-[10px] uppercase font-bold tracking-[0.25em] text-white/90 block">
                   {template?.seriesLabel || 'Heirloom Photobook'}
                 </span>
-                <h2 className="font-serif text-2xl font-bold text-white uppercase tracking-wider drop-shadow-md">
-                  {template?.displayName || template?.title || 'Our Travel Journey'}
+                <h2 className={`font-serif text-2xl font-bold uppercase tracking-wider ${foilClasses}`}>
+                  {coverTitle}
                 </h2>
                 <p className="text-xs text-white/80 italic font-serif">
-                  {template?.tagline || 'your journeys, perfectly told'}
+                  {coverSubtitle}
                 </p>
               </div>
 
@@ -133,60 +345,40 @@ export default function BookCanvas() {
         )}
 
         {/* ======================================================== */}
-        {/* 2. OPEN TWO-PAGE SPREAD VIEW (Strict 1 Photo Per Page)  */}
+        {/* 2. OPEN TWO-PAGE SPREAD VIEW (Dynamic Multi-Photo Layouts) */}
         {/* ======================================================== */}
         {!isCover && !isBack && (
           <div className="relative shadow-luxury-2xl bg-white rounded-sm flex w-[840px] h-[480px] border border-cream-300 overflow-hidden">
             {/* ----------------- LEFT PAGE ----------------- */}
-            <div 
-              onClick={() => setSelectedSlot(leftPageNum)}
+            <div
+              onClick={() => setSelectedSlot(leftPageNum.toString())}
               className={`flex-1 border-r border-black/10 relative p-8 md:p-10 flex flex-col justify-between cursor-pointer transition-all ${
-                selectedSlot === leftPageNum ? 'bg-amber-50/40 ring-2 ring-inset ring-foil-gold' : 'hover:bg-cream-50/50'
+                selectedSlot?.startsWith(leftPageNum.toString())
+                  ? 'ring-2 ring-inset ring-foil-gold'
+                  : 'hover:bg-cream-50/30'
               }`}
+              style={{ backgroundColor: leftBg }}
             >
               {/* Top Page Header / Number */}
               <div className="flex justify-between items-center text-[10px] text-noir-400 uppercase tracking-widest font-mono">
-                <span>Page {leftPageNum}</span>
-                {selectedSlot === leftPageNum && (
+                <span>Page {leftPageNum} ({leftLayout})</span>
+                {selectedSlot?.startsWith(leftPageNum.toString()) && (
                   <span className="inline-flex items-center gap-1 text-foil-gold font-bold">
-                    <Check size={12} /> Active Target
+                    <Check size={12} /> Active Page
                   </span>
                 )}
               </div>
 
-              {/* Photo Slot: Exactly 1 Photo Centered with Gallery Margins */}
-              <div className="flex-1 my-3 bg-[#faf8f5] border border-cream-300 rounded-sm relative overflow-hidden shadow-inner flex items-center justify-center group">
-                {leftPhoto ? (
-                  <>
-                    <img 
-                      src={leftPhoto.url} 
-                      alt={`Page ${leftPageNum}`} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" 
-                    />
-                    {/* Hover actions */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearPagePhoto(leftPageNum);
-                        }}
-                        className="px-3 py-1.5 bg-red-600/90 text-white rounded-sm text-xs font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm"
-                      >
-                        <Trash2 size={13} />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-6 text-center text-cream-500 group-hover:text-noir-700 transition-colors">
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-cream-400 flex items-center justify-center mb-2 group-hover:border-noir-600">
-                      <ImageIcon size={20} />
-                    </div>
-                    <span className="text-xs font-semibold">Page {leftPageNum} Photo Slot</span>
-                    <span className="text-[10px] text-cream-400 mt-1">Select from photo tray on right</span>
-                  </div>
-                )}
-              </div>
+              {/* Dynamic Photo Slot Grid for Left Page */}
+              <RenderPageSlots
+                pageNum={leftPageNum}
+                layout={leftLayout}
+                selectedSlot={selectedSlot}
+                onSelectSlot={(id) => setSelectedSlot(id)}
+                slotPhotos={slotPhotos}
+                pagePhotos={pagePhotos}
+                onRemovePhoto={(id) => assignPhotoToSlot(id, null)}
+              />
 
               {/* Bottom Editorial Footnote */}
               <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif">
@@ -200,55 +392,35 @@ export default function BookCanvas() {
             <div className="absolute inset-y-0 left-1/2 w-[1px] bg-black/20 pointer-events-none z-20" />
 
             {/* ----------------- RIGHT PAGE ----------------- */}
-            <div 
-              onClick={() => setSelectedSlot(rightPageNum)}
+            <div
+              onClick={() => setSelectedSlot(rightPageNum.toString())}
               className={`flex-1 relative p-8 md:p-10 flex flex-col justify-between cursor-pointer transition-all ${
-                selectedSlot === rightPageNum ? 'bg-amber-50/40 ring-2 ring-inset ring-foil-gold' : 'hover:bg-cream-50/50'
+                selectedSlot?.startsWith(rightPageNum.toString())
+                  ? 'ring-2 ring-inset ring-foil-gold'
+                  : 'hover:bg-cream-50/30'
               }`}
+              style={{ backgroundColor: rightBg }}
             >
               {/* Top Page Header / Number */}
               <div className="flex justify-between items-center text-[10px] text-noir-400 uppercase tracking-widest font-mono">
-                {selectedSlot === rightPageNum ? (
+                {selectedSlot?.startsWith(rightPageNum.toString()) ? (
                   <span className="inline-flex items-center gap-1 text-foil-gold font-bold">
-                    <Check size={12} /> Active Target
+                    <Check size={12} /> Active Page
                   </span>
                 ) : <span />}
-                <span>Page {rightPageNum}</span>
+                <span>Page {rightPageNum} ({rightLayout})</span>
               </div>
 
-              {/* Photo Slot: Exactly 1 Photo Centered with Gallery Margins */}
-              <div className="flex-1 my-3 bg-[#faf8f5] border border-cream-300 rounded-sm relative overflow-hidden shadow-inner flex items-center justify-center group">
-                {rightPhoto ? (
-                  <>
-                    <img 
-                      src={rightPhoto.url} 
-                      alt={`Page ${rightPageNum}`} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]" 
-                    />
-                    {/* Hover actions */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearPagePhoto(rightPageNum);
-                        }}
-                        className="px-3 py-1.5 bg-red-600/90 text-white rounded-sm text-xs font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm"
-                      >
-                        <Trash2 size={13} />
-                        <span>Remove</span>
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center p-6 text-center text-cream-500 group-hover:text-noir-700 transition-colors">
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-cream-400 flex items-center justify-center mb-2 group-hover:border-noir-600">
-                      <ImageIcon size={20} />
-                    </div>
-                    <span className="text-xs font-semibold">Page {rightPageNum} Photo Slot</span>
-                    <span className="text-[10px] text-cream-400 mt-1">Select from photo tray on right</span>
-                  </div>
-                )}
-              </div>
+              {/* Dynamic Photo Slot Grid for Right Page */}
+              <RenderPageSlots
+                pageNum={rightPageNum}
+                layout={rightLayout}
+                selectedSlot={selectedSlot}
+                onSelectSlot={(id) => setSelectedSlot(id)}
+                slotPhotos={slotPhotos}
+                pagePhotos={pagePhotos}
+                onRemovePhoto={(id) => assignPhotoToSlot(id, null)}
+              />
 
               {/* Bottom Editorial Footnote */}
               <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif">
@@ -263,7 +435,7 @@ export default function BookCanvas() {
         {/* 3. BACK COVER VIEW */}
         {/* ======================================================== */}
         {isBack && (
-          <div 
+          <div
             className="relative w-[420px] h-[520px] rounded-l-md shadow-luxury-xl border border-black/10 flex flex-col justify-between p-10 overflow-hidden text-center text-white"
             style={{ backgroundColor: coverBg }}
           >

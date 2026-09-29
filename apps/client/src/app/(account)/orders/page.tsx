@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { Download } from 'lucide-react';
-import { generateOrderReceiptPdf } from '@/lib/pdfGenerator';
+import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -78,12 +78,27 @@ export default function OrdersPage() {
                     <span className="font-serif text-xl">₹{(order.total || order.amount)?.toLocaleString('en-IN')}</span>
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => generateOrderReceiptPdf(order)}
+                        onClick={() => generateGstInvoicePdf({
+                          orderNumber: order.orderNumber || order.id,
+                          date: order.createdAt || order.date,
+                          customerName: order.customerName || 'Valued Customer',
+                          customerEmail: order.customerEmail,
+                          customerPhone: order.customerPhone,
+                          shippingAddress: order.shippingAddress,
+                          items: order.items && order.items.length > 0 ? order.items : [{
+                            title: order.title || 'Custom Photobook Keepsake',
+                            quantity: 1,
+                            price: order.total || order.amount || 1999,
+                            dimensions: order.dimensions || '8.25" × 8.25"',
+                            pageCount: order.pageCount || 40,
+                          }],
+                          total: order.total || order.amount || 1999,
+                        })}
                         className="text-xs font-medium border border-cream-300 px-3 py-2 rounded-sm hover:bg-cream-100 transition-colors flex items-center gap-1.5 text-noir-700"
-                        title="Download PDF Invoice"
+                        title="Download Official GST Tax Invoice"
                       >
                         <Download size={13} />
-                        <span>PDF Invoice</span>
+                        <span>GST Invoice</span>
                       </button>
                       <button className="text-xs font-semibold uppercase tracking-wider border border-noir-900 px-3 py-2 rounded-sm hover:bg-noir-950 hover:text-cream-50 transition-colors">
                         {order.status?.toLowerCase() === 'delivered' ? 'Order Again' : 'Track Order'}

@@ -21,6 +21,7 @@ export default function PhotoTray() {
     selectedSlot, 
     setSelectedSlot,
     assignPhotoToPage,
+    assignPhotoToSlot,
     currentSpreadIndex,
     pageCount,
     pagePhotos
@@ -40,47 +41,20 @@ export default function PhotoTray() {
 
   // Handle clicking a photo to place it
   const handlePhotoClick = (photo: Photo) => {
-    let targetPage = selectedSlot;
-
-    // If no slot explicitly selected or on cover/back, find first empty page slot
-    if (targetPage === null || targetPage === undefined) {
-      if (currentSpreadIndex === 0) {
-        targetPage = 0; // Cover
-      } else if (isInsideSpread) {
-        // Prefer left or right of current spread if empty
-        if (!pagePhotos[leftPageNum]) targetPage = leftPageNum;
-        else if (!pagePhotos[rightPageNum]) targetPage = rightPageNum;
-        else targetPage = leftPageNum;
-      } else {
-        // Find first empty page in book
-        for (let i = 1; i <= pageCount; i++) {
-          if (!pagePhotos[i]) {
-            targetPage = i;
-            break;
-          }
-        }
-        if (targetPage === null) targetPage = 1;
-      }
-    }
-
-    assignPhotoToPage(targetPage, photo);
-
-    // Auto-advance target slot to next page
-    if (targetPage > 0 && targetPage < pageCount) {
-      setSelectedSlot(targetPage + 1);
-    }
+    const targetSlot = selectedSlot || (currentSpreadIndex === 0 ? '0' : leftPageNum.toString());
+    assignPhotoToSlot(targetSlot, photo);
   };
 
   const handlePlaceLeft = (e: React.MouseEvent, photo: Photo) => {
     e.stopPropagation();
-    assignPhotoToPage(leftPageNum, photo);
-    setSelectedSlot(rightPageNum);
+    assignPhotoToSlot(leftPageNum.toString(), photo);
+    setSelectedSlot(rightPageNum.toString());
   };
 
   const handlePlaceRight = (e: React.MouseEvent, photo: Photo) => {
     e.stopPropagation();
-    assignPhotoToPage(rightPageNum, photo);
-    setSelectedSlot(rightPageNum < pageCount ? rightPageNum + 1 : null);
+    assignPhotoToSlot(rightPageNum.toString(), photo);
+    setSelectedSlot(rightPageNum < pageCount ? (rightPageNum + 1).toString() : null);
   };
 
   return (

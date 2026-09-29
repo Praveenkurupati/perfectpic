@@ -49,11 +49,20 @@ export function createApp(): Application {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Static uploads directory serving if directory exists
+  // Static uploads directory serving with permissive cross-origin headers
   const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (fs.existsSync(uploadsDir)) {
-    app.use('/uploads', express.static(uploadsDir));
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
   }
+  app.use(
+    '/uploads',
+    express.static(uploadsDir, {
+      setHeaders: (res) => {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+      },
+    })
+  );
 
   // Welcome route
   app.get('/', (req: Request, res: Response) => {

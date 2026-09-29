@@ -4,7 +4,9 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Download, Truck, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { adminApi } from "@/lib/api";
-import { generateAdminProductionPdf, generateAdminInvoicePdf } from "@/lib/pdfGenerator";
+import { generateAdminProductionPdf } from "@/lib/pdfGenerator";
+import { generateGstInvoicePdf } from "@/lib/invoiceGenerator";
+import { generateShippingLabelPdf } from "@/lib/shippingLabelGenerator";
 
 export default function OrderDetailPage({ params }: { params: Promise<{ orderId: string }> }) {
   const { orderId } = use(params);
@@ -25,15 +27,41 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  const handleDownloadInvoice = async () => {
+  const handleDownloadInvoice = () => {
     try {
       setIsGeneratingInvoice(true);
-      await generateAdminInvoicePdf(order || { orderNumber: orderId, total: 1999 });
+      generateGstInvoicePdf({
+        orderNumber: order?.orderNumber || orderId,
+        date: order?.createdAt,
+        customerName: order?.customerName || order?.shippingAddress?.fullName || 'Valued Customer',
+        customerEmail: order?.customerEmail,
+        customerPhone: order?.customerPhone || order?.shippingAddress?.phone,
+        shippingAddress: order?.shippingAddress,
+        items: order?.items && order.items.length > 0 ? order.items : [{
+          title: order?.title || 'Heirloom Photobook Keepsake',
+          quantity: 1,
+          price: order?.total || order?.amount || 1999,
+          dimensions: order?.dimensions || '8.25" × 8.25"',
+          pageCount: order?.pageCount || 40,
+        }],
+        total: order?.total || order?.amount || 1999,
+      });
     } catch (err) {
       console.error("Invoice PDF generation error:", err);
     } finally {
       setIsGeneratingInvoice(false);
     }
+  };
+
+  const handlePrintShippingLabel = () => {
+    generateShippingLabelPdf({
+      orderNumber: order?.orderNumber || orderId,
+      customerName: order?.customerName || order?.shippingAddress?.fullName || 'Valued Customer',
+      customerPhone: order?.customerPhone || order?.shippingAddress?.phone,
+      shippingAddress: order?.shippingAddress,
+      weightKg: '0.85 KG',
+      paymentMode: 'PREPAID',
+    });
   };
 
   const handleRenderPrintPdf = async () => {
@@ -96,14 +124,23 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             onClick={handleDownloadInvoice}
             disabled={isGeneratingInvoice}
             className="px-4 py-2 bg-cream-100 text-noir-900 rounded-sm text-sm font-medium hover:bg-cream-200 transition-colors flex items-center gap-2 border border-cream-300 disabled:opacity-50"
-            title="Download Tax Invoice PDF"
+            title="Download GST Tax Invoice PDF"
           >
             {isGeneratingInvoice ? (
               <Loader2 className="w-4 h-4 animate-spin text-noir-800" />
             ) : (
               <FileText className="w-4 h-4" />
             )}
-            <span>Invoice PDF</span>
+            <span>GST Invoice</span>
+          </button>
+
+          <button 
+            onClick={handlePrintShippingLabel}
+            className="px-4 py-2 bg-cream-100 text-noir-900 rounded-sm text-sm font-medium hover:bg-cream-200 transition-colors flex items-center gap-2 border border-cream-300 shadow-xs"
+            title="Print Logistics Shipping Label"
+          >
+            <Truck className="w-4 h-4 text-noir-700" />
+            <span>Shipping Label</span>
           </button>
           
           <button 

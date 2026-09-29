@@ -27,6 +27,28 @@ export class UploadController {
     });
   }
 
+  public static async uploadFile(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file) {
+        throw ApiError.badRequest('No image file provided for upload.');
+      }
+
+      const host = req.get('host') || 'localhost:4000';
+      const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+      const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+
+      return res.status(200).json({
+        url: fileUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimeType: req.file.mimetype,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async deletePhoto(req: Request, res: Response) {
     return res.status(200).json({
       message: 'Photo deleted successfully',

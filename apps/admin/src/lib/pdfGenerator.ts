@@ -19,6 +19,25 @@ export interface AdminPrintPdfOptions {
  */
 async function getBase64Image(url: string): Promise<string | null> {
   if (!url || typeof window === 'undefined') return null;
+  if (url.startsWith('data:image/')) return url;
+
+  // Attempt 1: Fetch via blob & FileReader (avoids Canvas security taint)
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) {
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch {
+    // Proceed to fallback
+  }
+
+  // Attempt 2: Canvas draw fallback with crossOrigin
   return new Promise((resolve) => {
     try {
       const img = new Image();

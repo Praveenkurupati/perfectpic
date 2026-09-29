@@ -15,6 +15,16 @@ export interface Photo {
   name?: string;
 }
 
+export type PageLayout = '1-photo' | '2-photo-v' | '2-photo-h' | '3-photo' | '4-photo';
+
+export interface CoverConfig {
+  title: string;
+  subtitle: string;
+  spineText: string;
+  foilColor: 'gold' | 'silver' | 'rose-gold' | 'black';
+  backgroundColor?: string;
+}
+
 interface EditorState {
   canvas: any | null;
   selectedObjectId: string | null;
@@ -26,8 +36,12 @@ interface EditorState {
   // Dynamic page count (12, 24, 32 default, 60, 120)
   pageCount: number;
   currentSpreadIndex: number; // 0 = Cover, 1 = Spreads 1-2, etc.
-  selectedSlot: number | null; // Currently targeted page number for photo drop/click
-  pagePhotos: Record<number, Photo | null>; // page number -> Photo (1 photo per page standard)
+  selectedSlot: string | null; // e.g. "1" or "1_0" or "1_1"
+  pagePhotos: Record<number, Photo | null>; // legacy page number -> Photo
+  slotPhotos: Record<string, Photo | null>; // slotId -> Photo
+  pageLayouts: Record<number, PageLayout>; // pageNumber -> PageLayout
+  pageBackgrounds: Record<number, string>; // pageNumber -> Background color
+  coverConfig: CoverConfig;
 
   photos: Photo[];
   photoFilter: 'all' | 'unused' | 'flagged';
@@ -55,7 +69,11 @@ interface EditorState {
   setCurrentPage: (index: number) => void;
   setPageCount: (count: number) => void;
   setCurrentSpreadIndex: (index: number) => void;
-  setSelectedSlot: (slot: number | null) => void;
+  setSelectedSlot: (slot: string | number | null) => void;
+  setPageLayout: (pageNumber: number, layout: PageLayout) => void;
+  setPageBackground: (pageNumber: number, color: string) => void;
+  updateCoverConfig: (config: Partial<CoverConfig>) => void;
+  assignPhotoToSlot: (slotId: string, photo: Photo | null) => void;
   assignPhotoToPage: (pageNumber: number, photo: Photo | null) => void;
   autoPopulatePages: () => void;
   clearPagePhoto: (pageNumber: number) => void;
@@ -93,8 +111,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   historyIndex: -1,
   pageCount: 32, // Default 32 pages as requested
   currentSpreadIndex: 1, // Start on first spread (Pages 1 & 2)
-  selectedSlot: 1, // Default focus on Page 1
+  selectedSlot: '1', // Default focus on Page 1
   pagePhotos: {},
+  slotPhotos: {},
+  pageLayouts: {},
+  pageBackgrounds: {},
+  coverConfig: {
+    title: 'PERFECTPIC',
+    subtitle: 'Keepsake Edition 2026',
+    spineText: 'PERFECTPIC',
+    foilColor: 'gold',
+  },
   pages: generateSpreads(32),
   currentPageIndex: 1,
   photos: [],
@@ -163,24 +190,43 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setCurrentSpreadIndex: (index) => set({
     currentSpreadIndex: index,
     currentPageIndex: index,
-    selectedSlot: index === 0 ? 0 : (index - 1) * 2 + 1
+    selectedSlot: index === 0 ? '0' : ((index - 1) * 2 + 1).toString()
   }),
 
-  setSelectedSlot: (slot) => set({ selectedSlot: slot }),
+  setSelectedSlot: (slot) => set({ selectedSlot: slot !== null ? slot.toString() : null }),
 
-  assignPhotoToPage: (pageNumber, photo) => set((state) => {
-    const updatedPagePhotos = { ...state.pagePhotos };
-    const oldPhoto = updatedPagePhotos[pageNumber];
+  setPageLayout: (pageNumber, layout) => set((state) => ({
+    pageLayouts: { ...state.pageLayouts, [pageNumber]: layout },
+    autoSaveStatus: 'saved',
+  })),
 
+  setPageBackground: (pageNumber, color) => set((state) => ({
+    pageBackgrounds: { ...state.pageBackgrounds, [pageNumber]: color },
+    autoSaveStatus: 'saved',
+  })),
+
+  updateCoverConfig: (config) => set((state) => ({
+    coverConfig: { ...state.coverConfig, ...config },
+    autoSaveStatus: 'saved',
+  })),
+
+  assignPhotoToSlot: (slotId, photo) => set((state) => {
+    const updatedSlotPhotos = { ...state.slotPhotos };
     if (photo) {
-      updatedPagePhotos[pageNumber] = photo;
+      updatedSlotPhotos[slotId] = photo;
     } else {
-      delete updatedPagePhotos[pageNumber];
+      delete updatedSlotPhotos[slotId];
     }
 
-    // Recalculate usedCount for all photos
+    const updatedPagePhotos = { ...state.pagePhotos };
+    const num = parseInt(slotId, 10);
+    if (!isNaN(num) && !slotId.includes('_')) {
+      if (photo) updatedPagePhotos[num] = photo;
+      else delete updatedPagePhotos[num];
+    }
+
     const counts: Record<string, number> = {};
-    Object.values(updatedPagePhotos).forEach(p => {
+    Object.values(updatedSlotPhotos).forEach(p => {
       if (p) counts[p.id] = (counts[p.id] || 0) + 1;
     });
 
@@ -190,11 +236,16 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
 
     return {
+      slotPhotos: updatedSlotPhotos,
       pagePhotos: updatedPagePhotos,
       photos: updatedPhotos,
       autoSaveStatus: 'saved'
     };
   }),
+
+  assignPhotoToPage: (pageNumber, photo) => {
+    get().assignPhotoToSlot(pageNumber.toString(), photo);
+  },
 
   clearPagePhoto: (pageNumber) => set((state) => {
     const updatedPagePhotos = { ...state.pagePhotos };
