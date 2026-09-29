@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShoppingBag, Trash2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
 
 export default function CartPage() {
   const router = useRouter();
@@ -42,6 +43,12 @@ export default function CartPage() {
 
   const handleProceedToCheckout = () => {
     if (items.length === 0) return;
+    trackEvent('cart_action', 'Proceed to Checkout Clicked', {
+      itemsCount: items.length,
+      subtotal: getSubtotal(),
+      total: getTotal(),
+      isAuthenticated,
+    });
     if (isAuthenticated) {
       router.push('/checkout');
     } else {

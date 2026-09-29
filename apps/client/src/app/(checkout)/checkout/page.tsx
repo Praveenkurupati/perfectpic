@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2, ShoppingBag } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -111,6 +112,15 @@ export default function CheckoutPage() {
       });
 
       const orderNumber = res.orderNumber || res.id || `PP-${Math.floor(1000 + Math.random() * 9000)}`;
+      
+      trackEvent('order_completed', `Order Placed (#${orderNumber})`, {
+        orderNumber,
+        total: orderTotal,
+        itemsCount: orderItems.length,
+        city: cityState.split(',')[0]?.trim() || '',
+        deliveryOption,
+      });
+
       clearCart();
       router.push(`/confirmation/${orderNumber}`);
     } catch (err: any) {

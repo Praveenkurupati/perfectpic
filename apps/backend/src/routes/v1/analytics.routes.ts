@@ -5,10 +5,19 @@ import { optionalAuth } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-// GET /api/v1/analytics/dashboard
+// Ingestion: Ingest client-side telemetry events (public / beacon)
+router.post('/events', AnalyticsController.ingestEvents);
+
+// Behavior Analytics: Comprehensive non-login vs login analytics with filters
+router.get('/behaviour', optionalAuth, AnalyticsController.getBehaviourAnalytics);
+
+// Live Feed: Real-time user journey feed
+router.get('/live-feed', optionalAuth, AnalyticsController.getLiveJourneys);
+
+// Legacy Executive Dashboard stats
 router.get('/dashboard', optionalAuth, AnalyticsController.getDashboardStats);
 
-// GET /api/v1/analytics/revenue
+// Legacy Revenue Trend
 router.get('/revenue', optionalAuth, AnalyticsController.getRevenueData);
 
 export default router;

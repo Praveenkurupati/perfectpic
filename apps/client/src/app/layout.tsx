@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Plus_Jakarta_Sans, Cinzel } from "next/font/google";
 import "./globals.css";
 import { AnimationProvider } from "@/components/providers/AnimationProvider";
+import { AnalyticsTracker } from "@/components/providers/AnalyticsTracker";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -43,6 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${cormorant.variable} ${plusJakarta.variable} ${cinzel.variable}`}>
       <body className="bg-cream-50 text-noir-900 font-sans antialiased">
+        <AnalyticsTracker />
         <AnimationProvider>
           {children}
         </AnimationProvider>

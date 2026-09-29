@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useEditorStore, PageLayout } from '@/stores/useEditorStore';
 import { LayoutGrid, Sparkles, Type, Palette, Check } from 'lucide-react';
+import { trackEvent } from '@/lib/analytics';
 
 const panels = ['Layouts', 'Cover', 'Backgrounds'] as const;
 
@@ -117,7 +118,13 @@ export default function EditorToolbar() {
                           return (
                             <button
                               key={opt.id}
-                              onClick={() => setPageLayout(targetedPageNum, opt.id)}
+                              onClick={() => {
+                                setPageLayout(targetedPageNum, opt.id);
+                                trackEvent('editor_action', `Selected Layout: ${opt.label}`, {
+                                  layout: opt.id,
+                                  page: targetedPageNum,
+                                });
+                              }}
                               className={`p-3 rounded-sm border text-left flex flex-col justify-between transition-all ${
                                 isSelected
                                   ? 'bg-amber-50/80 border-foil-gold ring-1 ring-foil-gold shadow-sm'
@@ -151,7 +158,12 @@ export default function EditorToolbar() {
                         return (
                           <button
                             key={foil.id}
-                            onClick={() => updateCoverConfig({ foilColor: foil.id })}
+                            onClick={() => {
+                              updateCoverConfig({ foilColor: foil.id });
+                              trackEvent('editor_action', `Selected Foil: ${foil.name}`, {
+                                foilColor: foil.id,
+                              });
+                            }}
                             className={`p-2 rounded-sm border text-xs font-medium flex items-center gap-2 transition-all ${
                               isSelected
                                 ? 'border-foil-gold bg-amber-50/70 ring-1 ring-foil-gold'

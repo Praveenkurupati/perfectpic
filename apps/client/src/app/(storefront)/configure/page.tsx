@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { ChevronRight, ArrowRight, Check, Image as ImageIcon, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { trackEvent } from "@/lib/analytics";
 
 function ConfigureContent() {
   const searchParams = useSearchParams();
@@ -648,6 +649,18 @@ function ConfigureContent() {
 
             <Link 
               href={`/upload/new-project?size=${encodeURIComponent(size)}&pages=${pageCount}&cover=${encodeURIComponent(cover)}&theme=${encodeURIComponent(theme)}&color=${encodeURIComponent(color)}&packaging=${encodeURIComponent(packaging)}${templateSlug ? `&template=${encodeURIComponent(templateSlug)}` : ''}`} 
+              onClick={() => {
+                trackEvent('config_change', `Configured Book: ${size} (${pageCount} Pages)`, {
+                  size,
+                  pageCount,
+                  cover,
+                  theme,
+                  color,
+                  packaging,
+                  templateSlug: templateSlug || 'custom',
+                  estimatedPrice: currentPrice,
+                });
+              }}
               className="w-full flex items-center justify-center px-6 py-4 bg-noir-950 text-cream-50 font-medium hover:bg-noir-900 transition-all rounded-sm text-center shadow-luxury-md"
             >
               <span>Continue to Upload Photos</span>

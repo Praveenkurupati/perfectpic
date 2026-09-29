@@ -15,12 +15,14 @@ import {
   LogOut, 
   User as UserIcon, 
   BookOpen, 
-  ExternalLink 
+  ExternalLink,
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Executive Overview", href: "/", icon: LayoutDashboard },
+  { name: "User Behaviour", href: "/analytics/behaviour", icon: Activity },
   { name: "Template Books", href: "/templates", icon: BookOpen },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Production", href: "/production", icon: Printer },

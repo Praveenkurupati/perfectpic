@@ -105,6 +105,12 @@ export const adminApi = {
   // Analytics & Dashboard
   getDashboardStats: () => fetcher<any>('/analytics/dashboard', { headers: authHeaders() }),
   getRevenueTrend: () => fetcher<any>('/analytics/revenue', { headers: authHeaders() }),
+  getBehaviourAnalytics: (filters?: Record<string, string>) => {
+    const params = new URLSearchParams(filters || {}).toString();
+    return fetcher<any>(`/analytics/behaviour${params ? `?${params}` : ''}`, { headers: authHeaders() });
+  },
+  getLiveFeed: (limit: number = 20) =>
+    fetcher<any>(`/analytics/live-feed?limit=${limit}`, { headers: authHeaders() }),
 
   // Health
   health: () => fetcher<{ status: string }>('/health'),
