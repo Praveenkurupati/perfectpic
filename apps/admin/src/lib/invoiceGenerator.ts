@@ -67,6 +67,17 @@ function numberToWords(num: number): string {
   return result.trim() + ' Rupees Only';
 }
 
+const formatNumber = (val: number): string => {
+  return Number(val).toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const formatCurrency = (val: number): string => {
+  return 'INR ' + formatNumber(val);
+};
+
 export function generateGstInvoicePdf(data: InvoiceData): void {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -96,7 +107,7 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
 
   // Company Name
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setTextColor(...dark);
   doc.text('PERFECTPIC LUXURY PRINTS PVT. LTD.', margin + 6, 21);
 
@@ -120,7 +131,7 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
   doc.setTextColor(...gold);
   doc.text('(Rule 46 of CGST Rules, 2017)', pageWidth - margin - 29, 28, { align: 'center' });
   doc.setTextColor(255, 255, 255);
-  doc.text(`ORIGINAL FOR RECIPIENT`, pageWidth - margin - 29, 34, { align: 'center' });
+  doc.text('ORIGINAL FOR RECIPIENT', pageWidth - margin - 29, 34, { align: 'center' });
 
   // -------------------------------------------------------------
   // 2. INVOICE META & CUSTOMER DETAILS (2 Columns)
@@ -147,10 +158,10 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
     ? new Date(data.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
     : new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  doc.text(`Invoice No:`, margin + 4, startY + 13);
-  doc.text(`Invoice Date:`, margin + 4, startY + 19);
-  doc.text(`Order Reference:`, margin + 4, startY + 25);
-  doc.text(`Place of Supply:`, margin + 4, startY + 31);
+  doc.text('Invoice No:', margin + 4, startY + 13);
+  doc.text('Invoice Date:', margin + 4, startY + 19);
+  doc.text('Order Reference:', margin + 4, startY + 25);
+  doc.text('Place of Supply:', margin + 4, startY + 31);
 
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...dark);
@@ -192,35 +203,53 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
 
   // -------------------------------------------------------------
   // 3. ITEM TABLE (GST COMPLIANT HSN 4901)
+  // Exact column allocations:
+  // Col 0: #           [14, 22]   width: 8mm   (center at 18)
+  // Col 1: DESC        [22, 86]   width: 64mm  (left at 24)
+  // Col 2: HSN/SAC     [86, 104]  width: 18mm  (center at 95)
+  // Col 3: QTY         [104, 114] width: 10mm  (center at 109)
+  // Col 4: RATE (INR)  [114, 134] width: 20mm  (right at 132)
+  // Col 5: TAXABLE     [134, 158] width: 24mm  (right at 156)
+  // Col 6: GST (18%)   [158, 174] width: 16mm  (right at 172)
+  // Col 7: TOTAL (INR) [174, 196] width: 22mm  (right at 194)
+  // Sum of widths: 8 + 64 + 18 + 10 + 20 + 24 + 16 + 22 = 182mm
   // -------------------------------------------------------------
   const tableY = startY + 42;
   const thHeight = 8;
+  const colSeparators = [22, 86, 104, 114, 134, 158, 174];
 
-  // Header row
+  // Table Header Background
   doc.setFillColor(...dark);
   doc.rect(margin, tableY, contentWidth, thHeight, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(255, 255, 255);
 
-  doc.text('#', margin + 3, tableY + 5.5);
-  doc.text('DESCRIPTION OF GOODS', margin + 12, tableY + 5.5);
-  doc.text('HSN/SAC', margin + 82, tableY + 5.5);
-  doc.text('QTY', margin + 102, tableY + 5.5);
-  doc.text('RATE (₹)', margin + 116, tableY + 5.5);
-  doc.text('TAXABLE (₹)', margin + 136, tableY + 5.5);
-  doc.text('GST (18%)', margin + 158, tableY + 5.5);
-  doc.text('TOTAL (₹)', margin + contentWidth - 3, tableY + 5.5, { align: 'right' });
+  doc.text('#', 18, tableY + 5.5, { align: 'center' });
+  doc.text('DESCRIPTION OF GOODS', 24, tableY + 5.5, { align: 'left' });
+  doc.text('HSN/SAC', 95, tableY + 5.5, { align: 'center' });
+  doc.text('QTY', 109, tableY + 5.5, { align: 'center' });
+  doc.text('RATE (INR)', 132, tableY + 5.5, { align: 'right' });
+  doc.text('TAXABLE (INR)', 156, tableY + 5.5, { align: 'right' });
+  doc.text('GST (18%)', 172, tableY + 5.5, { align: 'right' });
+  doc.text('TOTAL (INR)', 194, tableY + 5.5, { align: 'right' });
 
-  // Rows
+  // Draw header column dividers in dark gray
+  doc.setDrawColor(60, 60, 60);
+  doc.setLineWidth(0.2);
+  colSeparators.forEach((x) => {
+    doc.line(x, tableY, x, tableY + thHeight);
+  });
+
+  // Rows Data
   let curY = tableY + thHeight;
   const items = data.items && data.items.length > 0
     ? data.items
-    : [{ title: 'Custom Archival Photobook Keepsake', quantity: 1, price: data.total || 1999, dimensions: '8.25" × 8.25"', pageCount: 40 }];
+    : [{ title: 'Custom Archival Photobook Keepsake', quantity: 1, price: data.total || 2499, dimensions: '8.25" × 8.25"', pageCount: 40 }];
 
   // Calculations
-  const grandTotal = data.total || 1999;
+  const grandTotal = Number(data.total) || 2499;
   const taxableTotal = Math.round((grandTotal / 1.18) * 100) / 100;
   const gstTotal = Math.round((grandTotal - taxableTotal) * 100) / 100;
   const cgstAmount = isIntraState ? Math.round((gstTotal / 2) * 100) / 100 : 0;
@@ -228,61 +257,95 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
   const igstAmount = isIntraState ? 0 : gstTotal;
 
   items.forEach((item, index) => {
-    const itemTotal = item.price * (item.quantity || 1);
+    const qty = Math.max(1, item.quantity || 1);
+    const itemTotal = Number(item.price) || grandTotal;
     const itemTaxable = Math.round((itemTotal / 1.18) * 100) / 100;
     const itemGst = Math.round((itemTotal - itemTaxable) * 100) / 100;
+    const unitRate = Math.round((itemTaxable / qty) * 100) / 100;
 
-    const rowH = 14;
+    // Wrap item title if long
+    const titleLines: string[] = doc.splitTextToSize(item.title, 60);
+    const rowH = Math.max(15, 6 + titleLines.length * 4 + 4);
+
+    // Row zebra background
     doc.setFillColor(index % 2 === 0 ? 255 : 250, index % 2 === 0 ? 255 : 248, index % 2 === 0 ? 255 : 245);
     doc.rect(margin, curY, contentWidth, rowH, 'F');
+
+    // Bottom row border
     doc.setDrawColor(...borderCol);
+    doc.setLineWidth(0.3);
     doc.line(margin, curY + rowH, margin + contentWidth, curY + rowH);
 
+    // Vertical column grid lines
+    colSeparators.forEach((x) => {
+      doc.line(x, curY, x, curY + rowH);
+    });
+
+    // Col 0: Index
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...dark);
-    doc.text(`${index + 1}`, margin + 3, curY + 6);
+    doc.text(`${index + 1}`, 18, curY + 6, { align: 'center' });
 
-    // Title & Specs
+    // Col 1: Title & Specifications
     doc.setFont('helvetica', 'bold');
-    doc.text(item.title.substring(0, 36), margin + 12, curY + 5.5);
+    doc.setFontSize(7.5);
+    doc.setTextColor(...dark);
+    doc.text(titleLines, 24, curY + 5);
+
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(...gray);
+    const subtitleY = curY + 5 + titleLines.length * 3.8;
     doc.text(
-      `Layflat 180° Binding • ${item.dimensions || '8.25" × 8.25"'} • ${item.pageCount || 40} Pages Archival Matte`,
-      margin + 12,
-      curY + 10
+      `180-Deg Layflat • ${item.dimensions || '8.25" × 8.25"'} • ${item.pageCount || 40} Pages Archival Matte`,
+      24,
+      subtitleY
     );
 
+    // Col 2: HSN
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(...dark);
-    doc.text('4901 10 10', margin + 82, curY + 7);
-    doc.text(`${item.quantity || 1}`, margin + 104, curY + 7);
-    doc.text(Math.round(itemTaxable / (item.quantity || 1)).toLocaleString('en-IN'), margin + 116, curY + 7);
-    doc.text(itemTaxable.toLocaleString('en-IN'), margin + 136, curY + 7);
-    doc.text(itemGst.toLocaleString('en-IN'), margin + 158, curY + 7);
+    doc.text('4901 10 10', 95, curY + 6.5, { align: 'center' });
+
+    // Col 3: QTY
+    doc.text(`${qty}`, 109, curY + 6.5, { align: 'center' });
+
+    // Col 4: RATE (INR)
+    doc.text(formatNumber(unitRate), 132, curY + 6.5, { align: 'right' });
+
+    // Col 5: TAXABLE (INR)
+    doc.text(formatNumber(itemTaxable), 156, curY + 6.5, { align: 'right' });
+
+    // Col 6: GST (18%)
+    doc.text(formatNumber(itemGst), 172, curY + 6.5, { align: 'right' });
+
+    // Col 7: TOTAL (INR)
     doc.setFont('helvetica', 'bold');
-    doc.text(itemTotal.toLocaleString('en-IN'), margin + contentWidth - 3, curY + 7, { align: 'right' });
+    doc.text(formatNumber(itemTotal), 194, curY + 6.5, { align: 'right' });
 
     curY += rowH;
   });
 
   // Outer border for table
   doc.setDrawColor(...borderCol);
+  doc.setLineWidth(0.4);
   doc.rect(margin, tableY, contentWidth, curY - tableY, 'D');
 
   // -------------------------------------------------------------
   // 4. TAX SUMMARY & TOTALS BREAKDOWN
   // -------------------------------------------------------------
-  const summaryY = curY + 4;
-  const sumColW = 85;
-  const sumX = margin + contentWidth - sumColW;
+  const summaryY = curY + 5;
+  const sumColW = 86;
+  const sumX = margin + contentWidth - sumColW; // 110mm
+  const noteW = contentWidth - sumColW - 4;    // 92mm
 
+  // Right Box: Tax Summary
   doc.setFillColor(...lightBg);
   doc.rect(sumX, summaryY, sumColW, 46, 'F');
   doc.setDrawColor(...borderCol);
+  doc.setLineWidth(0.3);
   doc.rect(sumX, summaryY, sumColW, 46, 'D');
 
   const addSumRow = (label: string, value: string, yPos: number, isBold = false) => {
@@ -293,30 +356,29 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
     doc.text(value, sumX + sumColW - 4, yPos, { align: 'right' });
   };
 
-  addSumRow('Taxable Subtotal (INR):', `₹${taxableTotal.toLocaleString('en-IN')}`, summaryY + 7);
+  addSumRow('Taxable Subtotal (INR):', formatCurrency(taxableTotal), summaryY + 7);
 
   if (isIntraState) {
-    addSumRow('CGST (9.0%):', `₹${cgstAmount.toLocaleString('en-IN')}`, summaryY + 14);
-    addSumRow('SGST (9.0%):', `₹${sgstAmount.toLocaleString('en-IN')}`, summaryY + 21);
+    addSumRow('CGST (9.0%):', formatCurrency(cgstAmount), summaryY + 14);
+    addSumRow('SGST (9.0%):', formatCurrency(sgstAmount), summaryY + 21);
   } else {
-    addSumRow('IGST (18.0%):', `₹${igstAmount.toLocaleString('en-IN')}`, summaryY + 14);
+    addSumRow('IGST (18.0%):', formatCurrency(igstAmount), summaryY + 14);
   }
 
-  addSumRow('Shipping & Insured Transit:', 'FREE (0.00)', summaryY + 28);
+  addSumRow('Shipping (BlueDart Air):', 'FREE (0.00)', summaryY + 28);
 
-  // Total divider
+  // Total divider line
   doc.setDrawColor(...dark);
   doc.setLineWidth(0.5);
   doc.line(sumX, summaryY + 34, sumX + sumColW, summaryY + 34);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(9.5);
   doc.setTextColor(...dark);
-  doc.text('TOTAL AMOUNT:', sumX + 4, summaryY + 41);
-  doc.text(`₹${grandTotal.toLocaleString('en-IN')}`, sumX + sumColW - 4, summaryY + 41, { align: 'right' });
+  doc.text('TOTAL AMOUNT (INR):', sumX + 4, summaryY + 41);
+  doc.text(formatCurrency(grandTotal), sumX + sumColW - 4, summaryY + 41, { align: 'right' });
 
-  // Left Note: Total in Words & Bank Information
-  const noteW = contentWidth - sumColW - 4;
+  // Left Box: Total in Words & Bank Settlement Details
   doc.setFillColor(...lightBg);
   doc.rect(margin, summaryY, noteW, 46, 'F');
   doc.setDrawColor(...borderCol);
@@ -327,22 +389,25 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
   doc.setFontSize(8);
   doc.setTextColor(...dark);
   doc.text('TOTAL AMOUNT IN WORDS', margin + 4, summaryY + 6);
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(...gray);
-  doc.text(numberToWords(grandTotal), margin + 4, summaryY + 12);
+  const wordsLines = doc.splitTextToSize(numberToWords(grandTotal), noteW - 8);
+  doc.text(wordsLines, margin + 4, summaryY + 11);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(...dark);
-  doc.text('SETTLEMENT & PAYMENT DETAILS', margin + 4, summaryY + 20);
+  doc.text('SETTLEMENT & PAYMENT DETAILS', margin + 4, summaryY + 22);
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(...gray);
-  doc.text('Bank: HDFC Bank Ltd. • Branch: Koramangala, Bengaluru', margin + 4, summaryY + 26);
-  doc.text('A/C Name: PerfectPic Luxury Prints Pvt. Ltd.', margin + 4, summaryY + 31);
+  doc.text('Bank: HDFC Bank Ltd. • Branch: Koramangala, Bengaluru', margin + 4, summaryY + 28);
+  doc.text('A/C Name: PerfectPic Luxury Prints Pvt. Ltd.', margin + 4, summaryY + 32);
   doc.text('A/C No: 50200088921471  •  IFSC: HDFC0000053', margin + 4, summaryY + 36);
-  doc.text('Payment Gateway Status: SUCCESS (PAID ONLINE)', margin + 4, summaryY + 41);
+  doc.text('Payment Gateway Status: SUCCESS (PAID ONLINE - HDFC)', margin + 4, summaryY + 40);
 
   // -------------------------------------------------------------
   // 5. SIGNATURE & STATUTORY TERMS
@@ -350,37 +415,38 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
   const termsY = summaryY + 52;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(...dark);
   doc.text('TERMS & CONDITIONS', margin, termsY);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(...gray);
-  doc.text('1. Goods once sold are backed by PerfectPic 7-Day Free Reprint Guarantee in case of manufacturing or transit damage.', margin, termsY + 5);
-  doc.text('2. Layflat photobooks are manufactured according to ISO 9706 acid-free archival longevity standards.', margin, termsY + 9);
-  doc.text('3. Disputes are subject to the exclusive jurisdiction of the competent courts in Bengaluru, Karnataka.', margin, termsY + 13);
+  doc.text('1. Goods once sold are backed by PerfectPic 7-Day Free Reprint Guarantee in case of transit or press damage.', margin, termsY + 4.5);
+  doc.text('2. Layflat photobooks are manufactured according to ISO 9706 acid-free archival longevity standards.', margin, termsY + 8.5);
+  doc.text('3. Disputes are subject to the exclusive jurisdiction of the competent courts in Bengaluru, Karnataka.', margin, termsY + 12.5);
 
-  // Authorized Signatory
+  // Authorized Signatory Box (Right aligned)
   const sigX = margin + contentWidth - 65;
   doc.setDrawColor(...borderCol);
-  doc.line(sigX, termsY + 15, margin + contentWidth, termsY + 15);
+  doc.setLineWidth(0.3);
+  doc.line(sigX, termsY + 14, margin + contentWidth, termsY + 14);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(...dark);
-  doc.text('For PERFECTPIC LUXURY PRINTS PVT. LTD.', sigX, termsY + 19);
+  doc.text('For PERFECTPIC LUXURY PRINTS PVT. LTD.', sigX, termsY + 18);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(...gray);
-  doc.text('Authorized Digital Signatory', sigX, termsY + 23);
-  doc.text('System Certified Document', sigX, termsY + 27);
+  doc.text('Authorized Digital Signatory', sigX, termsY + 22);
+  doc.text('System Certified Document', sigX, termsY + 26);
 
   // Bottom Notice
-  doc.setFontSize(7);
-  doc.setTextColor(150, 150, 150);
-  doc.text('This is a computer-generated tax invoice issued in accordance with the Goods and Services Tax Act, 2017.', pageWidth / 2, 285, { align: 'center' });
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('This is a computer-generated tax invoice issued in accordance with Rule 46 of the CGST Rules, 2017.', pageWidth / 2, 285, { align: 'center' });
 
   // Trigger Download
   doc.save(`PerfectPic_GST_Invoice_${data.orderNumber}.pdf`);
