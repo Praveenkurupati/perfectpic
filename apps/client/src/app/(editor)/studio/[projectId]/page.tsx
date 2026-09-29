@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useEditorStore } from '@/stores/useEditorStore';
 import { useCartStore } from '@/stores/useCartStore';
-import { ChevronLeft, ChevronRight, Undo, Redo, Eye, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Undo, Redo, Eye, ShoppingBag, ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { generateBookProofPdf } from '@/lib/pdfGenerator';
 
 const BookCanvas = dynamic(() => import('@/features/editor/components/BookCanvas'), { ssr: false });
 const EditorToolbar = dynamic(() => import('@/features/editor/components/EditorToolbar'), { ssr: false });
@@ -27,7 +28,11 @@ function StudioContent() {
     currentSpreadIndex,
     setCurrentSpreadIndex,
     template,
-    pagePhotos
+    pagePhotos,
+    slotPhotos,
+    pageLayouts,
+    pageBackgrounds,
+    coverConfig
   } = useEditorStore();
 
   const { addItem } = useCartStore();
@@ -71,6 +76,45 @@ function StudioContent() {
       thumbnail
     });
     router.push('/cart');
+  };
+
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleExportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      const slotPhotoUrls = Object.values(slotPhotos || {})
+        .filter((p: any) => p && typeof p.url === 'string')
+        .map((p: any) => p.url);
+      const pagePhotoUrls = Object.values(pagePhotos || {})
+        .filter((p: any) => p && typeof p.url === 'string')
+        .map((p: any) => p.url);
+      const samplePhotos = template?.templatePhotos || [];
+      const combinedUserPhotos = Array.from(new Set([...slotPhotoUrls, ...pagePhotoUrls]));
+      const allPhotos = combinedUserPhotos.length > 0 ? combinedUserPhotos : samplePhotos;
+
+      await generateBookProofPdf({
+        title: template?.displayName || template?.title || 'Heirloom Custom Photobook',
+        subtitle: template?.subtitle || 'Curated Monograph Edition',
+        seriesLabel: template?.seriesLabel || 'THE TRAVEL SERIES',
+        dimensions: bookConfig.size || '8.25" × 8.25"',
+        pageCount,
+        theme: bookConfig.theme || 'Minimal Modern',
+        coverImage: template?.coverImage || samplePhotos[0],
+        coverColor: template?.coverColor || '#F8BAC7',
+        coverConfig,
+        photos: allPhotos,
+        pagePhotos,
+        slotPhotos,
+        pageLayouts,
+        pageBackgrounds,
+        projectId,
+      });
+    } catch (err) {
+      console.error('Studio PDF export error:', err);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   const totalSpreads = Math.ceil(pageCount / 2);
@@ -129,6 +173,26 @@ function StudioContent() {
           </div>
 
           <div className="w-px h-5 bg-cream-300 mx-1" />
+
+          {/* Export PDF Proof Button */}
+          <button 
+            onClick={handleExportPdf}
+            disabled={isExportingPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-noir-300 bg-white hover:bg-cream-100 rounded-sm text-noir-900 transition-colors disabled:opacity-50"
+            title="Export 12K Print Proof PDF"
+          >
+            {isExportingPdf ? (
+              <>
+                <Loader2 size={13} className="animate-spin text-foil-gold" />
+                <span className="hidden sm:inline">Exporting...</span>
+              </>
+            ) : (
+              <>
+                <Download size={13} className="text-foil-gold" />
+                <span className="hidden sm:inline">Export PDF</span>
+              </>
+            )}
+          </button>
 
           {/* 3D Preview Button */}
           <button 
