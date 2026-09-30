@@ -180,6 +180,33 @@ export default function CheckoutPage() {
 
       const orderNumber = res.orderNumber || res.id || `PP-${Math.floor(1000 + Math.random() * 9000)}`;
       
+      // Resilient fallback: If upfront PDF upload did not succeed, complete in background and attach to order
+      if (!s3PdfUrl && snapshot) {
+        generateBookPdfBlob({
+          title: snapshot.title || primaryItem?.title || 'Heirloom Custom Photobook',
+          subtitle: snapshot.subtitle,
+          seriesLabel: snapshot.seriesLabel,
+          dimensions: snapshot.dimensions || primaryItem?.dimensions,
+          pageCount: snapshot.pageCount || primaryItem?.pageCount,
+          theme: snapshot.theme || primaryItem?.theme,
+          coverImage: snapshot.coverImage || primaryItem?.thumbnail,
+          coverColor: snapshot.coverColor,
+          coverConfig: snapshot.coverConfig,
+          photos: snapshot.photos,
+          pagePhotos: snapshot.pagePhotos,
+          slotPhotos: snapshot.slotPhotos,
+          slotCrops: snapshot.slotCrops,
+          pageLayouts: snapshot.pageLayouts,
+          pageBackgrounds: snapshot.pageBackgrounds,
+          projectId: snapshot.projectId || primaryItem?.projectId,
+        }).then(async (blob) => {
+          const up = await api.uploadPdf(blob, `photobook-${orderNumber}.pdf`, orderNumber);
+          if (up && up.url) {
+            await api.updateOrderPdf(orderNumber, up.url).catch(() => {});
+          }
+        }).catch((e) => console.warn('Background PDF sync notice:', e));
+      }
+
       trackEvent('order_completed', `Order Placed (#${orderNumber})`, {
         orderNumber,
         total: orderTotal,

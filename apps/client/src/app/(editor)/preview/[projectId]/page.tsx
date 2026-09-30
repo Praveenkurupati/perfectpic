@@ -147,7 +147,23 @@ function PreviewContent() {
     if (!approved) return;
     setIsAddingToCart(true);
 
-    const thumbnail = pagePhotos[1]?.url || coverImage || samplePhotos[0] || 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800';
+    const slotPhotoUrls = Object.values(slotPhotos || {})
+      .filter((p: any) => p && typeof p.url === 'string')
+      .map((p: any) => p.url);
+    const pagePhotoUrls = Object.values(pagePhotos || {})
+      .filter((p: any) => p && typeof p.url === 'string')
+      .map((p: any) => p.url);
+    const combinedUserPhotos = Array.from(new Set([...slotPhotoUrls, ...pagePhotoUrls]));
+    const allPhotos = combinedUserPhotos.length > 0 ? combinedUserPhotos : samplePhotos;
+
+    const thumbnail =
+      slotPhotos['0']?.url ||
+      pagePhotos[0]?.url ||
+      pagePhotos[1]?.url ||
+      slotPhotos['1_0']?.url ||
+      coverImage ||
+      samplePhotos[0] ||
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800';
 
     try {
       // Register project draft in backend
@@ -162,11 +178,6 @@ function PreviewContent() {
       }).catch((err) => {
         console.warn('Backend draft registration notice:', err.message);
       });
-
-      const userPhotoUrls = Object.values(pagePhotos || {})
-        .filter((p: any) => p && typeof p.url === 'string')
-        .map((p: any) => p.url);
-      const allPhotos = userPhotoUrls.length > 0 ? userPhotoUrls : samplePhotos;
 
       const projectSnapshot = {
         projectId,
@@ -221,10 +232,22 @@ function PreviewContent() {
   const handleDownloadPdf = async () => {
     try {
       setIsGeneratingPdf(true);
-      const userPhotoUrls = Object.values(pagePhotos || {})
+      const slotPhotoUrls = Object.values(slotPhotos || {})
         .filter((p: any) => p && typeof p.url === 'string')
         .map((p: any) => p.url);
-      const allPhotos = userPhotoUrls.length > 0 ? userPhotoUrls : samplePhotos;
+      const pagePhotoUrls = Object.values(pagePhotos || {})
+        .filter((p: any) => p && typeof p.url === 'string')
+        .map((p: any) => p.url);
+      const combinedUserPhotos = Array.from(new Set([...slotPhotoUrls, ...pagePhotoUrls]));
+      const allPhotos = combinedUserPhotos.length > 0 ? combinedUserPhotos : samplePhotos;
+
+      const effectiveCover =
+        slotPhotos['0']?.url ||
+        pagePhotos[0]?.url ||
+        coverImage ||
+        samplePhotos[0] ||
+        'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800';
+
       await generateBookProofPdf({
         title: bookTitle,
         subtitle,
@@ -232,7 +255,7 @@ function PreviewContent() {
         dimensions,
         pageCount,
         theme: storeBookConfig.theme || 'Minimal Modern',
-        coverImage: coverImage || samplePhotos[0],
+        coverImage: effectiveCover,
         coverColor,
         coverConfig,
         photos: allPhotos,
