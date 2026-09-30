@@ -237,6 +237,28 @@ export default function OrdersPage() {
                             {order.status}
                           </span>
 
+                          {/* Archival Packaging Badges */}
+                          {order.packaging?.keepsakeBox && (
+                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
+                              🎁 Velvet Box
+                            </span>
+                          )}
+                          {order.packaging?.giftWrap && (
+                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
+                              🎀 Ribbon Wrap
+                            </span>
+                          )}
+                          {order.packaging?.uvGlaze && (
+                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
+                              🛡️ UV Glaze
+                            </span>
+                          )}
+                          {order.packaging?.miniPolaroids && (
+                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
+                              📷 10 Polaroids
+                            </span>
+                          )}
+
                           {isDelivered && review && (
                             <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-amber-50 border border-foil-gold/40 text-amber-900 rounded-sm font-semibold">
                               <Star size={11} className="fill-amber-500 text-amber-500" />
@@ -262,13 +284,19 @@ export default function OrdersPage() {
                             customerEmail: order.customerEmail,
                             customerPhone: order.customerPhone,
                             shippingAddress: order.shippingAddress,
-                            items: order.items && order.items.length > 0 ? order.items : [{
-                              title: order.title || 'Custom Photobook Keepsake',
-                              quantity: 1,
-                              price: order.total || order.amount || 1999,
-                              dimensions: order.dimensions || '8.25" × 8.25"',
-                              pageCount: order.pageCount || 40,
-                            }],
+                            items: order.items && order.items.length > 0 ? order.items : [
+                              {
+                                title: order.title || 'Custom Photobook Keepsake',
+                                quantity: 1,
+                                price: Math.max(0, (order.total || order.amount || 1999) - (order.packaging?.total || 0)),
+                                dimensions: order.dimensions || '8.25" × 8.25"',
+                                pageCount: order.pageCount || 40,
+                              },
+                              ...(order.packaging?.keepsakeBox ? [{ title: 'Keepsake Velvet Presentation Box', quantity: 1, price: 499, pageCount: 0 }] : []),
+                              ...(order.packaging?.giftWrap ? [{ title: 'Artisan Ribbon Wrap & Calligraphy Card', quantity: 1, price: 199, pageCount: 0 }] : []),
+                              ...(order.packaging?.uvGlaze ? [{ title: 'Archival UV Anti-Scratch Page Glaze', quantity: 1, price: 249, pageCount: 0 }] : []),
+                              ...(order.packaging?.miniPolaroids ? [{ title: '10 Mini Polaroid Keepsake Prints', quantity: 1, price: 149, pageCount: 0 }] : []),
+                            ],
                             total: order.total || order.amount || 1999,
                           })}
                           className="text-xs font-medium border border-cream-300 px-3 py-2 rounded-sm hover:bg-cream-100 transition-colors flex items-center gap-1.5 text-noir-700 shadow-sm"

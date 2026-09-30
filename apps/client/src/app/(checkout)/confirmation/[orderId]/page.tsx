@@ -74,6 +74,44 @@ export default function ConfirmationPage() {
   const state = order?.shippingAddress?.state || 'Karnataka';
   const pincode = order?.shippingAddress?.pincode || '560038';
 
+  // Packaging & Add-on extraction
+  const orderItemsList = Array.isArray(order?.items) ? order.items : [];
+  
+  const hasKeepsakeBox = Boolean(
+    order?.packaging?.keepsakeBox ||
+    order?.accessories?.keepsakeBox ||
+    orderItemsList.some((i: any) => i.id === 'acc-keepsake-box' || i.id === 'keepsakeBox' || /keepsake|velvet box/i.test(i.title || ''))
+  );
+
+  const hasGiftWrap = Boolean(
+    order?.packaging?.giftWrap ||
+    order?.accessories?.giftWrap ||
+    order?.isGift ||
+    orderItemsList.some((i: any) => i.id === 'acc-gift-wrap' || i.id === 'giftWrap' || /ribbon|gift wrap|calligraphy/i.test(i.title || ''))
+  );
+
+  const hasUvGlaze = Boolean(
+    order?.packaging?.uvGlaze ||
+    order?.accessories?.uvGlaze ||
+    orderItemsList.some((i: any) => i.id === 'acc-uv-glaze' || i.id === 'uvGlaze' || /uv glaze|anti-scratch/i.test(i.title || ''))
+  );
+
+  const hasMiniPolaroids = Boolean(
+    order?.packaging?.miniPolaroids ||
+    order?.accessories?.miniPolaroids ||
+    orderItemsList.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
+  );
+
+  const packagingTotal = order?.pricing?.packagingPrice ?? order?.packaging?.total ?? (
+    (hasKeepsakeBox ? 499 : 0) +
+    (hasGiftWrap ? 199 : 0) +
+    (hasUvGlaze ? 249 : 0) +
+    (hasMiniPolaroids ? 149 : 0)
+  );
+
+  const hasPackagingUpgrades = hasKeepsakeBox || hasGiftWrap || hasUvGlaze || hasMiniPolaroids;
+  const baseBookPrice = Math.max(0, displayTotal - packagingTotal);
+
   const handleDownloadInvoice = async () => {
     try {
       setIsDownloadingPdf(true);
@@ -97,15 +135,21 @@ export default function ConfirmationPage() {
               quantity: it.quantity || 1,
               price: it.price || displayTotal,
               dimensions: it.dimensions || dimensions,
-              pageCount: it.pageCount || pageCount,
+              pageCount: it.pageCount || (it.id?.startsWith('acc-') ? 0 : pageCount),
             }))
-          : [{
-              title: bookTitle,
-              quantity: 1,
-              price: displayTotal,
-              dimensions,
-              pageCount,
-            }],
+          : [
+              {
+                title: bookTitle,
+                quantity: 1,
+                price: baseBookPrice > 0 ? baseBookPrice : displayTotal,
+                dimensions,
+                pageCount,
+              },
+              ...(hasKeepsakeBox ? [{ title: 'Keepsake Velvet Presentation Box', quantity: 1, price: 499, pageCount: 0 }] : []),
+              ...(hasGiftWrap ? [{ title: 'Artisan Ribbon Wrap & Calligraphy Card', quantity: 1, price: 199, pageCount: 0 }] : []),
+              ...(hasUvGlaze ? [{ title: 'Archival UV Anti-Scratch Page Glaze', quantity: 1, price: 249, pageCount: 0 }] : []),
+              ...(hasMiniPolaroids ? [{ title: '10 Mini Polaroid Keepsake Prints', quantity: 1, price: 149, pageCount: 0 }] : []),
+            ],
         total: displayTotal,
       });
     } catch (err) {
@@ -305,6 +349,24 @@ export default function ConfirmationPage() {
                   <div className="flex justify-between items-center text-noir-600 pl-3 border-l-2 border-cream-300">
                     <span>IGST (18.0% Integrated GST)</span>
                     <span className="font-mono">₹{igstAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                {/* Packaging & Accessories Upgrades */}
+                {hasPackagingUpgrades && (
+                  <div className="space-y-1.5 pt-1 pb-1">
+                    <div className="flex justify-between items-center text-amber-900 bg-amber-50/70 p-2 rounded-xs border border-amber-200/70">
+                      <span className="font-medium flex items-center gap-1.5">
+                        <span>✨ Archival Presentation Packaging</span>
+                      </span>
+                      <span className="font-mono font-bold">+₹{packagingTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 px-1">
+                      {hasKeepsakeBox && <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-full border border-cream-200">🎁 Velvet Box</span>}
+                      {hasGiftWrap && <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-full border border-cream-200">🎀 Ribbon Wrap</span>}
+                      {hasUvGlaze && <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-full border border-cream-200">🛡️ UV Glaze</span>}
+                      {hasMiniPolaroids && <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-full border border-cream-200">📷 10 Polaroids</span>}
+                    </div>
                   </div>
                 )}
 

@@ -297,17 +297,36 @@ export function generateGstInvoicePdf(data: InvoiceData): void {
     doc.setFontSize(6.5);
     doc.setTextColor(...gray);
     const subtitleY = curY + 5 + titleLines.length * 3.8;
-    doc.text(
-      `180-Deg Layflat • ${item.dimensions || '8.25" × 8.25"'} • ${item.pageCount || 40} Pages Archival Matte`,
-      24,
-      subtitleY
-    );
+    const isAccessory = item.pageCount === 0 || /box|ribbon|wrap|glaze|polaroid|print|keepsake/i.test(item.title);
+    
+    let itemSpecDesc = `180-Deg Layflat • ${item.dimensions || '8.25" × 8.25"'} • ${item.pageCount || 40} Pages Archival Matte`;
+    let itemHsn = '4901 10 10';
+
+    if (isAccessory) {
+      if (/box/i.test(item.title)) {
+        itemSpecDesc = 'Custom Archival Presentation Box • Gold Foil Insignia & Magnetic Ribbon';
+        itemHsn = '4819 10 00';
+      } else if (/ribbon|card|wrap/i.test(item.title)) {
+        itemSpecDesc = 'Artisan Emerald Satin Ribbon • Personalized Calligraphy Card';
+        itemHsn = '5806 32 00';
+      } else if (/glaze|scratch/i.test(item.title)) {
+        itemSpecDesc = 'Diamond Clear UV Glaze Micro-Coating • Fingerprint & Spill Protection';
+        itemHsn = '3208 90 90';
+      } else if (/polaroid|print/i.test(item.title)) {
+        itemSpecDesc = '10 Mini Vintage Photo Prints (2"×3") • 300 GSM Archival Cotton';
+        itemHsn = '4911 91 00';
+      } else {
+        itemSpecDesc = 'Archival Presentation Upgrade';
+      }
+    }
+
+    doc.text(itemSpecDesc, 24, subtitleY);
 
     // Col 2: HSN
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(...dark);
-    doc.text('4901 10 10', 95, curY + 6.5, { align: 'center' });
+    doc.text(itemHsn, 95, curY + 6.5, { align: 'center' });
 
     // Col 3: QTY
     doc.text(`${qty}`, 109, curY + 6.5, { align: 'center' });
