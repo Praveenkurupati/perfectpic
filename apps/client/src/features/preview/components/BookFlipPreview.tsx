@@ -131,6 +131,7 @@ export default function BookFlipPreview({
         <img
           src={url}
           alt={label || 'Photo'}
+          crossOrigin="anonymous"
           style={{
             objectFit: 'cover',
             objectPosition: `${focalX}% ${focalY}%`,
@@ -284,6 +285,7 @@ export default function BookFlipPreview({
                 <img
                   src={effectiveCover}
                   alt={displayTitle}
+                  crossOrigin="anonymous"
                   style={{
                     objectFit: 'cover',
                     objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
@@ -341,6 +343,7 @@ export default function BookFlipPreview({
                   <img
                     src={getPanoramicPhotoUrl(currentSpread, leftPageNumber)}
                     alt={`Panoramic Spread ${leftPageNumber}-${rightPageNumber}`}
+                    crossOrigin="anonymous"
                     style={{
                       objectFit: 'cover',
                       objectPosition: `${(slotCrops[`spread_${currentSpread}`]?.x ?? slotCrops[`${leftPageNumber}_0`]?.x ?? slotCrops[`${leftPageNumber}`]?.x ?? 50)}% ${(slotCrops[`spread_${currentSpread}`]?.y ?? slotCrops[`${leftPageNumber}_0`]?.y ?? slotCrops[`${leftPageNumber}`]?.y ?? 50)}%`,

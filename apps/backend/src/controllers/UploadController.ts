@@ -2,7 +2,8 @@
 import { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { generatePresignedUrl, uploadBufferToS3, deleteFromS3, isS3Configured } from '../lib/s3';
+import { generatePresignedUrl, uploadBufferToS3, deleteFromS3, isS3Configured, getObjectBufferFromS3 } from '../lib/s3';
+import { env } from '../config/env';
 import { ApiError } from '../utils/apiError';
 
 export class UploadController {
@@ -27,6 +28,85 @@ export class UploadController {
       message: 'Upload marked as complete',
       photoId: 'photo_' + Date.now(),
     });
+  }
+
+  /**
+   * Proxies an image from S3 or external URL and serves it with permissive CORS headers
+   * so browser canvases and PDF generators never experience tainted canvas or CORS errors.
+   */
+  public static async proxyImage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const rawUrl = req.query.url;
+      const imageUrl = Array.isArray(rawUrl) ? String(rawUrl[0]) : String(rawUrl || '');
+      if (!imageUrl || imageUrl === 'undefined') {
+        throw ApiError.badRequest('Query parameter "url" is required.');
+      }
+
+      // 1. If it's a local uploads file
+      if (imageUrl.includes('/uploads/')) {
+        const relativePart = imageUrl.substring(imageUrl.indexOf('/uploads/') + '/uploads/'.length);
+        const localPath = path.join(process.cwd(), 'uploads', relativePart);
+        if (fs.existsSync(localPath)) {
+          const ext = path.extname(localPath).toLowerCase();
+          const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+          res.setHeader('Content-Type', mime);
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          return fs.createReadStream(localPath).pipe(res);
+        }
+      }
+
+      // 2. If it's an S3 object (either full S3 URL or relative key)
+      const isS3 = isS3Configured() && (
+        (env.S3_BUCKET && imageUrl.includes(env.S3_BUCKET)) ||
+        imageUrl.startsWith('photos/') ||
+        imageUrl.startsWith('photobooks/')
+      );
+
+      if (isS3) {
+        let key = imageUrl;
+        if (imageUrl.startsWith('http')) {
+          try {
+            const u = new URL(imageUrl);
+            key = u.pathname.replace(/^\/+/, '');
+          } catch {}
+        }
+        const s3Obj = await getObjectBufferFromS3(key);
+        if (s3Obj && s3Obj.buffer) {
+          res.setHeader('Content-Type', s3Obj.contentType);
+          res.setHeader('Content-Length', s3Obj.buffer.length);
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          return res.status(200).send(s3Obj.buffer);
+        }
+      }
+
+      // 3. External HTTP(S) URL (e.g. Unsplash or public CDN)
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        const response = await fetch(imageUrl, {
+          headers: {
+            'User-Agent': 'PerfectPic-PDF-Renderer/1.0',
+          },
+        });
+
+        if (!response.ok) {
+          throw ApiError.badRequest(`Failed to fetch upstream image: ${response.statusText}`);
+        }
+
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const arrayBuf = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuf);
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Length', buffer.length);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        return res.status(200).send(buffer);
+      }
+
+      throw ApiError.badRequest('Invalid image URL format.');
+    } catch (err) {
+      next(err);
+    }
   }
 
   public static async uploadFile(req: Request, res: Response, next: NextFunction) {

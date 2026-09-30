@@ -1,4 +1,10 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutBucketCorsCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env';
 
@@ -72,6 +78,70 @@ export async function uploadBufferToS3(
     eTag: response.ETag,
     bucket: env.S3_BUCKET,
   };
+}
+
+/**
+ * Downloads an object buffer directly from S3 using AWS SDK.
+ */
+export async function getObjectBufferFromS3(key: string): Promise<{ buffer: Buffer; contentType: string } | null> {
+  const client = getS3Client();
+  if (!client || !env.S3_BUCKET) {
+    return null;
+  }
+
+  try {
+    const cleanKey = key.replace(/^\/+/, '');
+    const command = new GetObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: cleanKey,
+    });
+
+    const response = await client.send(command);
+    if (!response.Body) return null;
+
+    const bytes = await response.Body.transformToByteArray();
+    return {
+      buffer: Buffer.from(bytes),
+      contentType: response.ContentType || 'image/jpeg',
+    };
+  } catch (err: any) {
+    console.warn(`S3 getObject failed for key "${key}":`, err?.message);
+    return null;
+  }
+}
+
+/**
+ * Automatically ensures the S3 bucket has standard permissive CORS configuration,
+ * allowing web applications to load photos into HTML5 Canvas and jsPDF without tainted canvas errors.
+ */
+export async function ensureS3Cors(): Promise<boolean> {
+  const client = getS3Client();
+  if (!client || !env.S3_BUCKET) {
+    return false;
+  }
+
+  try {
+    const command = new PutBucketCorsCommand({
+      Bucket: env.S3_BUCKET,
+      CORSConfiguration: {
+        CORSRules: [
+          {
+            AllowedHeaders: ['*'],
+            AllowedMethods: ['GET', 'HEAD', 'PUT', 'POST', 'DELETE'],
+            AllowedOrigins: ['*'],
+            ExposeHeaders: ['ETag', 'x-amz-meta-custom-header'],
+            MaxAgeSeconds: 3600,
+          },
+        ],
+      },
+    });
+
+    await client.send(command);
+    return true;
+  } catch (err: any) {
+    console.warn('Notice: Could not auto-apply S3 CORS configuration:', err?.message);
+    return false;
+  }
 }
 
 /**

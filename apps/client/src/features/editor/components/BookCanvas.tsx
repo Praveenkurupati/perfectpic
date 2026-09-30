@@ -47,6 +47,7 @@ function PhotoSlot({
           <img
             src={photo.url}
             alt={label || 'Slot Photo'}
+            crossOrigin="anonymous"
             style={{
               objectFit: 'cover',
               objectPosition: `${focalX}% ${focalY}%`,
@@ -445,6 +446,7 @@ export default function BookCanvas() {
                   <img
                     src={coverPhoto.url}
                     alt="Cover"
+                    crossOrigin="anonymous"
                     style={{
                       objectFit: 'cover',
                       objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,

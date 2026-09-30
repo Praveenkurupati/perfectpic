@@ -1,5 +1,6 @@
 // apps/client/src/lib/pdfGenerator.ts
 import { jsPDF } from 'jspdf';
+import { getApiBaseUrl } from './urls';
 
 export interface BookPdfOptions {
   title: string;
@@ -77,58 +78,135 @@ function getLayoutDisplayName(layout: string): string {
 }
 
 /**
- * Safely converts an image URL to a Base64 data URL via canvas.
- * Falls back to null if CORS or network blocks the image.
+ * Safely fetches an image as a Blob with automatic fallback to the backend proxy.
+ * This guarantees that CORS is never an issue, avoiding tainted canvas errors.
  */
-async function getBase64Image(url: string): Promise<string | null> {
+async function fetchImageBlob(url: string): Promise<Blob | null> {
   if (!url || typeof window === 'undefined') return null;
-  if (url.startsWith('data:image/')) return url;
 
-  // Attempt 1: Fetch via blob & FileReader (avoids Canvas security taint)
+  // If already a base64 data URL, convert to Blob directly
+  if (url.startsWith('data:image/')) {
+    try {
+      const parts = url.split(',');
+      const mime = parts[0]?.match(/:(.*?);/)?.[1] || 'image/jpeg';
+      const b64 = parts[1] || '';
+      const bstr = atob(b64);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new Blob([u8arr], { type: mime });
+    } catch {
+      return null;
+    }
+  }
+
+  // Attempt 1: Direct fetch with CORS mode
   try {
     const res = await fetch(url, { mode: 'cors' });
     if (res.ok) {
-      const blob = await res.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
-      });
+      return await res.blob();
     }
   } catch {
-    // Proceed to canvas fallback
+    // Proceed to proxy fallback
   }
 
-  // Attempt 2: Canvas draw fallback with crossOrigin
+  // Attempt 2: Fetch via backend proxy endpoint (guarantees CORS from server)
+  try {
+    const proxyUrl = `${getApiBaseUrl()}/api/v1/upload/proxy?url=${encodeURIComponent(url)}`;
+    const proxyRes = await fetch(proxyUrl);
+    if (proxyRes.ok) {
+      return await proxyRes.blob();
+    }
+  } catch {
+    // Both failed
+  }
+
+  return null;
+}
+
+/**
+ * Loads an HTMLImageElement safely from a URL using Object URLs whenever possible
+ * to completely eliminate tainted canvas DOMExceptions.
+ */
+async function loadImageElement(url: string): Promise<{ img: HTMLImageElement; cleanup: () => void } | null> {
+  if (!url || typeof window === 'undefined') return null;
+
+  // 1. Try loading via Blob + ObjectURL (100% same-origin safety, no tainted canvas)
+  const blob = await fetchImageBlob(url);
+  if (blob) {
+    return new Promise((resolve) => {
+      const objectUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        resolve({
+          img,
+          cleanup: () => URL.revokeObjectURL(objectUrl),
+        });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(null);
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  // 2. Direct Image fallback
   return new Promise((resolve) => {
     try {
       const img = new Image();
       img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.min(4200, img.naturalWidth || 1200);
-          canvas.height = Math.min(4200, img.naturalHeight || 1200);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/jpeg', 0.96));
-            return;
-          }
-        } catch {
-          // Handled via fallback
-        }
-        resolve(null);
-      };
+      img.onload = () => resolve({ img, cleanup: () => {} });
       img.onerror = () => resolve(null);
       img.src = url;
     } catch {
       resolve(null);
     }
   });
+}
+
+/**
+ * Safely converts an image URL to a Base64 data URL.
+ */
+async function getBase64Image(url: string): Promise<string | null> {
+  if (!url || typeof window === 'undefined') return null;
+  if (url.startsWith('data:image/')) return url;
+
+  // Attempt 1: Convert directly via Blob & FileReader
+  const blob = await fetchImageBlob(url);
+  if (blob) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Attempt 2: Canvas draw fallback with Object URL safety
+  const loaded = await loadImageElement(url);
+  if (!loaded) return null;
+  const { img, cleanup } = loaded;
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.min(4200, img.naturalWidth || 1200);
+    canvas.height = Math.min(4200, img.naturalHeight || 1200);
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.96);
+      cleanup();
+      return dataUrl;
+    }
+  } catch {}
+
+  cleanup();
+  return null;
 }
 
 /**
@@ -143,70 +221,63 @@ async function getCroppedBase64Image(
 ): Promise<string | null> {
   if (!url || typeof window === 'undefined') return null;
 
-  return new Promise((resolve) => {
-    try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+  const loaded = await loadImageElement(url);
+  if (!loaded) return null;
+  const { img, cleanup } = loaded;
 
-      img.onload = () => {
-        try {
-          const naturalW = img.naturalWidth || 800;
-          const naturalH = img.naturalHeight || 800;
-          const targetAspect = targetW / targetH;
-          const imgAspect = naturalW / naturalH;
+  try {
+    const naturalW = img.naturalWidth || 800;
+    const naturalH = img.naturalHeight || 800;
+    const targetAspect = targetW / targetH;
+    const imgAspect = naturalW / naturalH;
 
-          const zoom = Math.max(1, Math.min(3, crop?.zoom ?? 1.0));
-          const focalX = Math.max(0, Math.min(100, crop?.x ?? 50)) / 100;
-          const focalY = Math.max(0, Math.min(100, crop?.y ?? 50)) / 100;
+    const zoom = Math.max(1, Math.min(3, crop?.zoom ?? 1.0));
+    const focalX = Math.max(0, Math.min(100, crop?.x ?? 50)) / 100;
+    const focalY = Math.max(0, Math.min(100, crop?.y ?? 50)) / 100;
 
-          let cropW: number;
-          let cropH: number;
+    let cropW: number;
+    let cropH: number;
 
-          if (imgAspect > targetAspect) {
-            // Image is wider than slot: limit by height, crop horizontal sides
-            cropH = naturalH / zoom;
-            cropW = cropH * targetAspect;
-          } else {
-            // Image is taller than slot: limit by width, crop vertical top/bottom
-            cropW = naturalW / zoom;
-            cropH = cropW / targetAspect;
-          }
-
-          cropW = Math.min(naturalW, cropW);
-          cropH = Math.min(naturalH, cropH);
-
-          const maxSourceX = naturalW - cropW;
-          const maxSourceY = naturalH - cropH;
-          const sourceX = Math.max(0, Math.min(maxSourceX, maxSourceX * focalX));
-          const sourceY = Math.max(0, Math.min(maxSourceY, maxSourceY * focalY));
-
-          // Set canvas output resolution for ultra-HD 300-DPI archival print
-          const canvasW = Math.max(1200, Math.min(4200, Math.round(cropW)));
-          const canvasH = Math.round(canvasW / targetAspect);
-
-          const canvas = document.createElement('canvas');
-          canvas.width = canvasW;
-          canvas.height = canvasH;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(img, sourceX, sourceY, cropW, cropH, 0, 0, canvasW, canvasH);
-            resolve(canvas.toDataURL('image/jpeg', 0.96));
-            return;
-          }
-        } catch {
-          // Handled via fallback
-        }
-        resolve(null);
-      };
-
-      img.onerror = () => resolve(null);
-      img.src = url;
-    } catch {
-      resolve(null);
+    if (imgAspect > targetAspect) {
+      // Image is wider than slot: limit by height, crop horizontal sides
+      cropH = naturalH / zoom;
+      cropW = cropH * targetAspect;
+    } else {
+      // Image is taller than slot: limit by width, crop vertical top/bottom
+      cropW = naturalW / zoom;
+      cropH = cropW / targetAspect;
     }
-  });
+
+    cropW = Math.min(naturalW, cropW);
+    cropH = Math.min(naturalH, cropH);
+
+    const maxSourceX = naturalW - cropW;
+    const maxSourceY = naturalH - cropH;
+    const sourceX = Math.max(0, Math.min(maxSourceX, maxSourceX * focalX));
+    const sourceY = Math.max(0, Math.min(maxSourceY, maxSourceY * focalY));
+
+    // Set canvas output resolution for ultra-HD 300-DPI archival print
+    const canvasW = Math.max(1200, Math.min(4200, Math.round(cropW)));
+    const canvasH = Math.round(canvasW / targetAspect);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, sourceX, sourceY, cropW, cropH, 0, 0, canvasW, canvasH);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.96);
+      cleanup();
+      return dataUrl;
+    }
+  } catch (err) {
+    console.warn('Canvas cropping error:', err);
+  }
+
+  cleanup();
+  return null;
 }
 
 /**

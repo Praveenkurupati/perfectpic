@@ -24,6 +24,7 @@ const upload = multer({
   },
 });
 
+router.get('/proxy', UploadController.proxyImage);
 router.post('/file', optionalAuth, upload.single('file'), UploadController.uploadFile);
 router.post('/presign', optionalAuth, UploadController.presign);
 router.post('/complete', optionalAuth, UploadController.complete);

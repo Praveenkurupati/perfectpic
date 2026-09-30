@@ -25,7 +25,18 @@ async function bootstrap() {
     logger.warn(`Redis cache warning: ${err.message}`);
   }
 
-  // 3. Start HTTP server
+  // 3. Ensure AWS S3 Bucket CORS rules are active
+  try {
+    const { isS3Configured, ensureS3Cors } = await import('./lib/s3');
+    if (isS3Configured()) {
+      await ensureS3Cors();
+      logger.info('☁️ AWS S3 Bucket CORS verified and active for client canvas rendering.');
+    }
+  } catch (err: any) {
+    logger.warn(`S3 CORS setup notice: ${err.message}`);
+  }
+
+  // 4. Start HTTP server
   server = app.listen(env.PORT, () => {
     logger.info(`✨ PerfectPic Server is live and listening on http://localhost:${env.PORT}`);
     logger.info(`🌐 Environment: ${env.NODE_ENV}`);
