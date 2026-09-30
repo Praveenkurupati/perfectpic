@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Instagram, Facebook, Twitter, MessageCircle } from "lucide-react";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export function Footer() {
   return (
@@ -7,10 +8,8 @@ export function Footer() {
       <div className="container mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
           <div className="lg:col-span-2">
-            <Link href="/">
-              <span className="font-display font-bold text-2xl tracking-[0.3em] uppercase text-cream-50 inline-block mb-4">
-                PerfectPic
-              </span>
+            <Link href="/" aria-label="PerfectPic Homepage" className="inline-block mb-4">
+              <BrandLogo variant="dark" height={36} className="h-8 md:h-9 w-auto" />
             </Link>
             <p className="text-cream-50/70 font-sans text-sm max-w-sm leading-relaxed mb-8">
               Premium Custom Photo Books That Last Generations. Printed on archival non-tearable paper with lay-flat binding for memories that deserve more than a phone gallery. Built with love on perfectpic.in.

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 const navItems = [
   { name: "Executive Overview", href: "/", icon: LayoutDashboard },
@@ -81,8 +82,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="flex h-screen bg-cream-50 overflow-hidden font-sans">
       {/* Sidebar */}
       <aside className="w-[260px] bg-noir-950 text-cream-50 flex flex-col flex-shrink-0">
-        <div className="h-16 flex items-center justify-between px-6 border-b border-noir-800">
-          <span className="text-lg tracking-[0.2em] uppercase font-bold text-cream-50">PerfectPic</span>
+        <div className="h-16 flex items-center justify-between px-5 border-b border-noir-800">
+          <Link href="/" className="flex items-center">
+            <BrandLogo variant="dark" height={28} showSubtitle={false} className="h-7 w-auto" />
+          </Link>
           <span className="text-[10px] uppercase font-semibold bg-foil-gold/20 text-foil-gold px-1.5 py-0.5 rounded">Admin</span>
         </div>
         

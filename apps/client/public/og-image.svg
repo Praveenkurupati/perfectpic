@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090D16" />
+      <stop offset="50%" stop-color="#0F172A" />
+      <stop offset="100%" stop-color="#07090E" />
+    </linearGradient>
+
+    <!-- Radial Glows -->
+    <radialGradient id="glowIndigo" cx="20%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#6366F1" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glowRose" cx="80%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#EC4899" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#EC4899" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Brand Gradients -->
+    <linearGradient id="ogGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#A855F7" />
+    </linearGradient>
+    <linearGradient id="ogGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#F43F5E" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1200" height="630" fill="url(#bgGrad)" />
+  <rect width="1200" height="630" fill="url(#glowIndigo)" />
+  <rect width="1200" height="630" fill="url(#glowRose)" />
+
+  <!-- Outer Border Frame -->
+  <rect x="24" y="24" width="1152" height="582" rx="16" fill="none" stroke="#1E293B" stroke-width="2" />
+
+  <!-- Brand Logo Section -->
+  <g transform="translate(100, 90)">
+    <!-- Overlapping Frames Icon -->
+    <rect x="0" y="14" width="56" height="56" rx="15" fill="url(#ogGrad1)" />
+    <rect x="24" y="0" width="56" height="56" rx="15" fill="url(#ogGrad2)" opacity="0.95" />
+    <circle cx="52" cy="28" r="15" fill="#ffffff" />
+    <circle cx="52" cy="28" r="5" fill="url(#ogGrad1)" />
+
+    <!-- Typography -->
+    <text x="105" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="900" fill="#FFFFFF" letter-spacing="-1">PERFECT</text>
+    <text x="300" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="900" fill="url(#ogGrad2)" letter-spacing="-1">PIC</text>
+    <text x="107" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="700" fill="#94A3B8" letter-spacing="5">PREMIUM PHOTOBOOKS &amp; ALBUMS</text>
+  </g>
+
+  <!-- Domain Pill -->
+  <g transform="translate(940, 96)">
+    <rect width="160" height="42" rx="21" fill="#1E293B" stroke="#334155" stroke-width="1.5" />
+    <text x="80" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#E2E8F0" text-anchor="middle">perfectpic.in</text>
+  </g>
+
+  <!-- Main Headline -->
+  <text x="100" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="54" font-weight="800" fill="#F8FAFC" letter-spacing="-1.5">
+    Premium Custom Photo Books
+  </text>
+  <text x="100" y="335" font-family="system-ui, -apple-system, sans-serif" font-size="54" font-weight="800" fill="url(#ogGrad2)" letter-spacing="-1.5">
+    That Last Generations.
+  </text>
+
+  <!-- Subheadline -->
+  <text x="100" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#94A3B8">
+    Printed on archival non-tearable paper with seamless 180° lay-flat binding.
+  </text>
+  <text x="100" y="432" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="400" fill="#64748B">
+    Auto-curate in 60 seconds. Shipped securely to your doorstep across India.
+  </text>
+
+  <!-- Badges Grid -->
+  <g transform="translate(100, 490)">
+    <!-- Badge 1 -->
+    <rect x="0" y="0" width="220" height="48" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <text x="110" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#E2E8F0" text-anchor="middle">✨ Archival Non-Tearable</text>
+
+    <!-- Badge 2 -->
+    <rect x="235" y="0" width="200" height="48" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <text x="335" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#E2E8F0" text-anchor="middle">📖 180° Lay-Flat</text>
+
+    <!-- Badge 3 -->
+    <rect x="450" y="0" width="200" height="48" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <text x="550" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#E2E8F0" text-anchor="middle">🎨 HD Color Fidelity</text>
+
+    <!-- Badge 4 -->
+    <rect x="665" y="0" width="230" height="48" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1" />
+    <text x="780" y="30" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#E2E8F0" text-anchor="middle">🇮🇳 Nationwide Delivery</text>
+  </g>
+</svg>

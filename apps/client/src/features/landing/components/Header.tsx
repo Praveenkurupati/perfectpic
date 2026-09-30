@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { getAdminPortalUrl } from "@/lib/urls";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCartStore } from "@/stores/useCartStore";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 const CATEGORIES = [
   "Travel", "Baby & First Year", "Wedding", "Birthday", "Anniversary", "Festivals", "Specials"
@@ -60,10 +61,8 @@ export function Header() {
         </button>
 
         {/* Logo */}
-        <Link href="/" className="flex-shrink-0">
-          <span className="font-display font-bold text-2xl md:text-3xl tracking-[0.3em] uppercase text-noir-950">
-            PerfectPic
-          </span>
+        <Link href="/" className="flex-shrink-0 flex items-center" aria-label="PerfectPic Homepage">
+          <BrandLogo variant="light" height={36} className="h-8 md:h-9 w-auto" />
         </Link>
 
         {/* Desktop Nav */}

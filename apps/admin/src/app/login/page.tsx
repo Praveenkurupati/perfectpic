@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { getStorefrontUrl } from "@/lib/urls";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -66,10 +67,10 @@ export default function LoginPage() {
     <div className="min-h-screen bg-noir-950 flex flex-col items-center justify-center p-4 text-cream-50 font-sans">
       <div className="w-full max-w-md bg-cream-50 rounded-sm shadow-luxury-xl p-8 text-noir-900 border border-cream-300">
         <div className="text-center mb-6">
-          <span className="font-display font-bold text-2xl tracking-[0.25em] uppercase text-noir-950">
-            PerfectPic
-          </span>
-          <p className="text-xs text-noir-500 tracking-widest mt-1.5 uppercase font-medium">
+          <div className="flex justify-center mb-2">
+            <BrandLogo variant="light" height={40} className="h-9 w-auto" />
+          </div>
+          <p className="text-xs text-noir-500 tracking-widest uppercase font-medium">
             Admin Portal • perfectpic.in
           </p>
         </div>

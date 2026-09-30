@@ -7,6 +7,7 @@ import { Lock, Mail, ArrowRight, ShieldCheck, UserCheck, AlertCircle, KeyRound, 
 import { useAuthStore } from "@/stores/useAuthStore";
 import { api } from "@/lib/api";
 import OAuthButtons from "@/components/auth/OAuthButtons";
+import { BrandLogo } from "@/components/brand/BrandLogo";
 
 function LoginForm() {
   const router = useRouter();
@@ -124,10 +125,8 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-cream-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans text-noir-900">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-6">
-        <Link href="/" className="inline-block">
-          <span className="font-display font-bold text-3xl md:text-4xl tracking-[0.3em] uppercase text-noir-950">
-            PerfectPic
-          </span>
+        <Link href="/" aria-label="PerfectPic Homepage" className="inline-block">
+          <BrandLogo variant="light" height={42} className="h-10 w-auto inline-block" />
         </Link>
         <p className="mt-2 text-xs uppercase tracking-widest text-noir-500 font-medium">
           {redirectUrl.includes("checkout") 
