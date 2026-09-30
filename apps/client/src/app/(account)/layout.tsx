@@ -8,6 +8,7 @@ import { Header } from "@/features/landing/components/Header";
 import { Footer } from "@/features/landing/components/Footer";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { cn } from "@/lib/utils";
+import { getAdminPortalUrl } from "@/lib/urls";
 
 export default function AccountLayout({
   children,
@@ -69,7 +70,7 @@ export default function AccountLayout({
             </div>
             {user?.role === "admin" && (
               <a
-                href="http://localhost:3001"
+                href={getAdminPortalUrl()}
                 target="_blank"
                 rel="noreferrer"
                 className="mt-3 sm:mt-0 inline-flex items-center px-3 py-1.5 bg-noir-900 text-cream-50 text-xs font-semibold uppercase tracking-wider rounded-sm hover:bg-noir-800 transition-colors"

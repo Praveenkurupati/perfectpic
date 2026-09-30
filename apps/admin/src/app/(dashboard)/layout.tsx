@@ -19,6 +19,7 @@ import {
   Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getStorefrontUrl } from "@/lib/urls";
 
 const navItems = [
   { name: "Executive Overview", href: "/", icon: LayoutDashboard },
@@ -109,13 +110,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <div className="pt-4 border-t border-noir-800 mt-4">
             <a
-              href="http://localhost:3000"
+              href={getStorefrontUrl()}
               target="_blank"
               rel="noreferrer"
               className="flex items-center px-3 py-2 text-xs uppercase tracking-wider text-noir-400 hover:text-white transition-colors"
             >
               <ExternalLink className="w-4 h-4 mr-3" />
-              Storefront (3000)
+              Live Storefront
             </a>
           </div>
         </nav>

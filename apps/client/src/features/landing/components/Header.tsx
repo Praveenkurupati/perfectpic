@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { ShoppingCart, User as UserIcon, Menu, X, ChevronDown, LogOut, Package, FolderOpen, Shield, MapPin, Settings } from "lucide-react";
 import { m } from "motion/react";
 import { cn } from "@/lib/utils";
+import { getAdminPortalUrl } from "@/lib/urls";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useCartStore } from "@/stores/useCartStore";
 
@@ -157,7 +158,7 @@ export function Header() {
                   </Link>
                   {user.role === 'admin' && (
                     <a 
-                      href="http://localhost:3001" 
+                      href={getAdminPortalUrl()} 
                       target="_blank" 
                       rel="noreferrer"
                       className="flex items-center px-4 py-2 text-xs font-medium uppercase tracking-wider text-amber-700 hover:bg-amber-50 transition-colors"
@@ -226,6 +227,18 @@ export function Header() {
                 <Link href="/projects" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">My Projects</Link>
                 <Link href="/addresses" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Saved Addresses</Link>
                 <Link href="/settings" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-medium uppercase tracking-[0.2em] text-noir-700">Account Settings</Link>
+                {user?.role === 'admin' && (
+                  <a 
+                    href={getAdminPortalUrl()} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    onClick={() => setMobileMenuOpen(false)} 
+                    className="text-[11px] font-medium uppercase tracking-[0.2em] text-amber-700 flex items-center gap-1.5"
+                  >
+                    <Shield size={12} />
+                    Admin Portal
+                  </a>
+                )}
               </>
             ) : null}
             {isUserAuthenticated ? (

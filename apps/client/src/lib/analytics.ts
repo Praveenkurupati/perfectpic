@@ -1,6 +1,5 @@
 // apps/client/src/lib/analytics.ts
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { getApiBaseUrl } from './urls';
 
 export interface TrackingEvent {
   eventType: 'pageview' | 'config_change' | 'photo_upload' | 'editor_action' | 'cart_action' | 'checkout_step' | 'order_completed' | 'auth_action';
@@ -132,7 +131,7 @@ export function trackEvent(
       timestamp: new Date().toISOString(),
     };
 
-    const endpoint = `${API_BASE}/api/v1/analytics/events`;
+    const endpoint = `${getApiBaseUrl()}/api/v1/analytics/events`;
     const dataString = JSON.stringify({ events: [payload] });
 
     if (navigator.sendBeacon) {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, X, Shield, Check, Info } from "lucide-react";
 import { api } from "@/lib/api";
+import { getApiBaseUrl } from "@/lib/urls";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 interface OAuthButtonsProps {
@@ -83,7 +84,7 @@ export default function OAuthButtons({ redirectUrl = "/", onSuccess, onError }: 
 
       if (isProviderEnabled) {
         // Redirect to real Google/Apple OAuth endpoint
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+        const apiBase = getApiBaseUrl();
         window.location.href = `${apiBase}/api/v1/auth/${provider}?redirect=${encodeURIComponent(redirectUrl)}`;
       } else {
         // Open Dev OAuth Interactive Selector

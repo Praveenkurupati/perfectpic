@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from "lucide-react";
 import { adminApi } from "@/lib/api";
+import { getStorefrontUrl } from "@/lib/urls";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -151,7 +152,7 @@ export default function LoginPage() {
 
         <div className="mt-6 pt-4 border-t border-cream-200 text-center">
           <a
-            href="http://localhost:3000"
+            href={getStorefrontUrl()}
             className="text-xs text-noir-500 hover:text-noir-900 font-medium"
           >
             ← Back to Storefront

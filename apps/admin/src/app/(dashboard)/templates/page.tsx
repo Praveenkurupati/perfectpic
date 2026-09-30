@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { getStorefrontUrl } from "@/lib/urls";
 
 interface TemplateItem {
   id: string;
@@ -360,7 +361,7 @@ export default function TemplatesManagementPage() {
               {/* Admin Actions Bar */}
               <div className="mt-6 pt-4 border-t border-neutral-100 flex items-center justify-between gap-2">
                 <a
-                  href={`http://localhost:3000/configure?template=${book.slug}`}
+                  href={getStorefrontUrl(`/configure?template=${book.slug}`)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center text-xs text-neutral-500 hover:text-noir-950 transition-colors"

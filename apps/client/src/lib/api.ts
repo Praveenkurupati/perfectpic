@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+import { getApiBaseUrl } from './urls';
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -9,7 +9,7 @@ class ApiError extends Error {
 
 async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<T> {
   // Use /api for seamless backward compatibility and v1 routing
-  const url = `${API_BASE}/api${endpoint}`;
+  const url = `${getApiBaseUrl()}/api${endpoint}`;
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -227,7 +227,7 @@ export const api = {
     const formData = new FormData();
     formData.append('file', file);
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const res = await fetch(`${API_BASE}/api/v1/upload/file`, {
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: formData,

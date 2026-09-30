@@ -33,8 +33,9 @@ export const env = {
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
   S3_BUCKET: process.env.S3_BUCKET || 'perfectpic-assets-production',
 
-  // Frontend URL
+  // Frontend and Admin URLs
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+  ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:3001',
 
   // OAuth 2.0 (Google & Apple)
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',

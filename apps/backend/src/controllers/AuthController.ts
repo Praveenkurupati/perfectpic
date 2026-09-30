@@ -168,6 +168,19 @@ export class AuthController {
     }
   }
 
+  private static getFrontendUrl(req: Request): string {
+    if (process.env.FRONTEND_URL) {
+      return process.env.FRONTEND_URL.replace(/\/+$/, '');
+    }
+    const host = req.get('host');
+    if (host) {
+      const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+      const hostname = host.split(':')[0];
+      return `${protocol}://${hostname}:3000`;
+    }
+    return 'http://localhost:3000';
+  }
+
   public static async googleCallback(req: Request, res: Response, next: NextFunction) {
     try {
       const code = (req.query.code as string) || '';
@@ -175,7 +188,8 @@ export class AuthController {
       const redirectUrl = decodeURIComponent(state);
 
       const result = await OAuthService.handleGoogleCallback(code, redirectUrl);
-      const frontendRedirect = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
+      const frontendUrl = AuthController.getFrontendUrl(req);
+      const frontendRedirect = `${frontendUrl}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
       return res.redirect(frontendRedirect);
     } catch (err) {
       next(err);
@@ -206,7 +220,8 @@ export class AuthController {
         providerId: req.body.sub || 'apple_' + Date.now(),
       });
 
-      const frontendRedirect = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
+      const frontendUrl = AuthController.getFrontendUrl(req);
+      const frontendRedirect = `${frontendUrl}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
       return res.redirect(frontendRedirect);
     } catch (err) {
       next(err);
