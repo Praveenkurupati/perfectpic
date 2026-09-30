@@ -13,7 +13,7 @@ import { generateBookPdfBlob } from '@/lib/pdfGenerator';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getTotal, clearCart } = useCartStore();
+  const { items, getTotal, getSubtotal, promoCode, discount, discountAmount, clearCart } = useCartStore();
   const { user, isAuthenticated, initialize } = useAuthStore();
   const { addresses, loadAddresses } = useAddressStore();
   const [mounted, setMounted] = useState(false);
@@ -155,11 +155,23 @@ export default function CheckoutPage() {
         ? `${orderItems[0]?.title || 'Photobook'} (+${orderItems.length - 1} more)`
         : (orderItems[0]?.title || 'Custom Photobook Keepsake');
 
+      const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(getSubtotal() * (discount || 0));
+
       const res = await api.createOrder({
         title: orderTitle,
         items: orderItems,
         total: orderTotal,
         amount: orderTotal,
+        subtotal: getSubtotal(),
+        promoCode: promoCode || null,
+        discount: effectiveDiscount,
+        pricing: {
+          subtotal: getSubtotal(),
+          promoCode: promoCode || null,
+          discount: effectiveDiscount,
+          shipping: deliveryOption === 'express' ? 299 : 0,
+          total: orderTotal,
+        },
         pdfUrl: s3PdfUrl,
         printPdfUrl: s3PdfUrl,
         projectSnapshot: snapshot,
@@ -258,6 +270,7 @@ export default function CheckoutPage() {
     );
   }
 
+  const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(getSubtotal() * (discount || 0));
   const finalTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
 
   return (
@@ -466,8 +479,21 @@ export default function CheckoutPage() {
               <div className="space-y-3 pb-6 border-b border-cream-200 text-sm">
                 <div className="flex justify-between text-noir-600">
                   <span>Subtotal ({items.length} {items.length === 1 ? 'book' : 'books'})</span>
-                  <span>₹{getTotal().toLocaleString('en-IN')}</span>
+                  <span>₹{getSubtotal().toLocaleString('en-IN')}</span>
                 </div>
+                {effectiveDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-medium">
+                    <span className="flex items-center gap-1">
+                      <span>Discount</span>
+                      {promoCode && (
+                        <span className="font-mono text-xs bg-emerald-100/70 px-1 py-0.5 rounded">
+                          {promoCode}
+                        </span>
+                      )}
+                    </span>
+                    <span>-₹{effectiveDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-noir-600">
                   <span>Insured Pan-India Shipping</span>
                   <span className="text-emerald-700">{deliveryOption === 'express' ? '₹299' : 'FREE'}</span>

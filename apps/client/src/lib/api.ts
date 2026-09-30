@@ -266,6 +266,38 @@ export const api = {
       body: JSON.stringify({ pdfUrl }),
     }),
 
+  // Promo Codes & Coupons
+  validatePromoCode: (data: { code: string; subtotal: number; customerEmail?: string; customerPhone?: string; userId?: string }) =>
+    fetcher<{
+      valid: boolean;
+      code: string;
+      promoId: string;
+      discountType: 'percentage' | 'fixed';
+      discountValue: number;
+      maxDiscountAmount: number | null;
+      discountAmount: number;
+      minOrderAmount: number;
+      description: string;
+      message: string;
+    }>('/promos/validate', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  getActivePromoOffers: () =>
+    fetcher<{
+      offers: Array<{
+        code: string;
+        description?: string;
+        discountType: 'percentage' | 'fixed';
+        discountValue: number;
+        maxDiscountAmount?: number | null;
+        minOrderAmount: number;
+        audienceType: string;
+        expiresAt?: string | null;
+      }>;
+    }>('/promos/active'),
+
   // Health
   health: () => fetcher<{ status: string; database?: string; cache?: string }>('/health'),
 };

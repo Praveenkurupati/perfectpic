@@ -108,6 +108,10 @@ async function seedDefaultData() {
     // Seed realistic User Behaviour interaction events if collection empty
     const { seedAnalyticsCollection } = await import('../scripts/seedAnalytics');
     await seedAnalyticsCollection();
+
+    // Seed production promo codes if collection empty
+    const { PromoCodeRepository } = await import('../repositories/PromoCodeRepository');
+    await PromoCodeRepository.seedDefaultsIfEmpty();
   } catch (seedErr) {
     console.error('Error seeding MongoDB collections:', seedErr);
   }

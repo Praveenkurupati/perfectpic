@@ -1,5 +1,6 @@
 // apps/backend/src/services/OrderService.ts
 import { OrderRepository } from '../repositories/OrderRepository';
+import { PromoCodeService } from './PromoCodeService';
 import { ApiError } from '../utils/apiError';
 import { mailService } from './MailService';
 import { logger } from '../utils/logger';
@@ -30,6 +31,24 @@ export class OrderService {
     }
 
     const order = await OrderRepository.create(orderData);
+
+    // If promo code applied, record usage and increment count
+    const promoCode = orderData.pricing?.promoCode || orderData.promoCode;
+    const discountAmount = orderData.pricing?.discount || orderData.discount || 0;
+    if (promoCode && order) {
+      PromoCodeService.recordOrderPromoUsage({
+        code: promoCode,
+        orderId: order.id || (order as any)._id,
+        orderNumber: order.orderNumber,
+        customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
+        customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
+        userId: orderData.userId,
+        discountAmount: Number(discountAmount),
+        orderTotal: Number(order.total || order.amount || 0),
+      }).catch((err) => {
+        logger.error(`Failed to record promo code usage for ${promoCode}:`, err.message);
+      });
+    }
 
     // Send confirmation email asynchronously if customer email exists
     if (orderData.customerEmail) {

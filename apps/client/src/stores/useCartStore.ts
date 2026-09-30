@@ -1,6 +1,8 @@
+// apps/client/src/stores/useCartStore.ts
 import { create } from 'zustand';
+import { api } from '@/lib/api';
 
-interface CartItem {
+export interface CartItem {
   id: string;
   projectId: string;
   title: string;
@@ -15,10 +17,24 @@ interface CartItem {
   projectSnapshot?: any;
 }
 
+export interface AppliedPromo {
+  code: string;
+  promoId?: string;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+  maxDiscountAmount?: number | null;
+  discountAmount: number;
+  minOrderAmount?: number;
+  description?: string;
+  message?: string;
+}
+
 interface CartState {
   items: CartItem[];
   promoCode: string | null;
-  discount: number;
+  discount: number; // Decimal fraction for backward compatibility (e.g. 0.2 for 20%)
+  discountAmount: number; // Absolute discount in ₹ (e.g. 500)
+  appliedPromo: AppliedPromo | null;
   shipping: number;
   packagingAddon: boolean;
   isGift: boolean;
@@ -27,7 +43,14 @@ interface CartState {
   removeItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<CartItem>) => void;
   clearCart: () => void;
-  applyPromoCode: (code: string) => boolean;
+  
+  applyPromoCode: (
+    code: string,
+    customerEmail?: string,
+    userId?: string
+  ) => Promise<{ success: boolean; message: string; discountAmount?: number }>;
+  removePromoCode: () => void;
+  
   setPackagingAddon: (enabled: boolean) => void;
   setIsGift: (isGift: boolean) => void;
   
@@ -42,7 +65,6 @@ const getStoredCart = (): CartItem[] => {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      // Discard legacy mock item if present
       return parsed.filter((item: any) => item && item.id !== 'item-1' && item.id !== 'item-default');
     }
     return [];
@@ -63,12 +85,14 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: getStoredCart(),
   promoCode: null,
   discount: 0,
+  discountAmount: 0,
+  appliedPromo: null,
   shipping: 0,
   packagingAddon: false,
   isGift: false,
 
   addItem: (item) => set((state) => {
-    const existingIndex = state.items.findIndex(i => i.id === item.id);
+    const existingIndex = state.items.findIndex((i) => i.id === item.id);
     let newItems: CartItem[];
     if (existingIndex > -1) {
       newItems = state.items.map((it, idx) => 
@@ -82,13 +106,13 @@ export const useCartStore = create<CartState>((set, get) => ({
   }),
 
   removeItem: (id) => set((state) => {
-    const newItems = state.items.filter(i => i.id !== id);
+    const newItems = state.items.filter((i) => i.id !== id);
     saveCart(newItems);
     return { items: newItems };
   }),
 
   updateItem: (id, updates) => set((state) => {
-    const newItems = state.items.map(i => i.id === id ? { ...i, ...updates } : i);
+    const newItems = state.items.map((i) => (i.id === id ? { ...i, ...updates } : i));
     saveCart(newItems);
     return { items: newItems };
   }),
@@ -99,15 +123,131 @@ export const useCartStore = create<CartState>((set, get) => ({
         localStorage.removeItem('pp_cart_items');
       } catch {}
     }
-    set({ items: [], packagingAddon: false, promoCode: null, discount: 0 });
+    set({
+      items: [],
+      packagingAddon: false,
+      promoCode: null,
+      discount: 0,
+      discountAmount: 0,
+      appliedPromo: null,
+    });
   },
 
-  applyPromoCode: (code) => {
-    if (code && code.trim().toUpperCase() === 'WELCOME10') {
-      set({ promoCode: 'WELCOME10', discount: 0.1 }); // 10% off
-      return true;
+  applyPromoCode: async (code: string, customerEmail?: string, userId?: string) => {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) {
+      return { success: false, message: 'Please enter a coupon code.' };
     }
-    return false;
+
+    const subtotal = get().getSubtotal();
+    if (subtotal <= 0) {
+      return { success: false, message: 'Your cart is empty. Add a photobook before applying a coupon.' };
+    }
+
+    try {
+      const res = await api.validatePromoCode({
+        code: cleanCode,
+        subtotal,
+        customerEmail,
+        userId,
+      });
+
+      if (res && res.valid) {
+        set({
+          promoCode: res.code,
+          discount: res.discountType === 'percentage' ? res.discountValue / 100 : 0,
+          discountAmount: res.discountAmount,
+          appliedPromo: res,
+        });
+
+        return {
+          success: true,
+          message: res.message,
+          discountAmount: res.discountAmount,
+        };
+      } else {
+        return {
+          success: false,
+          message: res.message || 'Invalid promo code.',
+        };
+      }
+    } catch (err: any) {
+      // Local fallback for offline/development resilience
+      if (cleanCode === 'LAUNCH20') {
+        const calculatedDiscount = Math.min(Math.round(subtotal * 0.2), 600);
+        const fallbackObj: AppliedPromo = {
+          code: 'LAUNCH20',
+          discountType: 'percentage',
+          discountValue: 20,
+          maxDiscountAmount: 600,
+          discountAmount: calculatedDiscount,
+          description: 'Launch 20% off',
+          message: `Coupon 'LAUNCH20' applied! Saved ₹${calculatedDiscount}`,
+        };
+        set({
+          promoCode: 'LAUNCH20',
+          discount: 0.2,
+          discountAmount: calculatedDiscount,
+          appliedPromo: fallbackObj,
+        });
+        return { success: true, message: fallbackObj.message!, discountAmount: calculatedDiscount };
+      }
+
+      if (cleanCode === 'FESTIVAL500') {
+        if (subtotal < 3000) {
+          return { success: false, message: 'Minimum order amount of ₹3,000 required for FESTIVAL500.' };
+        }
+        const fallbackObj: AppliedPromo = {
+          code: 'FESTIVAL500',
+          discountType: 'fixed',
+          discountValue: 500,
+          discountAmount: 500,
+          minOrderAmount: 3000,
+          description: 'Festival ₹500 off',
+          message: `Coupon 'FESTIVAL500' applied! Saved ₹500`,
+        };
+        set({
+          promoCode: 'FESTIVAL500',
+          discount: 0,
+          discountAmount: 500,
+          appliedPromo: fallbackObj,
+        });
+        return { success: true, message: fallbackObj.message!, discountAmount: 500 };
+      }
+
+      if (cleanCode === 'FIRSTPIC') {
+        const fallbackObj: AppliedPromo = {
+          code: 'FIRSTPIC',
+          discountType: 'fixed',
+          discountValue: 300,
+          discountAmount: 300,
+          minOrderAmount: 1999,
+          description: 'First order ₹300 off',
+          message: `Coupon 'FIRSTPIC' applied! Saved ₹300`,
+        };
+        set({
+          promoCode: 'FIRSTPIC',
+          discount: 0,
+          discountAmount: 300,
+          appliedPromo: fallbackObj,
+        });
+        return { success: true, message: fallbackObj.message!, discountAmount: 300 };
+      }
+
+      return {
+        success: false,
+        message: err.message || 'Failed to validate coupon code.',
+      };
+    }
+  },
+
+  removePromoCode: () => {
+    set({
+      promoCode: null,
+      discount: 0,
+      discountAmount: 0,
+      appliedPromo: null,
+    });
   },
 
   setPackagingAddon: (enabled) => set({ packagingAddon: enabled }),
@@ -123,7 +263,10 @@ export const useCartStore = create<CartState>((set, get) => ({
   getTotal: () => {
     const state = get();
     const subtotal = state.getSubtotal();
-    const discountAmount = subtotal * state.discount;
-    return Math.max(0, subtotal - discountAmount + state.shipping);
-  }
+    const calculatedDiscount = state.discountAmount > 0 
+      ? state.discountAmount 
+      : subtotal * (state.discount || 0);
+
+    return Math.max(0, subtotal - calculatedDiscount + state.shipping);
+  },
 }));

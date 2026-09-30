@@ -112,6 +112,43 @@ export const adminApi = {
   getLiveFeed: (limit: number = 20) =>
     fetcher<any>(`/analytics/live-feed?limit=${limit}`, { headers: authHeaders() }),
 
+  // Promo Codes & Coupons Management
+  getPromos: (filters?: { status?: string; search?: string; audience?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.status && filters.status !== 'all') params.set('status', filters.status);
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.audience && filters.audience !== 'ALL') params.set('audience', filters.audience);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return fetcher<{ promos: any[]; total: number }>(`/promos${queryString}`, { headers: authHeaders() });
+  },
+  getPromo: (id: string) => fetcher<any>(`/promos/${id}`, { headers: authHeaders() }),
+  createPromo: (data: any) =>
+    fetcher<{ message: string; promo: any }>('/promos', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updatePromo: (id: string, data: any) =>
+    fetcher<{ message: string; promo: any }>(`/promos/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  deletePromo: (id: string) =>
+    fetcher<{ success: boolean; message: string }>(`/promos/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  togglePromoStatus: (id: string) =>
+    fetcher<{ message: string; promo: any }>(`/promos/${id}/toggle`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+    }),
+  getPromoUsages: (id: string) =>
+    fetcher<{ promo: any; usages: any[]; totalUsages: number }>(`/promos/${id}/usages`, {
+      headers: authHeaders(),
+    }),
+
   // Health
   health: () => fetcher<{ status: string }>('/health'),
 };

@@ -97,14 +97,22 @@ export type Order = z.infer<typeof OrderSchema>;
 // ─── Promo Code ─────────────────────────────────────────────────────────────
 
 export const PromoCodeSchema = z.object({
-  id: z.string().uuid(),
-  code: z.string().min(3).max(20),
-  discountType: z.enum(["flat", "percentage"]),
+  id: z.string(),
+  code: z.string().min(3).max(30),
+  description: z.string().optional(),
+  discountType: z.enum(["flat", "fixed", "percentage"]),
   discountValue: z.number().positive(),
+  maxDiscountAmount: z.number().optional().nullable(),
   minOrderAmount: z.number().default(0),
-  maxUses: z.number().int().optional(),
+  audienceType: z.enum(["ALL", "FIRST_ORDER", "SPECIFIC_USERS"]).default("ALL"),
+  allowedUserEmails: z.array(z.string()).default([]),
+  maxUses: z.number().int().optional().nullable(),
   currentUses: z.number().int().default(0),
+  maxUsesPerUser: z.number().int().default(1),
+  startDate: z.union([z.string(), z.date()]).optional(),
+  expiresAt: z.union([z.string(), z.date()]).optional().nullable(),
   isActive: z.boolean().default(true),
-  expiresAt: z.string().datetime().optional(),
+  createdAt: z.union([z.string(), z.date()]).optional(),
+  updatedAt: z.union([z.string(), z.date()]).optional(),
 });
 export type PromoCode = z.infer<typeof PromoCodeSchema>;
