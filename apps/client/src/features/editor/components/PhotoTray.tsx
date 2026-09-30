@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useEditorStore, Photo } from '@/stores/useEditorStore';
-import { UploadCloud, Check, Plus, ArrowLeftRight, Image as ImageIcon } from 'lucide-react';
+import { UploadCloud, Check, Plus, ArrowLeftRight, Image as ImageIcon, Cloud } from 'lucide-react';
+import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 
 const defaultSamplePhotos: Photo[] = [
   { id: 'sample-1', url: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Himalayan Ridge' },
@@ -27,6 +29,9 @@ export default function PhotoTray() {
     pagePhotos,
     pageLayouts
   } = useEditorStore();
+
+  const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
+  const [cloudInitialTab, setCloudInitialTab] = useState<'photos' | 'drive'>('photos');
 
   const displayPhotos: Photo[] = photos.length > 0 ? photos : defaultSamplePhotos;
 
@@ -173,11 +178,11 @@ export default function PhotoTray() {
         })}
       </div>
       
-      {/* Upload Button */}
-      <div className="p-3 border-t border-cream-300 bg-cream-50">
-        <label className="w-full py-2 bg-white border border-dashed border-cream-400 rounded-sm text-xs font-semibold text-noir-900 hover:border-noir-950 transition-colors flex items-center justify-center cursor-pointer text-center gap-1.5">
+      {/* Upload and Cloud Import Action Buttons */}
+      <div className="p-3 border-t border-cream-300 bg-cream-50 space-y-2">
+        <label className="w-full py-2 bg-white border border-dashed border-cream-400 rounded-sm text-xs font-semibold text-noir-900 hover:border-noir-950 transition-colors flex items-center justify-center cursor-pointer text-center gap-1.5 shadow-xs">
           <UploadCloud size={14} />
-          <span>Upload More Photos</span>
+          <span>Upload from Device</span>
           <input 
             type="file" 
             multiple 
@@ -199,7 +204,41 @@ export default function PhotoTray() {
             }} 
           />
         </label>
+
+        {/* Quick Google Cloud Import Buttons */}
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              setCloudInitialTab('photos');
+              setCloudPickerOpen(true);
+            }}
+            className="py-1.5 px-2 bg-white hover:bg-cream-100 border border-cream-300 rounded-sm text-[11px] font-semibold text-noir-900 flex items-center justify-center gap-1.5 transition-colors shadow-xs group"
+          >
+            <GooglePhotosLogo className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            <span>Google Photos</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => {
+              setCloudInitialTab('drive');
+              setCloudPickerOpen(true);
+            }}
+            className="py-1.5 px-2 bg-white hover:bg-cream-100 border border-cream-300 rounded-sm text-[11px] font-semibold text-noir-900 flex items-center justify-center gap-1.5 transition-colors shadow-xs group"
+          >
+            <GoogleDriveLogo className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            <span>Google Drive</span>
+          </button>
+        </div>
       </div>
+
+      {/* Cloud Photo Picker Modal */}
+      <GooglePhotoPickerModal
+        isOpen={cloudPickerOpen}
+        onClose={() => setCloudPickerOpen(false)}
+        initialTab={cloudInitialTab}
+      />
     </div>
   );
 }

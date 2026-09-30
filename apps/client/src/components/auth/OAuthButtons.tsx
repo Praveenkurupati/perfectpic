@@ -123,39 +123,36 @@ export default function OAuthButtons({ redirectUrl = "/", onSuccess, onError }: 
   return (
     <>
       <div className="space-y-3">
-        {/* Google OAuth Button */}
+        {/* Google OAuth Button - Primary Prominent Authentication */}
         <button
           type="button"
           onClick={() => handleOAuthClick("google")}
           disabled={loadingProvider !== null}
-          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-white hover:bg-cream-50 text-noir-900 border border-cream-300 rounded-sm font-medium text-xs sm:text-sm tracking-wide transition-all shadow-xs hover:border-cream-400 disabled:opacity-60 group"
+          className="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white hover:bg-cream-50 text-noir-900 border border-cream-300 rounded-sm font-semibold text-xs sm:text-sm tracking-wide transition-all shadow-xs hover:border-cream-400 hover:shadow-sm disabled:opacity-60 group"
         >
           {loadingProvider === "google" ? (
             <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
           ) : (
-            <GoogleLogo className="w-4 h-4 group-hover:scale-105 transition-transform" />
+            <GoogleLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
           )}
           <span>Continue with Google</span>
         </button>
 
-        {/* Apple OAuth Button */}
-        <button
-          type="button"
-          onClick={() => handleOAuthClick("apple")}
-          disabled={loadingProvider !== null}
-          className="w-full flex items-center justify-center gap-3 py-2.5 px-4 bg-noir-950 hover:bg-noir-900 text-cream-50 border border-noir-950 rounded-sm font-medium text-xs sm:text-sm tracking-wide transition-all shadow-xs disabled:opacity-60 group"
-        >
-          {loadingProvider === "apple" ? (
-            <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
-          ) : (
-            <AppleLogo className="w-4 h-4 group-hover:scale-105 transition-transform" />
-          )}
-          <span>Continue with Apple</span>
-        </button>
+        {/* Apple Sign-In - Secondary / Deferred notice */}
+        <div className="text-center pt-0.5">
+          <button
+            type="button"
+            onClick={() => handleOAuthClick("apple")}
+            className="text-[11px] text-noir-400 hover:text-noir-700 transition-colors inline-flex items-center gap-1.5"
+          >
+            <AppleLogo className="w-3 h-3 text-noir-400" />
+            <span>Sign in with Apple (Testing Sandbox / iOS)</span>
+          </button>
+        </div>
       </div>
 
       {/* Luxury Divider */}
-      <div className="relative my-6 text-center">
+      <div className="relative my-5 text-center">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-cream-200"></div>
         </div>

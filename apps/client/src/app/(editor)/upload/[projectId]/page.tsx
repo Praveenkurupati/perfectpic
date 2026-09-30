@@ -23,6 +23,7 @@ import { api } from '@/lib/api';
 import { useEditorStore, getMinPhotosRequired } from '@/stores/useEditorStore';
 import { compressImage } from '@/lib/imageCompressor';
 import { trackEvent } from '@/lib/analytics';
+import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 
 const sampleDemoPhotos = [
   'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
@@ -80,6 +81,9 @@ function UploadContent() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [validationAlert, setValidationAlert] = useState<string | null>(null);
+  const [pickerModalOpen, setPickerModalOpen] = useState(false);
+  const [pickerInitialTab, setPickerInitialTab] = useState<'photos' | 'drive'>('photos');
+  const [cloudImportToast, setCloudImportToast] = useState<string | null>(null);
 
   // Dynamic minimum photos calculation based on selected pages
   const minRequired = getMinPhotosRequired(currentPageCount);
@@ -291,6 +295,23 @@ function UploadContent() {
             </div>
           </div>
         </div>
+
+        {/* Cloud Import Feedback Banner */}
+        {cloudImportToast && (
+          <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-sm text-xs text-emerald-900 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+              <span className="font-semibold">{cloudImportToast}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCloudImportToast(null)}
+              className="text-emerald-700 hover:text-emerald-950 font-bold text-xs"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Page Count Format Selector Pills */}
         <div className="bg-white p-4 rounded-sm border border-cream-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -573,27 +594,73 @@ function UploadContent() {
 
             {/* Cloud Sources */}
             <div className="bg-white p-5 border border-cream-300 rounded-sm">
-              <h3 className="font-serif text-lg font-medium mb-2 text-noir-950">Cloud Photo Sources</h3>
+              <h3 className="font-serif text-lg font-medium mb-1 text-noir-950">Cloud Photo Sources</h3>
               <p className="text-xs text-noir-600 mb-3">Connect external accounts to import albums seamlessly:</p>
               
-              <div className="space-y-2">
-                {[
-                  { name: 'Google Photos', icon: '📸', desc: 'Direct album import' },
-                  { name: 'Apple iCloud', icon: '☁️', desc: 'Sync from iOS gallery' },
-                  { name: 'Instagram', icon: '✨', desc: 'Feed & Saved stories' }
-                ].map((source) => (
-                  <button 
-                    key={source.name} 
-                    onClick={() => alert(`${source.name} cloud connector initialized.`)}
-                    className="w-full bg-cream-50 border border-cream-200 p-2.5 rounded-sm flex items-center gap-3 hover:border-noir-950 transition-colors text-left"
-                  >
-                    <span className="text-xl">{source.icon}</span>
-                    <div>
-                      <span className="text-xs font-semibold text-noir-900 block">{source.name}</span>
-                      <span className="text-[10px] text-noir-500">{source.desc}</span>
+              <div className="space-y-2.5">
+                {/* Google Photos */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setPickerInitialTab('photos');
+                    setPickerModalOpen(true);
+                  }}
+                  className="w-full bg-cream-50 hover:bg-cream-100/80 border border-cream-200 hover:border-noir-950 p-2.5 rounded-sm flex items-center justify-between transition-all text-left group shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-white border border-cream-300 flex items-center justify-center shrink-0">
+                      <GooglePhotosLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     </div>
-                  </button>
-                ))}
+                    <div>
+                      <span className="text-xs font-bold text-noir-950 block group-hover:text-foil-gold transition-colors">
+                        Google Photos
+                      </span>
+                      <span className="text-[10px] text-noir-500">Albums & timeline import</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold bg-white border border-cream-300 px-2 py-0.5 rounded-sm text-noir-700 group-hover:bg-noir-950 group-hover:text-cream-50 transition-colors">
+                    Browse
+                  </span>
+                </button>
+
+                {/* Google Drive */}
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setPickerInitialTab('drive');
+                    setPickerModalOpen(true);
+                  }}
+                  className="w-full bg-cream-50 hover:bg-cream-100/80 border border-cream-200 hover:border-noir-950 p-2.5 rounded-sm flex items-center justify-between transition-all text-left group shadow-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-white border border-cream-300 flex items-center justify-center shrink-0">
+                      <GoogleDriveLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-noir-950 block group-hover:text-foil-gold transition-colors">
+                        Google Drive
+                      </span>
+                      <span className="text-[10px] text-noir-500">Folder & high-res files</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-semibold bg-white border border-cream-300 px-2 py-0.5 rounded-sm text-noir-700 group-hover:bg-noir-950 group-hover:text-cream-50 transition-colors">
+                    Browse
+                  </span>
+                </button>
+
+                {/* Apple iCloud - Scheduled for iOS release */}
+                <div className="p-2 rounded-sm border border-cream-200 bg-cream-100/50 flex items-center justify-between text-noir-400">
+                  <div className="flex items-center gap-2.5 opacity-60">
+                    <span className="text-base ml-1.5">☁️</span>
+                    <div>
+                      <span className="text-xs font-medium text-noir-700 block">Apple iCloud</span>
+                      <span className="text-[10px] text-noir-400">iOS Photo Stream</span>
+                    </div>
+                  </div>
+                  <span className="text-[9px] bg-cream-200/80 text-noir-500 font-medium px-1.5 py-0.5 rounded-[2px]">
+                    iOS App
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -691,6 +758,21 @@ function UploadContent() {
           </button>
         </div>
       </div>
+
+      {/* Google Photos & Google Drive Picker Modal */}
+      <GooglePhotoPickerModal
+        isOpen={pickerModalOpen}
+        onClose={() => setPickerModalOpen(false)}
+        initialTab={pickerInitialTab}
+        onImportSuccess={(count) => {
+          setCloudImportToast(
+            `Successfully imported ${count} photo${count === 1 ? '' : 's'} from Google ${
+              pickerInitialTab === 'photos' ? 'Photos' : 'Drive'
+            } into your photobook collection!`
+          );
+          setTimeout(() => setCloudImportToast(null), 5000);
+        }}
+      />
     </div>
   );
 }
