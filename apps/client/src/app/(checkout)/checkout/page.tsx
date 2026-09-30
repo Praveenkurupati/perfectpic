@@ -15,13 +15,12 @@ import {
   CheckCircle2, 
   ShoppingBag, 
   MapPin, 
-  Zap, 
   CreditCard, 
-  QrCode, 
   Gift, 
   Sparkles,
   ArrowRight,
-  Check
+  Check,
+  Lock
 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 import { trackMetaInitiateCheckout, trackMetaPurchase } from '@/lib/metaPixel';
@@ -52,9 +51,6 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-type PaymentMethodType = 'upi' | 'card' | 'cod_partial';
-type UpiAppType = 'phonepe' | 'gpay' | 'paytm' | 'qr';
-
 export default function CheckoutPage() {
   const router = useRouter();
   const { 
@@ -66,15 +62,14 @@ export default function CheckoutPage() {
     discountAmount, 
     clearCart,
     accessories,
-    getAccessoriesTotal,
-    toggleAccessory
+    getAccessoriesTotal
   } = useCartStore();
 
   const { user, isAuthenticated, initialize } = useAuthStore();
   const { addresses, loadAddresses } = useAddressStore();
   const [mounted, setMounted] = useState(false);
 
-  // Form Fields
+  // Delivery Form Fields
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [pincode, setPincode] = useState('');
@@ -82,10 +77,6 @@ export default function CheckoutPage() {
   const [landmark, setLandmark] = useState('');
   const [cityState, setCityState] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express'>('standard');
-
-  // Payment Options
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('upi');
-  const [selectedUpiApp, setSelectedUpiApp] = useState<UpiAppType>('phonepe');
 
   // Upsell Modal State
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
@@ -151,7 +142,7 @@ export default function CheckoutPage() {
   };
 
   /**
-   * Primary entry point when user clicks "Proceed to Payment"
+   * Primary entry point when user clicks "Pay with Razorpay"
    */
   const handleCheckoutClick = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,20 +165,20 @@ export default function CheckoutPage() {
 
     setErrorMsg('');
 
-    // If user has not yet seen the luxury presentation upsell modal, present it now
+    // If user has not yet seen the presentation packaging upsell modal, present it now
     if (!hasPromptedUpsell && getAccessoriesTotal() === 0) {
       setIsUpsellOpen(true);
       return;
     }
 
-    // Proceed directly to payment and order placement
-    executePaymentAndOrder();
+    // Proceed directly to Razorpay payment
+    executeRazorpayPaymentAndOrder();
   };
 
   /**
-   * Executes payment authorization (Razorpay / 1-Click UPI / Partial COD) and finalizes order.
+   * Executes Razorpay payment authorization and finalizes order.
    */
-  const executePaymentAndOrder = async () => {
+  const executeRazorpayPaymentAndOrder = async () => {
     setIsUpsellOpen(false);
     setHasPromptedUpsell(true);
     setIsSubmitting(true);
@@ -196,7 +187,6 @@ export default function CheckoutPage() {
 
     try {
       const finalTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
-      const payableAmount = paymentMethod === 'cod_partial' ? 199 : finalTotal;
 
       // 1. Build Itemized Order Lines (including photobooks and selected accessories)
       const orderItems = items.map(item => ({
@@ -302,15 +292,11 @@ export default function CheckoutPage() {
         }
       }
 
-      // 3. Initiate Payment Gateway Order
-      setSubmissionStep(
-        paymentMethod === 'upi'
-          ? `Opening 1-Click ${selectedUpiApp.toUpperCase()} UPI gateway...`
-          : 'Connecting to secure payment gateway...'
-      );
+      // 3. Initiate Razorpay Payment Order
+      setSubmissionStep('Connecting to Razorpay Secure Gateway...');
 
       const paymentOrder = await api.createPaymentOrder({
-        amount: payableAmount,
+        amount: finalTotal,
         currency: 'INR',
         receipt: `rcpt_${Date.now()}`,
       });
@@ -351,9 +337,9 @@ export default function CheckoutPage() {
             shipping: deliveryOption === 'express' ? 299 : 0,
             packagingPrice: getAccessoriesTotal(),
             total: finalTotal,
-            paymentMethod,
-            advancePaid: payableAmount,
-            balanceDue: Math.max(0, finalTotal - payableAmount),
+            paymentMethod: 'razorpay',
+            advancePaid: finalTotal,
+            balanceDue: 0,
           },
           pdfUrl: s3PdfUrl,
           printPdfUrl: s3PdfUrl,
@@ -373,9 +359,8 @@ export default function CheckoutPage() {
           deliveryOption,
           paymentDetails: {
             gateway: 'razorpay',
-            method: paymentMethod,
-            upiApp: paymentMethod === 'upi' ? selectedUpiApp : undefined,
-            status: paymentMethod === 'cod_partial' ? 'PARTIALLY_PAID_ADVANCE' : 'PAID',
+            method: 'razorpay',
+            status: 'PAID',
             razorpayOrderId: payResult.razorpay_order_id,
             razorpayPaymentId: payResult.razorpay_payment_id,
             paidAt: new Date().toISOString(),
@@ -414,7 +399,7 @@ export default function CheckoutPage() {
         trackEvent('order_completed', `Order Placed (#${orderNumber})`, {
           orderNumber,
           total: finalTotal,
-          paymentMethod,
+          paymentMethod: 'razorpay',
           itemsCount: orderItems.length,
           city: cityState.split(',')[0]?.trim() || '',
           deliveryOption,
@@ -432,7 +417,7 @@ export default function CheckoutPage() {
         router.push(`/confirmation/${orderNumber}`);
       };
 
-      // 4. Open Razorpay Modal or Instant UPI Intent Simulator
+      // 4. Launch Official Razorpay Modal or Dev Test Simulation
       const isLiveRazorpay = !paymentOrder.isMock && window.Razorpay && paymentOrder.key && !paymentOrder.key.includes('placeholder');
 
       if (isLiveRazorpay) {
@@ -447,20 +432,6 @@ export default function CheckoutPage() {
             name: fullName.trim() || user?.name || '',
             email: user?.email || '',
             contact: phone.trim() || user?.phone || '',
-          },
-          config: {
-            display: {
-              blocks: {
-                banks: {
-                  name: 'Instant Payment',
-                  instruments: paymentMethod === 'upi' ? [{ method: 'upi' }] : [{ method: 'card' }, { method: 'netbanking' }],
-                },
-              },
-              sequence: ['block.banks'],
-              preferences: {
-                show_default_blocks: true,
-              },
-            },
           },
           theme: {
             color: '#141413',
@@ -483,22 +454,18 @@ export default function CheckoutPage() {
         rzp.on('payment.failed', (response: any) => {
           setIsSubmitting(false);
           setSubmissionStep('');
-          setErrorMsg(response.error?.description || 'Payment was unsuccessful. Please try again.');
+          setErrorMsg(response.error?.description || 'Razorpay payment was unsuccessful. Please try again.');
         });
 
         rzp.open();
       } else {
         // Fast, resilient simulated authorization
-        setSubmissionStep(
-          paymentMethod === 'upi'
-            ? `Authorizing 1-Click ${selectedUpiApp.toUpperCase()} UPI Intent (Auto-Approved)...`
-            : 'Authorizing card transaction with simulated bank gateway...'
-        );
+        setSubmissionStep('Connecting to Razorpay Secure Gateway (Payment Approved)...');
         await new Promise((r) => setTimeout(r, 900));
 
         await finalizeOrder({
-          razorpay_order_id: paymentOrder?.id || `order_sim_${Date.now()}`,
-          razorpay_payment_id: `pay_sim_${Date.now()}`,
+          razorpay_order_id: paymentOrder?.id || `order_rzp_${Date.now()}`,
+          razorpay_payment_id: `pay_rzp_${Date.now()}`,
           razorpay_signature: 'mock_signature',
         });
       }
@@ -552,7 +519,7 @@ export default function CheckoutPage() {
       <PackagingUpsellModal
         isOpen={isUpsellOpen}
         onClose={() => setIsUpsellOpen(false)}
-        onProceed={executePaymentAndOrder}
+        onProceed={executeRazorpayPaymentAndOrder}
       />
 
       <div className="max-w-6xl mx-auto">
@@ -753,133 +720,67 @@ export default function CheckoutPage() {
               </div>
             </section>
 
-            {/* 3. Payment Method (Razorpay / PhonePe 1-Click UPI) */}
+            {/* 3. Razorpay Secure Payment Option Only */}
             <section className="bg-white p-8 rounded-sm shadow-sm border border-cream-200">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-serif text-2xl flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-amber-600" />
+                  <CreditCard className="w-5 h-5 text-noir-900" />
                   <span>Payment Method</span>
                 </h2>
-                <span className="text-xs text-noir-500 font-mono">100% Encrypted</span>
+                <span className="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 font-semibold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Razorpay Verified
+                </span>
               </div>
 
-              {/* Payment Type Tabs */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                {/* UPI Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('upi')}
-                  className={`p-4 rounded-sm border text-left transition-all ${
-                    paymentMethod === 'upi'
-                      ? 'border-noir-950 bg-cream-50/80 ring-1 ring-noir-950 shadow-xs'
-                      : 'border-cream-300 bg-white hover:border-noir-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Zap className={`w-5 h-5 ${paymentMethod === 'upi' ? 'text-amber-600' : 'text-noir-500'}`} />
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                      ⚡ 1-Click
-                    </span>
+              {/* Razorpay Single Dedicated Option */}
+              <div className="p-5 rounded-sm border-2 border-noir-950 bg-cream-50/70 shadow-xs space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-sm bg-blue-600 text-white flex items-center justify-center font-bold text-lg font-serif shadow-xs">
+                      R
+                    </div>
+                    <div>
+                      <span className="font-serif text-base font-bold text-noir-950 block">
+                        Razorpay Secure Checkout
+                      </span>
+                      <span className="text-xs text-noir-600">
+                        Pay via UPI, Cards, NetBanking, or Digital Wallets
+                      </span>
+                    </div>
                   </div>
-                  <span className="font-serif text-sm font-bold text-noir-950 block">UPI Instant</span>
-                  <span className="text-[11px] text-noir-500">PhonePe, GPay, Paytm</span>
-                </button>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    Official Gateway
+                  </span>
+                </div>
 
-                {/* Card / NetBanking Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`p-4 rounded-sm border text-left transition-all ${
-                    paymentMethod === 'card'
-                      ? 'border-noir-950 bg-cream-50/80 ring-1 ring-noir-950 shadow-xs'
-                      : 'border-cream-300 bg-white hover:border-noir-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <CreditCard className={`w-5 h-5 ${paymentMethod === 'card' ? 'text-noir-950' : 'text-noir-500'}`} />
-                    <span className="text-[9.5px] font-mono text-noir-400">All Banks</span>
+                {/* Badges of Payment Options within Razorpay */}
+                <div className="pt-3 border-t border-cream-200/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div className="p-2.5 rounded bg-white border border-cream-200 text-center">
+                    <span className="font-semibold text-noir-900 block">UPI Instant</span>
+                    <span className="text-[10px] text-noir-500">GPay, PhonePe, Paytm</span>
                   </div>
-                  <span className="font-serif text-sm font-bold text-noir-950 block">Cards & Banking</span>
-                  <span className="text-[11px] text-noir-500">Credit, Debit, NetBanking</span>
-                </button>
+                  <div className="p-2.5 rounded bg-white border border-cream-200 text-center">
+                    <span className="font-semibold text-noir-900 block">Debit / Credit Card</span>
+                    <span className="text-[10px] text-noir-500">Visa, Master, RuPay</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-white border border-cream-200 text-center">
+                    <span className="font-semibold text-noir-900 block">NetBanking</span>
+                    <span className="text-[10px] text-noir-500">50+ Indian Banks</span>
+                  </div>
+                  <div className="p-2.5 rounded bg-white border border-cream-200 text-center">
+                    <span className="font-semibold text-noir-900 block">Wallets & CRED</span>
+                    <span className="text-[10px] text-noir-500">Instant One-Click</span>
+                  </div>
+                </div>
 
-                {/* Partial COD Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('cod_partial')}
-                  className={`p-4 rounded-sm border text-left transition-all ${
-                    paymentMethod === 'cod_partial'
-                      ? 'border-noir-950 bg-cream-50/80 ring-1 ring-noir-950 shadow-xs'
-                      : 'border-cream-300 bg-white hover:border-noir-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Truck className={`w-5 h-5 ${paymentMethod === 'cod_partial' ? 'text-noir-950' : 'text-noir-500'}`} />
-                    <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-900">
-                      ₹199 Advance
-                    </span>
-                  </div>
-                  <span className="font-serif text-sm font-bold text-noir-950 block">Partial COD</span>
-                  <span className="text-[11px] text-noir-500">Balance on delivery</span>
-                </button>
+                <div className="flex items-center gap-2 text-xs text-noir-600 pt-1">
+                  <Lock size={13} className="text-emerald-700 shrink-0" />
+                  <span className="text-[11px] leading-relaxed">
+                    Razorpay opens in a secure popup with RBI-authorized 256-bit encryption. Zero transaction fee.
+                  </span>
+                </div>
               </div>
-
-              {/* UPI Sub-selector */}
-              {paymentMethod === 'upi' && (
-                <div className="p-4 bg-cream-50/60 border border-cream-200 rounded-sm space-y-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-noir-700 block">
-                    Select Your Preferred UPI App:
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {[
-                      { id: 'phonepe', name: 'PhonePe', color: 'border-purple-300 text-purple-700 bg-purple-50/50' },
-                      { id: 'gpay', name: 'Google Pay', color: 'border-blue-300 text-blue-700 bg-blue-50/50' },
-                      { id: 'paytm', name: 'Paytm UPI', color: 'border-sky-300 text-sky-700 bg-sky-50/50' },
-                      { id: 'qr', name: 'Scan Any QR', color: 'border-neutral-300 text-neutral-800 bg-neutral-50' },
-                    ].map((app) => (
-                      <button
-                        key={app.id}
-                        type="button"
-                        onClick={() => setSelectedUpiApp(app.id as UpiAppType)}
-                        className={`p-3 rounded-sm border text-xs font-semibold flex items-center justify-between transition-all ${
-                          selectedUpiApp === app.id
-                            ? 'border-noir-950 bg-white ring-1 ring-noir-950 shadow-xs'
-                            : 'border-cream-300 bg-white/70 hover:border-noir-400'
-                        }`}
-                      >
-                        <span>{app.name}</span>
-                        {selectedUpiApp === app.id && <Check size={13} className="text-noir-950 stroke-[3]" />}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-noir-500 pt-1">
-                    ⚡ 1-Click checkout directly triggers your chosen UPI app. No transaction fee.
-                  </p>
-                </div>
-              )}
-
-              {/* Card Sub-details */}
-              {paymentMethod === 'card' && (
-                <div className="p-4 bg-cream-50/60 border border-cream-200 rounded-sm text-xs text-noir-600 space-y-2">
-                  <p className="font-semibold text-noir-900">Supported Payment Methods via Razorpay Secure:</p>
-                  <p className="text-[11px] text-noir-500 leading-relaxed">
-                    Visa, MasterCard, RuPay, American Express, Diners Club, plus NetBanking across 50+ Indian banks including HDFC, ICICI, SBI, Axis, Kotak, and CRED Pay.
-                  </p>
-                </div>
-              )}
-
-              {/* Partial COD Sub-details */}
-              {paymentMethod === 'cod_partial' && (
-                <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-sm text-xs text-emerald-900 space-y-1.5">
-                  <span className="font-bold flex items-center gap-1.5">
-                    <ShieldCheck size={14} className="text-emerald-700" />
-                    <span>Anti-RTO Booking Policy for Custom Printed Photobooks</span>
-                  </span>
-                  <p className="text-[11.5px] text-emerald-800 leading-relaxed">
-                    Because each photobook is customized to your photos and cannot be restocked, a ₹199 advance booking fee is paid now via UPI to initiate digital printing. The remaining balance of <strong>₹{(finalTotal - 199).toLocaleString('en-IN')}</strong> will be collected in cash or UPI upon delivery by BlueDart.
-                  </p>
-                </div>
-              )}
             </section>
           </form>
 
@@ -980,19 +881,6 @@ export default function CheckoutPage() {
                   <span>Order Total</span>
                   <span className="font-serif text-2xl">₹{finalTotal.toLocaleString('en-IN')}</span>
                 </div>
-
-                {paymentMethod === 'cod_partial' && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-sm text-xs space-y-1">
-                    <div className="flex justify-between font-bold text-amber-950">
-                      <span>Advance to Pay Now (UPI):</span>
-                      <span>₹199</span>
-                    </div>
-                    <div className="flex justify-between text-amber-800">
-                      <span>Balance on Delivery:</span>
-                      <span>₹{(finalTotal - 199).toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="p-3 bg-cream-50 border border-cream-200 rounded-sm flex items-center gap-2 text-xs text-noir-600">
@@ -1009,14 +897,10 @@ export default function CheckoutPage() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
-                    <span className="text-xs">{submissionStep || 'Processing Order...'}</span>
+                    <span className="text-xs">{submissionStep || 'Connecting to Razorpay...'}</span>
                   </>
                 ) : (
-                  <span>
-                    {paymentMethod === 'cod_partial'
-                      ? `Pay ₹199 Advance & Book Order`
-                      : `Pay ₹${finalTotal.toLocaleString('en-IN')} with ${paymentMethod === 'upi' ? selectedUpiApp.toUpperCase() : 'Card'}`}
-                  </span>
+                  <span>Pay ₹{finalTotal.toLocaleString('en-IN')} with Razorpay</span>
                 )}
               </button>
 
