@@ -418,11 +418,12 @@ export default function CheckoutPage() {
       };
 
       // 4. Launch Official Razorpay Modal or Dev Test Simulation
-      const isLiveRazorpay = !paymentOrder.isMock && window.Razorpay && paymentOrder.key && !paymentOrder.key.includes('placeholder');
+      const razorpayKey = paymentOrder?.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
+      const isLiveRazorpay = !paymentOrder?.isMock && typeof window !== 'undefined' && window.Razorpay && razorpayKey && !razorpayKey.includes('placeholder');
 
       if (isLiveRazorpay) {
         const rzp = new window.Razorpay({
-          key: paymentOrder.key,
+          key: razorpayKey,
           amount: paymentOrder.amount,
           currency: paymentOrder.currency || 'INR',
           name: 'PerfectPic Photobooks',
