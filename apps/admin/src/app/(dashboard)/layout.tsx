@@ -17,7 +17,8 @@ import {
   BookOpen, 
   ExternalLink,
   Activity,
-  Tag
+  Tag,
+  Award
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -29,6 +30,7 @@ const navItems = [
   { name: "Template Books", href: "/templates", icon: BookOpen },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Promo Codes", href: "/promos", icon: Tag },
+  { name: "Influencers", href: "/influencers", icon: Award },
   { name: "Production", href: "/production", icon: Printer },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Tickets", href: "/tickets", icon: Ticket },

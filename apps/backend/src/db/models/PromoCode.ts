@@ -20,6 +20,13 @@ export interface IPromoCode extends Document {
   startDate: Date;
   expiresAt?: Date | null;
   isActive: boolean;
+  isInfluencer?: boolean;
+  influencerName?: string;
+  influencerHandle?: string;
+  influencerPlatform?: 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'other';
+  commissionRate?: number; // e.g. 10 for 10%
+  commissionPaid?: number; // ₹ already disbursed
+  clickCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +101,40 @@ const PromoCodeSchema: Schema = new Schema(
       type: Boolean,
       default: true,
       index: true,
+    },
+    isInfluencer: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    influencerName: {
+      type: String,
+      trim: true,
+    },
+    influencerHandle: {
+      type: String,
+      trim: true,
+    },
+    influencerPlatform: {
+      type: String,
+      enum: ['instagram', 'youtube', 'facebook', 'tiktok', 'other'],
+      default: 'instagram',
+    },
+    commissionRate: {
+      type: Number,
+      default: 10,
+      min: 0,
+      max: 100,
+    },
+    commissionPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    clickCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
   },
   {

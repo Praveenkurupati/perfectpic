@@ -1,6 +1,7 @@
 // apps/client/src/stores/useCartStore.ts
 import { create } from 'zustand';
 import { api } from '@/lib/api';
+import { trackMetaAddToCart } from '@/lib/metaPixel';
 
 export interface CartItem {
   id: string;
@@ -91,19 +92,33 @@ export const useCartStore = create<CartState>((set, get) => ({
   packagingAddon: false,
   isGift: false,
 
-  addItem: (item) => set((state) => {
-    const existingIndex = state.items.findIndex((i) => i.id === item.id);
-    let newItems: CartItem[];
-    if (existingIndex > -1) {
-      newItems = state.items.map((it, idx) => 
-        idx === existingIndex ? { ...it, quantity: (it.quantity || 1) + (item.quantity || 1) } : it
-      );
-    } else {
-      newItems = [...state.items, { ...item, quantity: item.quantity || 1 }];
+  addItem: (item) => {
+    // Dispatch Meta AddToCart tracking
+    try {
+      trackMetaAddToCart({
+        id: item.id || item.projectId,
+        title: item.title,
+        price: (item.basePrice || 1999) + (item.extraPagesPrice || 0),
+        quantity: item.quantity || 1,
+      });
+    } catch {
+      // ignore
     }
-    saveCart(newItems);
-    return { items: newItems };
-  }),
+
+    set((state) => {
+      const existingIndex = state.items.findIndex((i) => i.id === item.id);
+      let newItems: CartItem[];
+      if (existingIndex > -1) {
+        newItems = state.items.map((it, idx) => 
+          idx === existingIndex ? { ...it, quantity: (it.quantity || 1) + (item.quantity || 1) } : it
+        );
+      } else {
+        newItems = [...state.items, { ...item, quantity: item.quantity || 1 }];
+      }
+      saveCart(newItems);
+      return { items: newItems };
+    });
+  },
 
   removeItem: (id) => set((state) => {
     const newItems = state.items.filter((i) => i.id !== id);

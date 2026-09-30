@@ -120,4 +120,25 @@ export class PromoCodeController {
       next(err);
     }
   }
+
+  // Admin: View comprehensive influencer/creator analytics
+  public static async getInfluencerAnalytics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await PromoCodeService.getInfluencerAnalytics();
+      return res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  // Public: Log creator referral click from /ref/:code
+  public static async trackReferralClick(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { code } = req.body;
+      const success = await PromoCodeService.trackReferralClick(code);
+      return res.status(200).json({ success, code });
+    } catch (err) {
+      next(err);
+    }
+  }
 }

@@ -23,6 +23,7 @@ import {
   Heart,
 } from "lucide-react";
 import { api } from "@/lib/api";
+import { trackMetaViewContent } from "@/lib/metaPixel";
 import {
   fallbackCatalog,
   getFallbackProduct,
@@ -152,6 +153,18 @@ export default function BookDetailPage() {
 
     return Math.max(999, base + sizeAdjustment + pageAdjustment);
   }, [book, selectedPages, selectedSize]);
+
+  // Track Meta ViewContent for product catalog ads
+  useEffect(() => {
+    if (book) {
+      trackMetaViewContent({
+        id: book.slug || slugParam,
+        title: book.displayName || book.title || 'Photobook',
+        price: calculatedPrice,
+        category: book.category || 'Photobooks',
+      });
+    }
+  }, [book, calculatedPrice, slugParam]);
 
   const comparePrice = useMemo(() => {
     return Math.round(calculatedPrice * 1.45);

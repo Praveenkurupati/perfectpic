@@ -2,7 +2,18 @@
 
 import React, { useState } from 'react';
 import { useEditorStore, Photo, PageLayout, SlotCropConfig } from '@/stores/useEditorStore';
-import { ChevronLeft, ChevronRight, Image as ImageIcon, Trash2, Check, Sparkles, Crop } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Image as ImageIcon, 
+  Trash2, 
+  Check, 
+  Sparkles, 
+  Crop,
+  ShieldAlert,
+  AlertTriangle,
+  CheckCircle2
+} from 'lucide-react';
 import PortionCutModal from './PortionCutModal';
 
 interface SlotProps {
@@ -14,6 +25,8 @@ interface SlotProps {
   onOpenCutModal?: (slotId: string, photo: Photo, label?: string) => void;
   crop?: SlotCropConfig;
   label?: string;
+  bookSize?: string;
+  slotWidthFraction?: number;
 }
 
 function PhotoSlot({
@@ -25,10 +38,23 @@ function PhotoSlot({
   onOpenCutModal,
   crop,
   label,
+  bookSize,
+  slotWidthFraction = 1,
 }: SlotProps) {
   const focalX = crop?.x ?? 50;
   const focalY = crop?.y ?? 50;
   const zoom = crop?.zoom ?? 1;
+
+  // Track image natural dimensions for printed DPI calculation
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+
+  const isLargeBook = (bookSize || '').includes('10');
+  const baseInches = isLargeBook ? 10 : 8.25;
+  const physicalWidthInches = Math.max(1.8, baseInches * slotWidthFraction);
+  const dpi = naturalSize ? Math.round(naturalSize.width / physicalWidthInches) : null;
+  const isUltraHD = dpi !== null && dpi >= 300;
+  const isGoodQuality = dpi !== null && dpi >= 180 && dpi < 300;
+  const isLowRes = dpi !== null && dpi < 180;
 
   return (
     <div
@@ -48,6 +74,12 @@ function PhotoSlot({
             src={photo.url}
             alt={label || 'Slot Photo'}
             crossOrigin="anonymous"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth && img.naturalHeight) {
+                setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+              }
+            }}
             style={{
               objectFit: 'cover',
               objectPosition: `${focalX}% ${focalY}%`,
@@ -56,7 +88,41 @@ function PhotoSlot({
             }}
             className="w-full h-full transition-transform duration-300"
           />
-          <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1">
+
+          {/* Live DPI Resolution Quality Badge */}
+          {dpi !== null && (
+            <div className="absolute top-1.5 left-1.5 z-20 pointer-events-auto">
+              {isUltraHD && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-sm flex items-center gap-1 backdrop-blur-xs"
+                  title={`Crisp Print Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpi} DPI (exceeds 300 DPI press standard)`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>300+ DPI (HD)</span>
+                </span>
+              )}
+              {isGoodQuality && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/50 shadow-sm flex items-center gap-1 backdrop-blur-xs"
+                  title={`Good Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpi} DPI (recommended range: 180-300 DPI)`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  <span>{dpi} DPI (Good)</span>
+                </span>
+              )}
+              {isLowRes && (
+                <span
+                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-rose-950/95 text-rose-200 border border-rose-500/80 shadow-md flex items-center gap-1 backdrop-blur-xs animate-pulse"
+                  title={`Low Resolution Alert: ${naturalSize?.width}×${naturalSize?.height}px produces only ${dpi} DPI. May appear grainy or blurry when printed. Recommended: 1500px+ width.`}
+                >
+                  <AlertTriangle className="w-2.5 h-2.5 text-rose-400" />
+                  <span>⚠️ {dpi} DPI (Blurry Risk)</span>
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-1 z-30">
             {onOpenCutModal && (
               <button
                 onClick={(e) => {
@@ -104,6 +170,7 @@ function RenderPageSlots({
   pagePhotos,
   onRemovePhoto,
   onOpenCutModal,
+  bookSize,
 }: {
   pageNum: number;
   layout: PageLayout;
@@ -114,6 +181,7 @@ function RenderPageSlots({
   pagePhotos: Record<number, Photo | null>;
   onRemovePhoto: (slotId: string) => void;
   onOpenCutModal?: (slotId: string, photo: Photo, label?: string) => void;
+  bookSize?: string;
 }) {
   const getPhoto = (subIndex: number) => {
     const slotId = `${pageNum}_${subIndex}`;
@@ -133,6 +201,8 @@ function RenderPageSlots({
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
           onOpenCutModal={onOpenCutModal}
+          bookSize={bookSize}
+          slotWidthFraction={1}
           label="Top Slot"
         />
         <PhotoSlot
@@ -143,6 +213,8 @@ function RenderPageSlots({
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
           onOpenCutModal={onOpenCutModal}
+          bookSize={bookSize}
+          slotWidthFraction={1}
           label="Bottom Slot"
         />
       </div>
@@ -160,6 +232,8 @@ function RenderPageSlots({
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
           onOpenCutModal={onOpenCutModal}
+          bookSize={bookSize}
+          slotWidthFraction={0.5}
           label="Left Slot"
         />
         <PhotoSlot
@@ -170,6 +244,8 @@ function RenderPageSlots({
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
           onOpenCutModal={onOpenCutModal}
+          bookSize={bookSize}
+          slotWidthFraction={0.5}
           label="Right Slot"
         />
       </div>
@@ -187,6 +263,8 @@ function RenderPageSlots({
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
           onOpenCutModal={onOpenCutModal}
+          bookSize={bookSize}
+          slotWidthFraction={0.5}
           label="Featured Slot"
         />
         <div className="grid grid-rows-2 gap-2">
@@ -198,6 +276,8 @@ function RenderPageSlots({
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
             onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={0.5}
             label="Slot 2"
           />
           <PhotoSlot
@@ -208,6 +288,8 @@ function RenderPageSlots({
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
             onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={0.5}
             label="Slot 3"
           />
         </div>
@@ -228,6 +310,8 @@ function RenderPageSlots({
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
             onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={0.5}
             label={`Slot ${idx + 1}`}
           />
         ))}
@@ -248,6 +332,8 @@ function RenderPageSlots({
             onSelect={onSelectSlot}
             onRemove={onRemovePhoto}
             onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={0.33}
             label={`Slot ${idx + 1}`}
           />
         ))}
@@ -267,6 +353,8 @@ function RenderPageSlots({
           onSelect={onSelectSlot}
           onRemove={onRemovePhoto}
           onOpenCutModal={onOpenCutModal}
+          bookSize={bookSize}
+          slotWidthFraction={1}
           label={`Full Bleed Page ${pageNum}`}
         />
       </div>
@@ -285,6 +373,8 @@ function RenderPageSlots({
         onSelect={onSelectSlot}
         onRemove={onRemovePhoto}
         onOpenCutModal={onOpenCutModal}
+        bookSize={bookSize}
+        slotWidthFraction={1}
         label={`Page ${pageNum} Photo`}
       />
     </div>
@@ -309,6 +399,8 @@ export default function BookCanvas() {
     template,
     bookConfig,
   } = useEditorStore();
+
+  const [showGuides, setShowGuides] = useState(true);
 
   const [cutModalState, setCutModalState] = useState<{
     isOpen: boolean;
@@ -389,6 +481,21 @@ export default function BookCanvas() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Print Safety Guides Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowGuides(!showGuides)}
+            className={`px-2.5 py-1 rounded text-[11px] font-semibold flex items-center gap-1.5 transition-all border ${
+              showGuides
+                ? 'bg-noir-950 text-white border-noir-900 shadow-sm'
+                : 'bg-white text-noir-600 border-cream-300 hover:border-noir-900'
+            }`}
+            title="Toggle mechanical trim cut lines, safe margins, and gutter fold guides"
+          >
+            <ShieldAlert size={12} className={showGuides ? 'text-foil-gold' : 'text-noir-400'} />
+            <span>Print Guides: {showGuides ? 'ON' : 'OFF'}</span>
+          </button>
+
           <span className="text-[11px] text-noir-500">
             Target Slot: <strong className="text-noir-950 font-mono">{selectedSlot || 'None'}</strong>
           </span>
@@ -442,51 +549,18 @@ export default function BookCanvas() {
 
               {/* Cover Photo Slot (Gallery Centered) */}
               <div className="flex-1 my-4 bg-white/10 rounded-sm overflow-hidden relative border border-white/20 shadow-inner group">
-                {coverPhoto ? (
-                  <img
-                    src={coverPhoto.url}
-                    alt="Cover"
-                    crossOrigin="anonymous"
-                    style={{
-                      objectFit: 'cover',
-                      objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
-                      transform: `scale(${slotCrops['0']?.zoom ?? 1})`,
-                      transformOrigin: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
-                    }}
-                    className="w-full h-full transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-white/60 p-4 text-center">
-                    <ImageIcon size={32} className="mb-2" />
-                    <span className="text-xs font-medium">Click a photo from tray to place on Cover</span>
-                  </div>
-                )}
-                {coverPhoto && (
-                  <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenCutModal('0', coverPhoto, 'Front Cover');
-                      }}
-                      className="px-2.5 py-1 bg-white/95 text-noir-900 rounded-sm text-[11px] font-semibold hover:bg-white flex items-center gap-1 shadow-sm transition-all hover:scale-105"
-                      title="Cut / Choose Portion"
-                    >
-                      <Crop size={12} className="text-foil-gold" />
-                      <span>Cut / Portion</span>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        assignPhotoToSlot('0', null);
-                      }}
-                      className="px-2.5 py-1 bg-red-600/90 text-white rounded-sm text-[11px] font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
-                      title="Remove Cover Photo"
-                    >
-                      <Trash2 size={12} />
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                )}
+                <PhotoSlot
+                  slotId="0"
+                  photo={coverPhoto}
+                  crop={slotCrops['0']}
+                  isSelected={selectedSlot === '0'}
+                  onSelect={(id) => setSelectedSlot(id)}
+                  onRemove={(id) => assignPhotoToSlot(id, null)}
+                  onOpenCutModal={handleOpenCutModal}
+                  bookSize={bookConfig.size}
+                  slotWidthFraction={0.9}
+                  label="Front Cover Photo"
+                />
               </div>
 
               <div className="flex justify-between items-end text-white/80 text-[10px] uppercase tracking-widest font-mono">
@@ -494,6 +568,15 @@ export default function BookCanvas() {
                 <span>{pageCount} Pages</span>
               </div>
             </div>
+
+            {/* Front Cover 3mm Bleed Cut Guide */}
+            {showGuides && (
+              <div className="absolute inset-2 border border-dashed border-rose-400/60 pointer-events-none z-30 rounded-xs">
+                <span className="absolute top-1 left-2 text-[7.5px] font-mono font-bold text-rose-300 bg-black/60 px-1 py-0.2 rounded">
+                  3mm Cover Trim Bleed
+                </span>
+              </div>
+            )}
           </div>
         )}
 
@@ -528,9 +611,27 @@ export default function BookCanvas() {
                 onSelect={(id) => setSelectedSlot(id)}
                 onRemove={(id) => assignPhotoToSlot(id, null)}
                 onOpenCutModal={handleOpenCutModal}
+                bookSize={bookConfig.size}
+                slotWidthFraction={2}
                 label="Grand Panoramic Photo (Spans Across Both Pages)"
               />
             </div>
+
+            {/* Print Bleed & Safe Zone Overlay for Panoramic Spread */}
+            {showGuides && (
+              <div className="absolute inset-0 pointer-events-none z-20">
+                <div className="absolute inset-2 border border-dashed border-rose-500/50 rounded-xs">
+                  <span className="absolute top-0.5 left-1 text-[7.5px] font-mono font-bold text-rose-500 bg-white/90 px-1 py-0.2 rounded">
+                    3mm Cut Bleed
+                  </span>
+                </div>
+                <div className="absolute inset-6 border border-dashed border-teal-500/50 rounded-xs">
+                  <span className="absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold text-teal-600 bg-white/90 px-1 py-0.2 rounded">
+                    Safe Zone (Keep faces inside)
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Spine Center Fold Guide Line */}
             <div className="absolute inset-y-0 left-1/2 w-[1px] bg-black/25 pointer-events-none z-20 border-r border-dashed border-white/60" />
@@ -578,7 +679,24 @@ export default function BookCanvas() {
                 pagePhotos={pagePhotos}
                 onRemovePhoto={(id) => assignPhotoToSlot(id, null)}
                 onOpenCutModal={handleOpenCutModal}
+                bookSize={bookConfig.size}
               />
+
+              {/* Left Page Bleed & Safe Zone Overlay */}
+              {showGuides && (
+                <div className="absolute inset-0 pointer-events-none z-20">
+                  <div className="absolute inset-2 border border-dashed border-rose-500/50 rounded-xs">
+                    <span className="absolute top-0.5 left-1 text-[7.5px] font-mono font-bold text-rose-500 bg-white/90 px-1 py-0.2 rounded">
+                      3mm Cut Line
+                    </span>
+                  </div>
+                  <div className="absolute inset-6 border border-dashed border-teal-500/50 rounded-xs">
+                    <span className="absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold text-teal-600 bg-white/90 px-1 py-0.2 rounded">
+                      Safe Zone
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Bottom Editorial Footnote */}
               <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif">
@@ -622,7 +740,24 @@ export default function BookCanvas() {
                 pagePhotos={pagePhotos}
                 onRemovePhoto={(id) => assignPhotoToSlot(id, null)}
                 onOpenCutModal={handleOpenCutModal}
+                bookSize={bookConfig.size}
               />
+
+              {/* Right Page Bleed & Safe Zone Overlay */}
+              {showGuides && (
+                <div className="absolute inset-0 pointer-events-none z-20">
+                  <div className="absolute inset-2 border border-dashed border-rose-500/50 rounded-xs">
+                    <span className="absolute top-0.5 left-1 text-[7.5px] font-mono font-bold text-rose-500 bg-white/90 px-1 py-0.2 rounded">
+                      3mm Cut Line
+                    </span>
+                  </div>
+                  <div className="absolute inset-6 border border-dashed border-teal-500/50 rounded-xs">
+                    <span className="absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold text-teal-600 bg-white/90 px-1 py-0.2 rounded">
+                      Safe Zone
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Bottom Editorial Footnote */}
               <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif">

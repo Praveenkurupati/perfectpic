@@ -148,6 +148,10 @@ export const adminApi = {
     fetcher<{ promo: any; usages: any[]; totalUsages: number }>(`/promos/${id}/usages`, {
       headers: authHeaders(),
     }),
+  getInfluencerAnalytics: () =>
+    fetcher<{ summary: any; influencers: any[]; recentOrders: any[] }>('/promos/influencers/analytics', {
+      headers: authHeaders(),
+    }),
 
   // Health
   health: () => fetcher<{ status: string }>('/health'),

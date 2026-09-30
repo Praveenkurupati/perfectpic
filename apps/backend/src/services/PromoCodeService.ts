@@ -260,4 +260,13 @@ export class PromoCodeService {
       orderTotal: params.orderTotal,
     });
   }
+
+  public static async getInfluencerAnalytics() {
+    return await PromoCodeRepository.getInfluencerAnalytics();
+  }
+
+  public static async trackReferralClick(code: string) {
+    if (!code) return false;
+    return await PromoCodeRepository.trackReferralClick(code);
+  }
 }

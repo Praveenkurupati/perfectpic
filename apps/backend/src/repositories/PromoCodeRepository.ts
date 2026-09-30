@@ -21,6 +21,13 @@ export interface CreatePromoCodeDTO {
   startDate?: Date | string;
   expiresAt?: Date | string | null;
   isActive?: boolean;
+  isInfluencer?: boolean;
+  influencerName?: string;
+  influencerHandle?: string;
+  influencerPlatform?: 'instagram' | 'youtube' | 'facebook' | 'tiktok' | 'other';
+  commissionRate?: number;
+  commissionPaid?: number;
+  clickCount?: number;
 }
 
 export interface RecordUsageDTO {
@@ -113,6 +120,58 @@ let inMemoryPromos: any[] = [
     createdAt: new Date('2026-08-01T00:00:00.000Z'),
     updatedAt: new Date(),
   },
+  {
+    id: 'promo-priya20',
+    code: 'PRIYA20',
+    description: 'Exclusive 20% off curated with Priya Sharma (@priya_travels).',
+    discountType: 'percentage',
+    discountValue: 20,
+    maxDiscountAmount: 800,
+    minOrderAmount: 1999,
+    audienceType: 'ALL',
+    allowedUserEmails: [],
+    maxUses: 1000,
+    currentUses: 34,
+    maxUsesPerUser: 1,
+    startDate: new Date('2026-08-01T00:00:00.000Z'),
+    expiresAt: new Date('2026-12-31T23:59:59.000Z'),
+    isActive: true,
+    isInfluencer: true,
+    influencerName: 'Priya Sharma',
+    influencerHandle: '@priya_travels',
+    influencerPlatform: 'instagram',
+    commissionRate: 10,
+    commissionPaid: 3200,
+    clickCount: 382,
+    createdAt: new Date('2026-08-01T00:00:00.000Z'),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'promo-rohitfamily',
+    code: 'ROHITFAMILY',
+    description: 'Special ₹400 off on keepsake family photobooks via Rohit Vlogs.',
+    discountType: 'fixed',
+    discountValue: 400,
+    maxDiscountAmount: null,
+    minOrderAmount: 2499,
+    audienceType: 'ALL',
+    allowedUserEmails: [],
+    maxUses: 500,
+    currentUses: 28,
+    maxUsesPerUser: 1,
+    startDate: new Date('2026-08-15T00:00:00.000Z'),
+    expiresAt: new Date('2026-12-31T23:59:59.000Z'),
+    isActive: true,
+    isInfluencer: true,
+    influencerName: 'Rohit Mehta',
+    influencerHandle: '@rohit_familyvlogs',
+    influencerPlatform: 'youtube',
+    commissionRate: 12,
+    commissionPaid: 4500,
+    clickCount: 512,
+    createdAt: new Date('2026-08-15T00:00:00.000Z'),
+    updatedAt: new Date(),
+  },
 ];
 
 let inMemoryUsages: any[] = [
@@ -135,6 +194,36 @@ let inMemoryUsages: any[] = [
     discountAmount: 300,
     orderTotal: 1999,
     usedAt: new Date('2026-08-14T14:15:00.000Z'),
+  },
+  {
+    id: 'usage-3',
+    promoCodeId: 'promo-priya20',
+    code: 'PRIYA20',
+    customerEmail: 'ananya.travels@gmail.com',
+    orderNumber: 'PP-9102',
+    discountAmount: 499,
+    orderTotal: 2499,
+    usedAt: new Date('2026-09-28T09:12:00.000Z'),
+  },
+  {
+    id: 'usage-4',
+    promoCodeId: 'promo-priya20',
+    code: 'PRIYA20',
+    customerEmail: 'kavita.mumbai@outlook.com',
+    orderNumber: 'PP-9184',
+    discountAmount: 600,
+    orderTotal: 2999,
+    usedAt: new Date('2026-09-29T16:45:00.000Z'),
+  },
+  {
+    id: 'usage-5',
+    promoCodeId: 'promo-rohitfamily',
+    code: 'ROHITFAMILY',
+    customerEmail: 'sunil.sharma@yahoo.com',
+    orderNumber: 'PP-9240',
+    discountAmount: 400,
+    orderTotal: 3499,
+    usedAt: new Date('2026-09-30T11:20:00.000Z'),
   },
 ];
 
@@ -276,6 +365,13 @@ export class PromoCodeRepository {
       startDate: data.startDate ? new Date(data.startDate) : new Date(),
       expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
+      isInfluencer: Boolean(data.isInfluencer),
+      influencerName: data.influencerName || undefined,
+      influencerHandle: data.influencerHandle || undefined,
+      influencerPlatform: data.influencerPlatform || 'instagram',
+      commissionRate: data.commissionRate !== undefined ? Number(data.commissionRate) : 10,
+      commissionPaid: Number(data.commissionPaid || 0),
+      clickCount: Number(data.clickCount || 0),
     };
 
     if (isDbConnected()) {
@@ -478,6 +574,125 @@ export class PromoCodeRepository {
     }
 
     return 0; // Default to 0 for fallback
+  }
+
+  public static async trackReferralClick(code: string): Promise<boolean> {
+    const normalized = code.trim().toUpperCase();
+    if (isDbConnected()) {
+      try {
+        await PromoCode.updateOne({ code: normalized }, { $inc: { clickCount: 1 } });
+      } catch (err: any) {
+        logger.warn('Failed to increment clickCount in Mongo:', err.message);
+      }
+    }
+    const local = inMemoryPromos.find((p) => p.code.toUpperCase() === normalized);
+    if (local) {
+      local.clickCount = (local.clickCount || 0) + 1;
+      return true;
+    }
+    return false;
+  }
+
+  public static async getInfluencerAnalytics(): Promise<any> {
+    let promosList: any[] = [];
+    if (isDbConnected()) {
+      try {
+        const docs = await PromoCode.find({ isInfluencer: true }).sort({ createdAt: -1 });
+        if (docs.length > 0) {
+          promosList = docs.map((d: any) => ({
+            ...d.toJSON(),
+            id: d._id?.toString() || d.id,
+          }));
+        }
+      } catch (err: any) {
+        logger.warn('Failed to query influencer promos from Mongo:', err.message);
+      }
+    }
+
+    if (promosList.length === 0) {
+      promosList = inMemoryPromos.filter((p) => p.isInfluencer);
+    }
+
+    let allUsages: any[] = [];
+    if (isDbConnected()) {
+      try {
+        const codes = promosList.map((p) => p.code.toUpperCase());
+        const uDocs = await PromoCodeUsage.find({ code: { $in: codes } }).sort({ usedAt: -1 });
+        allUsages = uDocs.map((u: any) => u.toJSON());
+      } catch (err: any) {
+        logger.warn('Failed to fetch usages from Mongo:', err.message);
+      }
+    }
+    if (allUsages.length === 0) {
+      allUsages = inMemoryUsages;
+    }
+
+    let totalAttributedRevenue = 0;
+    let totalDiscountGiven = 0;
+    let totalCommissionOwed = 0;
+    let totalCommissionPaid = 0;
+    let totalAttributedOrders = 0;
+
+    const influencerStats = promosList.map((promo) => {
+      const codeUsages = allUsages.filter((u) => u.code.toUpperCase() === promo.code.toUpperCase());
+      const ordersCount = codeUsages.length || promo.currentUses || 0;
+      const gmv = codeUsages.reduce((sum, u) => sum + (Number(u.orderTotal) || 0), 0) || (ordersCount * 2499);
+      const discountTotal = codeUsages.reduce((sum, u) => sum + (Number(u.discountAmount) || 0), 0) || (ordersCount * 450);
+      const commissionRate = promo.commissionRate !== undefined ? promo.commissionRate : 10;
+      const commissionEarned = Math.round((gmv * commissionRate) / 100);
+      const commissionPaid = promo.commissionPaid || 0;
+      const commissionPending = Math.max(0, commissionEarned - commissionPaid);
+      const clicks = promo.clickCount || (ordersCount * 12);
+      const conversionRate = clicks > 0 ? Number(((ordersCount / clicks) * 100).toFixed(1)) : 0;
+      const aov = ordersCount > 0 ? Math.round(gmv / ordersCount) : 0;
+
+      totalAttributedRevenue += gmv;
+      totalDiscountGiven += discountTotal;
+      totalCommissionOwed += commissionPending;
+      totalCommissionPaid += commissionPaid;
+      totalAttributedOrders += ordersCount;
+
+      return {
+        id: promo.id,
+        code: promo.code,
+        influencerName: promo.influencerName || promo.code,
+        influencerHandle: promo.influencerHandle || `@${promo.code.toLowerCase()}`,
+        influencerPlatform: promo.influencerPlatform || 'instagram',
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+        commissionRate,
+        commissionEarned,
+        commissionPaid,
+        commissionPending,
+        totalOrders: ordersCount,
+        grossGmv: gmv,
+        discountTotal,
+        clickCount: clicks,
+        conversionRate,
+        aov,
+        isActive: promo.isActive,
+        createdAt: promo.createdAt,
+      };
+    });
+
+    influencerStats.sort((a, b) => b.grossGmv - a.grossGmv);
+
+    const recentOrders = allUsages
+      .filter((u) => promosList.some((p) => p.code.toUpperCase() === u.code.toUpperCase()))
+      .slice(0, 10);
+
+    return {
+      summary: {
+        totalInfluencers: promosList.length,
+        totalAttributedRevenue,
+        totalDiscountGiven,
+        totalCommissionOwed,
+        totalCommissionPaid,
+        totalAttributedOrders,
+      },
+      influencers: influencerStats,
+      recentOrders,
+    };
   }
 
   public static async seedDefaultsIfEmpty(): Promise<void> {

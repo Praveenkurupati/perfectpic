@@ -3,6 +3,7 @@ import { OrderRepository } from '../repositories/OrderRepository';
 import { PromoCodeService } from './PromoCodeService';
 import { ApiError } from '../utils/apiError';
 import { mailService } from './MailService';
+import { MetaCapiService } from './MetaCapiService';
 import { logger } from '../utils/logger';
 
 export class OrderService {
@@ -56,6 +57,47 @@ export class OrderService {
         logger.error('Failed to send order confirmation email:', err.message);
       });
     }
+
+    // Trigger Meta Conversions API (CAPI) server-side Purchase event
+    const customerEmail = orderData.customerEmail || orderData.shippingAddress?.email;
+    const customerPhone = orderData.customerPhone || orderData.shippingAddress?.phone;
+    const orderTotal = Number(order.total || order.amount || 0);
+    const orderId = String(order.id || (order as any)._id || order.orderNumber);
+
+    MetaCapiService.sendEvent({
+      eventName: 'Purchase',
+      eventId: `order_${orderId}`,
+      actionSource: 'website',
+      eventSourceUrl: 'https://perfectpic.in/checkout',
+      userData: {
+        email: customerEmail,
+        phone: customerPhone,
+        firstName: orderData.shippingAddress?.fullName?.split(' ')[0] || orderData.customerName?.split(' ')[0],
+        lastName: orderData.shippingAddress?.fullName?.split(' ').slice(1).join(' ') || orderData.customerName?.split(' ').slice(1).join(' '),
+        city: orderData.shippingAddress?.city,
+        state: orderData.shippingAddress?.state,
+        zip: orderData.shippingAddress?.postalCode || orderData.shippingAddress?.pincode,
+        country: 'in',
+        fbp: orderData.tracking?.fbp,
+        fbc: orderData.tracking?.fbc,
+      },
+      customData: {
+        currency: 'INR',
+        value: orderTotal,
+        order_id: order.orderNumber || orderId,
+        num_items: Array.isArray(orderData.items) ? orderData.items.length : 1,
+        contents: Array.isArray(orderData.items)
+          ? orderData.items.map((it: any) => ({
+              id: it.templateId || it.id || 'photobook',
+              quantity: it.quantity || 1,
+              item_price: it.price || orderTotal,
+              title: it.title || 'Custom Photobook Keepsake',
+            }))
+          : [{ id: 'photobook', quantity: 1, item_price: orderTotal, title: order.title }],
+      },
+    }).catch((err) => {
+      logger.error('[Meta CAPI Order Purchase Error]:', err.message);
+    });
 
     return order;
   }

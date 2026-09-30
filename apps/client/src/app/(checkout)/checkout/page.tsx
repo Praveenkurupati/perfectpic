@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import Link from 'next/link';
 import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2, ShoppingBag, MapPin } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
+import { trackMetaInitiateCheckout, trackMetaPurchase } from '@/lib/metaPixel';
 import { useAddressStore } from '@/stores/useAddressStore';
 import { generateBookPdfBlob } from '@/lib/pdfGenerator';
 
@@ -34,6 +35,13 @@ export default function CheckoutPage() {
     initialize();
     loadAddresses();
     setMounted(true);
+    if (items.length > 0) {
+      trackMetaInitiateCheckout({
+        subtotal: getSubtotal(),
+        itemCount: items.length,
+        items: items.map(it => ({ id: it.id, title: it.title, price: it.basePrice })),
+      });
+    }
   }, [initialize, loadAddresses]);
 
   useEffect(() => {
@@ -225,6 +233,14 @@ export default function CheckoutPage() {
         itemsCount: orderItems.length,
         city: cityState.split(',')[0]?.trim() || '',
         deliveryOption,
+      });
+
+      trackMetaPurchase({
+        orderId: String(orderNumber),
+        total: orderTotal,
+        items: orderItems,
+        email: user?.email,
+        phone: phone.trim() || user?.phone,
       });
 
       clearCart();

@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { AnalyticsRepository, BehaviourFilters } from '../repositories/AnalyticsRepository';
+import { MetaCapiService } from '../services/MetaCapiService';
 import { ApiResponse } from '../utils/apiResponse';
 
 export class AnalyticsController {
@@ -73,6 +74,40 @@ export class AnalyticsController {
       return ApiResponse.success(res, data, 'Live user journeys retrieved successfully');
     } catch (err: any) {
       return ApiResponse.error(res, err.message || 'Failed to retrieve live journeys', 500, 'FEED_ERROR');
+    }
+  }
+
+  /**
+   * Relay client-side event to Meta Conversions API (CAPI) with server-side enrichment
+   * POST /api/v1/analytics/meta-capi
+   */
+  public static async relayMetaCapi(req: Request, res: Response) {
+    try {
+      const { eventName, eventId, eventSourceUrl, userData = {}, customData = {} } = req.body;
+      if (!eventName) {
+        return ApiResponse.error(res, 'eventName is required', 400, 'VALIDATION_ERROR');
+      }
+
+      // Enrich with server headers
+      const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress;
+      const clientUserAgent = req.headers['user-agent'] as string;
+
+      const result = await MetaCapiService.sendEvent({
+        eventName,
+        eventId,
+        eventSourceUrl: eventSourceUrl || (req.headers.referer as string) || 'https://perfectpic.in',
+        actionSource: 'website',
+        userData: {
+          ...userData,
+          clientIp: userData.clientIp || clientIp,
+          clientUserAgent: userData.clientUserAgent || clientUserAgent,
+        },
+        customData,
+      });
+
+      return ApiResponse.success(res, result, 'Meta CAPI event processed');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to dispatch Meta CAPI event', 500, 'CAPI_ERROR');
     }
   }
 }

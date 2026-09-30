@@ -8,6 +8,9 @@ const router = Router();
 // Ingestion: Ingest client-side telemetry events (public / beacon)
 router.post('/events', AnalyticsController.ingestEvents);
 
+// Meta Conversions API (CAPI) direct relay endpoint
+router.post('/meta-capi', AnalyticsController.relayMetaCapi);
+
 // Behavior Analytics: Comprehensive non-login vs login analytics with filters
 router.get('/behaviour', optionalAuth, AnalyticsController.getBehaviourAnalytics);
 

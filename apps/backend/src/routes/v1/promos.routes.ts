@@ -9,6 +9,10 @@ const router = Router();
 router.post('/validate', optionalAuth, PromoCodeController.validate);
 router.get('/active', PromoCodeController.getActiveOffers);
 
+// Influencer & Creator Analytics endpoints
+router.post('/ref-click', PromoCodeController.trackReferralClick);
+router.get('/influencers/analytics', authenticate, adminOnly, PromoCodeController.getInfluencerAnalytics);
+
 // Admin management endpoints (protected)
 router.get('/', authenticate, adminOnly, PromoCodeController.getAll);
 router.post('/', authenticate, adminOnly, PromoCodeController.create);
