@@ -92,12 +92,14 @@ async function getBase64Image(url: string): Promise<string | null> {
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || 600;
-          canvas.height = img.naturalHeight || 600;
+          canvas.width = Math.min(4200, img.naturalWidth || 1200);
+          canvas.height = Math.min(4200, img.naturalHeight || 1200);
           const ctx = canvas.getContext('2d');
           if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/jpeg', 0.85));
+            resolve(canvas.toDataURL('image/jpeg', 0.96));
             return;
           }
         } catch {}
@@ -160,8 +162,8 @@ async function getCroppedBase64Image(
           const sourceX = Math.max(0, Math.min(maxSourceX, maxSourceX * focalX));
           const sourceY = Math.max(0, Math.min(maxSourceY, maxSourceY * focalY));
 
-          // Set canvas output resolution for crisp print
-          const canvasW = Math.max(800, Math.min(2400, Math.round(cropW)));
+          // Set canvas output resolution for ultra-HD 300-DPI archival print
+          const canvasW = Math.max(1200, Math.min(4200, Math.round(cropW)));
           const canvasH = Math.round(canvasW / targetAspect);
 
           const canvas = document.createElement('canvas');
@@ -172,7 +174,7 @@ async function getCroppedBase64Image(
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, sourceX, sourceY, cropW, cropH, 0, 0, canvasW, canvasH);
-            resolve(canvas.toDataURL('image/jpeg', 0.92));
+            resolve(canvas.toDataURL('image/jpeg', 0.96));
             return;
           }
         } catch {
@@ -219,7 +221,7 @@ async function drawPhotoSlot(
   if (base64) {
     try {
       const format = base64.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-      doc.addImage(base64, format, x, y, w, h, undefined, 'FAST');
+      doc.addImage(base64, format, x, y, w, h, undefined, 'SLOW');
       if (!noBorder) {
         doc.setDrawColor(215, 210, 200);
         doc.setLineWidth(0.25);

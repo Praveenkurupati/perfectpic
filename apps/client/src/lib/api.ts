@@ -226,7 +226,8 @@ export const api = {
   uploadPhoto: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    formData.append('folder', 'photos');
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('pp_token') || localStorage.getItem('token')) : null;
     const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -238,6 +239,32 @@ export const api = {
     }
     return res.json() as Promise<{ url: string; filename: string; originalName: string; size: number }>;
   },
+  uploadPdf: async (blobOrFile: Blob | File, filename?: string, orderId?: string) => {
+    const formData = new FormData();
+    const fname = filename || `photobook-${Date.now()}.pdf`;
+    const file = blobOrFile instanceof File ? blobOrFile : new File([blobOrFile], fname, { type: 'application/pdf' });
+    formData.append('file', file);
+    formData.append('folder', 'photobooks');
+    if (orderId) formData.append('orderId', orderId);
+
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('pp_token') || localStorage.getItem('token')) : null;
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to upload photobook PDF to S3');
+    }
+    return res.json() as Promise<{ url: string; filename: string; originalName: string; size: number }>;
+  },
+  updateOrderPdf: (orderId: string, pdfUrl: string) =>
+    fetcher<{ message: string; order: any }>(`/orders/${orderId}/pdf`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ pdfUrl }),
+    }),
 
   // Health
   health: () => fetcher<{ status: string; database?: string; cache?: string }>('/health'),

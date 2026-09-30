@@ -148,19 +148,33 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             <span>Shipping Label</span>
           </button>
           
-          <button 
-            onClick={handleRenderPrintPdf}
-            disabled={isRenderingPdf}
-            className="px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-sm font-medium hover:bg-noir-900 transition-colors flex items-center gap-2 shadow-xs disabled:opacity-50"
-            title="Download HP Indigo High-Res Print PDF"
-          >
-            {isRenderingPdf ? (
-              <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
-            ) : (
-              <Printer className="w-4 h-4 text-foil-gold" />
-            )}
-            <span>Render Print PDF</span>
-          </button>
+          {order?.pdfUrl ? (
+            <a
+              href={order.pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              download={`PerfectPic-Print-${order?.orderNumber || orderId}.pdf`}
+              className="px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-sm font-medium hover:bg-noir-900 transition-colors flex items-center gap-2 shadow-xs"
+              title="Download Commercial Print-Ready PDF from AWS S3"
+            >
+              <Download className="w-4 h-4 text-foil-gold" />
+              <span>Download Print PDF (S3)</span>
+            </a>
+          ) : (
+            <button 
+              onClick={handleRenderPrintPdf}
+              disabled={isRenderingPdf}
+              className="px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-sm font-medium hover:bg-noir-900 transition-colors flex items-center gap-2 shadow-xs disabled:opacity-50"
+              title="Compile and Download High-Res Print PDF"
+            >
+              {isRenderingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
+              ) : (
+                <Printer className="w-4 h-4 text-foil-gold" />
+              )}
+              <span>Render Print PDF</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -258,23 +272,37 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
           {/* Quick PDF Actions */}
           <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 p-6 space-y-3">
             <h2 className="text-lg font-semibold text-noir-950 border-b border-cream-100 pb-2">Bindery PDF Actions</h2>
-            <button 
-              onClick={handleRenderPrintPdf}
-              disabled={isRenderingPdf}
-              className="w-full py-2.5 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
-            >
-              {isRenderingPdf ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" />
-                  <span>Generating PDF...</span>
-                </>
-              ) : (
-                <>
-                  <Download className="w-3.5 h-3.5 text-foil-gold" />
-                  <span>Download Print PDF</span>
-                </>
-              )}
-            </button>
+            {order?.pdfUrl ? (
+              <a
+                href={order.pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                download={`PerfectPic-Print-${order?.orderNumber || orderId}.pdf`}
+                className="w-full py-2.5 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs"
+                title="Download Print PDF directly from AWS S3"
+              >
+                <Download className="w-3.5 h-3.5 text-foil-gold" />
+                <span>Download Print PDF (S3)</span>
+              </a>
+            ) : (
+              <button 
+                onClick={handleRenderPrintPdf}
+                disabled={isRenderingPdf}
+                className="w-full py-2.5 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
+              >
+                {isRenderingPdf ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" />
+                    <span>Generating PDF...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5 text-foil-gold" />
+                    <span>Download Print PDF</span>
+                  </>
+                )}
+              </button>
+            )}
             <button 
               onClick={handleDownloadInvoice}
               disabled={isGeneratingInvoice}
@@ -283,6 +311,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
               <FileText className="w-3.5 h-3.5" />
               <span>Download Tax Invoice</span>
             </button>
+            {order?.pdfUrl && (
+              <button
+                onClick={handleRenderPrintPdf}
+                disabled={isRenderingPdf}
+                className="w-full py-1.5 text-[11px] text-noir-500 hover:text-noir-800 transition-colors flex items-center justify-center gap-1.5"
+                title="Re-render from project snapshot"
+              >
+                <Printer className="w-3 h-3 text-noir-400" />
+                <span>Re-render Print PDF</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

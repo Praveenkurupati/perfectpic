@@ -26,4 +26,7 @@ router.post('/', OrderController.createOrder);
 // Admin: Update order fulfillment status
 router.put('/:id/status', OrderController.updateOrderStatus);
 
+// Update order PDF URL (e.g., when S3 PDF is generated)
+router.put('/:id/pdf', OrderController.updateOrderPdf);
+
 export default router;

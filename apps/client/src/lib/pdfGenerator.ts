@@ -108,12 +108,14 @@ async function getBase64Image(url: string): Promise<string | null> {
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || 600;
-          canvas.height = img.naturalHeight || 600;
+          canvas.width = Math.min(4200, img.naturalWidth || 1200);
+          canvas.height = Math.min(4200, img.naturalHeight || 1200);
           const ctx = canvas.getContext('2d');
           if (ctx) {
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/jpeg', 0.85));
+            resolve(canvas.toDataURL('image/jpeg', 0.96));
             return;
           }
         } catch {
@@ -178,8 +180,8 @@ async function getCroppedBase64Image(
           const sourceX = Math.max(0, Math.min(maxSourceX, maxSourceX * focalX));
           const sourceY = Math.max(0, Math.min(maxSourceY, maxSourceY * focalY));
 
-          // Set canvas output resolution for crisp print
-          const canvasW = Math.max(800, Math.min(2400, Math.round(cropW)));
+          // Set canvas output resolution for ultra-HD 300-DPI archival print
+          const canvasW = Math.max(1200, Math.min(4200, Math.round(cropW)));
           const canvasH = Math.round(canvasW / targetAspect);
 
           const canvas = document.createElement('canvas');
@@ -190,7 +192,7 @@ async function getCroppedBase64Image(
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(img, sourceX, sourceY, cropW, cropH, 0, 0, canvasW, canvasH);
-            resolve(canvas.toDataURL('image/jpeg', 0.92));
+            resolve(canvas.toDataURL('image/jpeg', 0.96));
             return;
           }
         } catch {
@@ -241,7 +243,7 @@ async function drawPhotoSlot(
   if (base64) {
     try {
       const format = base64.startsWith('data:image/png') ? 'PNG' : 'JPEG';
-      doc.addImage(base64, format, x, y, w, h, undefined, 'FAST');
+      doc.addImage(base64, format, x, y, w, h, undefined, 'SLOW');
       if (!noBorder) {
         doc.setDrawColor(215, 210, 200);
         doc.setLineWidth(0.25);
@@ -375,11 +377,11 @@ async function drawPageLayoutSlots(
 }
 
 /**
- * Generates and triggers download of a high-resolution, print-ready 3D Proof PDF.
+ * Builds a high-resolution, print-ready 3D Proof PDF document instance.
  * Format: 210mm x 210mm Square Lay-Flat Photobook (HP Indigo Press 12K Standard).
  * Inside spreads are rendered as true 420mm x 210mm continuous 180° layflat double-page spreads.
  */
-export async function generateBookProofPdf(options: BookPdfOptions): Promise<void> {
+export async function buildBookPdfDocument(options: BookPdfOptions): Promise<jsPDF> {
   const {
     title = 'Heirloom Custom Photobook',
     subtitle = 'Curated Monograph Edition',
@@ -701,9 +703,25 @@ export async function generateBookProofPdf(options: BookPdfOptions): Promise<voi
   doc.setTextColor(isCoverLight ? 110 : 140, isCoverLight ? 110 : 140, isCoverLight ? 110 : 140);
   doc.text('Bengaluru • Mumbai • New Delhi • Hyderabad • Chennai', 105, 185, { align: 'center' });
 
-  // Trigger download
+  return doc;
+}
+
+/**
+ * Generates and triggers browser download of the print-ready Photobook PDF.
+ */
+export async function generateBookProofPdf(options: BookPdfOptions): Promise<void> {
+  const doc = await buildBookPdfDocument(options);
+  const displayTitle = options.coverConfig?.title || options.title || 'Heirloom_Photobook';
   const cleanTitle = displayTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
   doc.save(`${cleanTitle}_12K_Print_Proof.pdf`);
+}
+
+/**
+ * Generates the print-ready Photobook PDF as a binary Blob for direct cloud streaming to AWS S3.
+ */
+export async function generateBookPdfBlob(options: BookPdfOptions): Promise<Blob> {
+  const doc = await buildBookPdfDocument(options);
+  return doc.output('blob');
 }
 
 /**

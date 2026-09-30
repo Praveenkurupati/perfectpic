@@ -10,12 +10,16 @@ const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
-  limits: { fileSize: 35 * 1024 * 1024 }, // 35MB limit
+  limits: { fileSize: 45 * 1024 * 1024 }, // 45MB limit for high-res photos and HD print PDFs
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (
+      file.mimetype.startsWith('image/') ||
+      file.mimetype === 'application/pdf' ||
+      file.originalname.toLowerCase().endsWith('.pdf')
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed.'));
+      cb(new Error('Only image and PDF files are allowed.'));
     }
   },
 });

@@ -163,6 +163,37 @@ function PreviewContent() {
         console.warn('Backend draft registration notice:', err.message);
       });
 
+      const userPhotoUrls = Object.values(pagePhotos || {})
+        .filter((p: any) => p && typeof p.url === 'string')
+        .map((p: any) => p.url);
+      const allPhotos = userPhotoUrls.length > 0 ? userPhotoUrls : samplePhotos;
+
+      const projectSnapshot = {
+        projectId,
+        title: bookTitle,
+        subtitle,
+        seriesLabel,
+        dimensions,
+        pageCount,
+        theme: storeBookConfig.theme || 'Minimal Modern',
+        coverImage: thumbnail,
+        coverColor,
+        coverConfig,
+        bookConfig: storeBookConfig,
+        photos: allPhotos,
+        pagePhotos,
+        slotPhotos,
+        slotCrops,
+        pageLayouts,
+        pageBackgrounds,
+      };
+
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(`pp_snapshot_${projectId}`, JSON.stringify(projectSnapshot));
+        } catch {}
+      }
+
       // Add item to cart
       addItem({
         id: `cart-${projectId}-${Date.now()}`,
@@ -175,6 +206,7 @@ function PreviewContent() {
         extraPagesPrice: 0,
         thumbnail,
         quantity: 1,
+        projectSnapshot,
       });
 
       router.push('/cart');

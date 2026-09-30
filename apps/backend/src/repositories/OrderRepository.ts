@@ -156,12 +156,35 @@ export class OrderRepository {
 
   public static async create(orderData: any) {
     const orderNumber = orderData.orderNumber || 'PP-' + Math.floor(1000 + Math.random() * 9000);
+    const total = orderData.total || orderData.amount || 1999;
+
+    // Auto-derive specifications if not provided
+    const specifications = orderData.specifications || {
+      dimensions: orderData.dimensions || (orderData.items?.[0]?.dimensions) || '8.25" × 8.25"',
+      pageCount: orderData.pageCount || (orderData.items?.[0]?.pageCount) || 40,
+      binding: '180° Lay-Flat Pur Binding',
+      paperStock: '200 GSM Heavyweight Matte',
+      printProcess: 'HP Indigo 12K Digital Press (Ultra-HD)',
+    };
+
     const payload = {
       ...orderData,
       orderNumber,
-      amount: orderData.amount || orderData.total || 1999,
-      total: orderData.total || orderData.amount || 1999,
+      amount: total,
+      total,
       status: orderData.status || 'confirmed',
+      pdfUrl: orderData.pdfUrl || orderData.printPdfUrl,
+      printPdfUrl: orderData.printPdfUrl || orderData.pdfUrl,
+      invoiceUrl: orderData.invoiceUrl,
+      specifications,
+      items: orderData.items || [],
+      projectSnapshot: orderData.projectSnapshot,
+      pricing: orderData.pricing || {
+        subtotal: total,
+        total,
+        shipping: 0,
+        currency: 'INR',
+      },
     };
 
     if (isDbConnected()) {
@@ -178,18 +201,48 @@ export class OrderRepository {
     return inMem;
   }
 
-  public static async updateStatus(idParam: string, status: string) {
+  public static async updatePdfUrl(idParam: string, pdfUrl: string) {
     if (isDbConnected()) {
       let query: any = { orderNumber: idParam };
       if (mongoose.isValidObjectId(idParam)) {
         query = { $or: [{ _id: idParam }, { orderNumber: idParam }] };
       }
-      return await Order.findOneAndUpdate(query, { status }, { new: true });
+      return await Order.findOneAndUpdate(
+        query,
+        { pdfUrl, printPdfUrl: pdfUrl },
+        { new: true }
+      );
+    }
+
+    const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
+    if (index !== -1) {
+      (mockOrders[index] as any).pdfUrl = pdfUrl;
+      (mockOrders[index] as any).printPdfUrl = pdfUrl;
+      return mockOrders[index];
+    }
+    return null;
+  }
+
+  public static async updateStatus(idParam: string, status: string, trackingData?: any) {
+    const updateObj: any = { status };
+    if (trackingData) {
+      updateObj.shippingDetails = trackingData;
+    }
+
+    if (isDbConnected()) {
+      let query: any = { orderNumber: idParam };
+      if (mongoose.isValidObjectId(idParam)) {
+        query = { $or: [{ _id: idParam }, { orderNumber: idParam }] };
+      }
+      return await Order.findOneAndUpdate(query, updateObj, { new: true });
     }
 
     const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
     if (index !== -1) {
       mockOrders[index]!.status = status;
+      if (trackingData) {
+        (mockOrders[index] as any).shippingDetails = trackingData;
+      }
       return mockOrders[index];
     }
     return null;

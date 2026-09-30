@@ -14,15 +14,15 @@ export async function compressImage(
   file: File,
   options: CompressionOptions = {}
 ): Promise<File> {
-  const { maxDimension = 1800, quality = 0.82, mimeType = 'image/jpeg' } = options;
+  const { maxDimension = 3800, quality = 0.92, mimeType = 'image/jpeg' } = options;
 
   // If not an image or SVG, return as is
   if (!file.type.startsWith('image/') || file.type.includes('svg')) {
     return file;
   }
 
-  // If already under 400KB, no heavy compression needed
-  if (file.size < 400 * 1024) {
+  // If already under 1.5MB and reasonably sized, no compression needed
+  if (file.size < 1.5 * 1024 * 1024) {
     return file;
   }
 

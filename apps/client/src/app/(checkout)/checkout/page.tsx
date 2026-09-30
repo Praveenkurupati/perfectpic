@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { ShieldCheck, Truck, Loader2, AlertCircle, CheckCircle2, ShoppingBag, MapPin } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 import { useAddressStore } from '@/stores/useAddressStore';
+import { generateBookPdfBlob } from '@/lib/pdfGenerator';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function CheckoutPage() {
   const [cityState, setCityState] = useState('');
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express'>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionStep, setSubmissionStep] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
@@ -91,11 +93,13 @@ export default function CheckoutPage() {
 
     setIsSubmitting(true);
     setErrorMsg('');
+    setSubmissionStep('Preparing photobook specifications...');
 
     try {
       const orderTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
       const orderItems = items.map(item => ({
         id: item.id,
+        projectId: item.projectId,
         title: item.title,
         quantity: item.quantity || 1,
         price: item.basePrice + (item.extraPagesPrice || 0),
@@ -104,6 +108,49 @@ export default function CheckoutPage() {
         thumbnail: item.thumbnail,
       }));
 
+      const primaryItem = items[0];
+      let snapshot = primaryItem?.projectSnapshot || null;
+      if (!snapshot && typeof window !== 'undefined' && primaryItem?.projectId) {
+        try {
+          snapshot = JSON.parse(localStorage.getItem(`pp_snapshot_${primaryItem.projectId}`) || 'null');
+        } catch {}
+      }
+
+      // Generate ultra-HD Print-Ready Photobook PDF and stream directly to AWS S3
+      let s3PdfUrl: string | undefined = undefined;
+      if (snapshot) {
+        try {
+          setSubmissionStep('Rendering ultra-HD 300-DPI photobook PDF...');
+          const pdfBlob = await generateBookPdfBlob({
+            title: snapshot.title || primaryItem?.title || 'Heirloom Custom Photobook',
+            subtitle: snapshot.subtitle,
+            seriesLabel: snapshot.seriesLabel,
+            dimensions: snapshot.dimensions || primaryItem?.dimensions,
+            pageCount: snapshot.pageCount || primaryItem?.pageCount,
+            theme: snapshot.theme || primaryItem?.theme,
+            coverImage: snapshot.coverImage || primaryItem?.thumbnail,
+            coverColor: snapshot.coverColor,
+            coverConfig: snapshot.coverConfig,
+            photos: snapshot.photos,
+            pagePhotos: snapshot.pagePhotos,
+            slotPhotos: snapshot.slotPhotos,
+            slotCrops: snapshot.slotCrops,
+            pageLayouts: snapshot.pageLayouts,
+            pageBackgrounds: snapshot.pageBackgrounds,
+            projectId: snapshot.projectId || primaryItem?.projectId,
+          });
+
+          setSubmissionStep('Uploading print-ready PDF to AWS S3...');
+          const uploadRes = await api.uploadPdf(pdfBlob, `photobook-${Date.now()}.pdf`);
+          if (uploadRes && uploadRes.url) {
+            s3PdfUrl = uploadRes.url;
+          }
+        } catch (pdfErr) {
+          console.warn('Notice: Background PDF upload will be performed by bindery queue:', pdfErr);
+        }
+      }
+
+      setSubmissionStep('Finalizing order...');
       const orderTitle = orderItems.length > 1
         ? `${orderItems[0]?.title || 'Photobook'} (+${orderItems.length - 1} more)`
         : (orderItems[0]?.title || 'Custom Photobook Keepsake');
@@ -113,6 +160,9 @@ export default function CheckoutPage() {
         items: orderItems,
         total: orderTotal,
         amount: orderTotal,
+        pdfUrl: s3PdfUrl,
+        printPdfUrl: s3PdfUrl,
+        projectSnapshot: snapshot,
         customerName: fullName.trim() || user?.name || 'Valued Customer',
         customerEmail: user?.email || 'customer@perfectpic.in',
         customerPhone: phone.trim() || user?.phone || '',
@@ -144,6 +194,7 @@ export default function CheckoutPage() {
       setErrorMsg(err.message || 'Unable to place order. Please try again.');
     } finally {
       setIsSubmitting(false);
+      setSubmissionStep('');
     }
   };
 
@@ -412,8 +463,8 @@ export default function CheckoutPage() {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processing Order...</span>
+                    <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
+                    <span className="text-xs">{submissionStep || 'Processing Order...'}</span>
                   </>
                 ) : (
                   <span>Place Order & Pay ₹{finalTotal.toLocaleString('en-IN')}</span>

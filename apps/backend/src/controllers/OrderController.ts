@@ -41,12 +41,33 @@ export class OrderController {
   public static async downloadOrderPdf(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
+      const order = await OrderService.getOrderById(id);
+
+      // If the order has an S3 print-ready photobook PDF URL, redirect directly to it
+      if (order && (order as any).pdfUrl) {
+        return res.redirect((order as any).pdfUrl);
+      }
+
       const pdfBuffer = await PdfService.generateOrderPdfBuffer(id);
 
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="PerfectPic-Order-${id}.pdf"`);
       res.setHeader('Content-Length', pdfBuffer.length);
       return res.status(200).send(pdfBuffer);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async updateOrderPdf(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const { pdfUrl } = req.body;
+      const updated = await OrderService.updatePdfUrl(id, pdfUrl);
+      return res.status(200).json({
+        message: 'Order PDF updated successfully',
+        order: updated,
+      });
     } catch (err) {
       next(err);
     }

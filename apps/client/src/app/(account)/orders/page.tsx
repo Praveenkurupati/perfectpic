@@ -278,6 +278,21 @@ export default function OrdersPage() {
                           <span>GST Invoice</span>
                         </button>
 
+                        {/* Ultra-HD Photobook PDF Button */}
+                        {order.pdfUrl && (
+                          <a
+                            href={order.pdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={`Photobook-${order.orderNumber || order.id}.pdf`}
+                            className="text-xs font-medium border border-amber-300 bg-amber-50/60 hover:bg-amber-100 text-noir-900 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm"
+                            title="Download Ultra-HD Photobook PDF from AWS S3"
+                          >
+                            <Download size={13} className="text-foil-gold" />
+                            <span>Photobook PDF</span>
+                          </a>
+                        )}
+
                         {/* Rate & Review Button for Delivered Orders */}
                         {isDelivered && (
                           <button

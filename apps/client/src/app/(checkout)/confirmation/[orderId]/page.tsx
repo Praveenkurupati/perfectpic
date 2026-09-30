@@ -374,6 +374,20 @@ export default function ConfirmationPage() {
               )}
             </button>
 
+            {order?.pdfUrl && (
+              <a
+                href={order.pdfUrl}
+                target="_blank"
+                rel="noreferrer"
+                download={`Photobook-Proof-${orderNum}.pdf`}
+                className="w-full sm:w-auto px-5 py-3 border border-amber-300 text-noir-900 bg-amber-50/60 hover:bg-amber-100 rounded-sm font-semibold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-xs"
+                title="Download Ultra-HD Photobook Print PDF from AWS S3"
+              >
+                <Download size={15} className="text-foil-gold" />
+                <span>Photobook PDF</span>
+              </a>
+            )}
+
             <Link 
               href="/orders" 
               className="w-full sm:w-auto px-5 py-3 bg-noir-950 text-cream-50 hover:bg-noir-900 rounded-sm font-medium text-xs uppercase tracking-wider text-center transition-colors shadow-xs"

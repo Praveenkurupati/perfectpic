@@ -1,5 +1,55 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IOrderItem {
+  id?: string;
+  projectId?: string;
+  title: string;
+  dimensions?: string;
+  pageCount?: number;
+  theme?: string;
+  coverType?: string;
+  coverColor?: string;
+  paperFinish?: string;
+  binding?: string;
+  price: number;
+  quantity: number;
+  thumbnail?: string;
+  pdfUrl?: string;
+}
+
+export interface IProjectSnapshot {
+  projectId?: string;
+  title?: string;
+  subtitle?: string;
+  seriesLabel?: string;
+  coverImage?: string;
+  coverColor?: string;
+  coverConfig?: {
+    title?: string;
+    subtitle?: string;
+    spineText?: string;
+    foilColor?: 'gold' | 'silver' | 'rose-gold' | 'black';
+    backgroundColor?: string;
+  };
+  bookConfig?: {
+    size?: string;
+    coverType?: string;
+    theme?: string;
+    color?: string;
+    packaging?: string;
+    pages?: number;
+    price?: number;
+  };
+  pageCount?: number;
+  photos?: string[];
+  pagePhotos?: Record<number, any>;
+  slotPhotos?: Record<string, any>;
+  slotCrops?: Record<string, any>;
+  pageLayouts?: Record<number, string>;
+  pageBackgrounds?: Record<number, string>;
+  [key: string]: any;
+}
+
 export interface IOrder extends Document {
   id?: string;
   orderNumber: string;
@@ -10,13 +60,79 @@ export interface IOrder extends Document {
   amount: number;
   total: number;
   status: string;
+  pdfUrl?: string;
+  printPdfUrl?: string;
+  invoiceUrl?: string;
   coverUrl?: string;
   thumbnail?: string;
   dimensions?: string;
   pageCount?: number;
   itemsCount?: number;
-  shippingAddress?: any;
-  paymentDetails?: any;
+  items?: IOrderItem[];
+  projectSnapshot?: IProjectSnapshot;
+  specifications?: {
+    dimensions?: string;
+    pageCount?: number;
+    coverType?: string;
+    paperStock?: string;
+    binding?: string;
+    printProcess?: string;
+    foilColor?: string;
+    colorProfile?: string;
+    [key: string]: any;
+  };
+  pricing?: {
+    subtotal?: number;
+    shipping?: number;
+    packagingAddon?: boolean;
+    packagingPrice?: number;
+    discount?: number;
+    promoCode?: string | null;
+    total?: number;
+    currency?: string;
+    [key: string]: any;
+  };
+  shippingAddress?: {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    landmark?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    country?: string;
+    [key: string]: any;
+  };
+  deliveryOption?: string; // 'standard' | 'express'
+  shippingDetails?: {
+    carrier?: string;
+    trackingNumber?: string;
+    trackingUrl?: string;
+    dispatchedAt?: Date | string;
+    estimatedDelivery?: Date | string;
+    deliveredAt?: Date | string;
+    [key: string]: any;
+  };
+  paymentDetails?: {
+    gateway?: string;
+    status?: string;
+    transactionId?: string;
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
+    paidAt?: Date | string;
+    [key: string]: any;
+  };
+  production?: {
+    printerPartner?: string;
+    jobSheetId?: string;
+    status?: string;
+    notes?: string;
+    startedAt?: Date | string;
+    completedAt?: Date | string;
+    [key: string]: any;
+  };
   review?: any;
   createdAt: Date;
   updatedAt: Date;
@@ -27,18 +143,28 @@ const OrderSchema: Schema = new Schema(
     orderNumber: { type: String, required: true, unique: true, index: true },
     title: { type: String, required: true },
     customerName: { type: String, default: 'Guest User' },
-    customerEmail: { type: String },
+    customerEmail: { type: String, index: true },
     customerPhone: { type: String },
     amount: { type: Number, required: true },
     total: { type: Number, required: true },
-    status: { type: String, default: 'confirmed', index: true }, // pending, confirmed, production, printing, dispatched, delivered
+    status: { type: String, default: 'confirmed', index: true }, // pending, confirmed, production, printing, qc, dispatched, delivered, cancelled
+    pdfUrl: { type: String }, // AWS S3 URL for print-ready Photobook PDF
+    printPdfUrl: { type: String }, // Direct alias for commercial print shop
+    invoiceUrl: { type: String }, // Tax invoice proof PDF link
     coverUrl: { type: String },
     thumbnail: { type: String },
     dimensions: { type: String, default: '8.25" × 8.25"' },
     pageCount: { type: Number, default: 40 },
     itemsCount: { type: Number, default: 1 },
+    items: { type: Array, default: [] },
+    projectSnapshot: { type: Object }, // Complete pages, layouts, slot photos, and crops snapshot
+    specifications: { type: Object },
+    pricing: { type: Object },
     shippingAddress: { type: Object },
+    deliveryOption: { type: String, default: 'standard' },
+    shippingDetails: { type: Object },
     paymentDetails: { type: Object },
+    production: { type: Object },
     review: { type: Object }
   },
   {

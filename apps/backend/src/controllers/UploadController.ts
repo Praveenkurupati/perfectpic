@@ -38,8 +38,13 @@ export class UploadController {
       const ext = path.extname(req.file.originalname).toLowerCase() || '.jpg';
       const cleanBase = path.basename(req.file.originalname, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
       const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const filename = `photo-${cleanBase}-${uniqueSuffix}${ext}`;
-      const s3Key = `photos/${filename}`;
+
+      const isPdf = req.file.mimetype === 'application/pdf' || ext === '.pdf';
+      const requestedFolder = typeof req.body?.folder === 'string' ? req.body.folder.trim().replace(/[^a-zA-Z0-9_-]/g, '') : '';
+      const folder = requestedFolder || (isPdf ? 'photobooks' : 'photos');
+      const prefix = isPdf ? 'photobook' : 'photo';
+      const filename = `${prefix}-${cleanBase}-${uniqueSuffix}${ext}`;
+      const s3Key = `${folder}/${filename}`;
 
       // 1. Direct AWS S3 Upload (preferred for production)
       if (isS3Configured() && req.file.buffer) {
@@ -47,15 +52,26 @@ export class UploadController {
           const s3Result = await uploadBufferToS3(
             req.file.buffer,
             s3Key,
-            req.file.mimetype || 'image/jpeg'
+            req.file.mimetype || (isPdf ? 'application/pdf' : 'image/jpeg')
           );
+
+          // If an associated orderId is provided, optionally link PDF directly to Order
+          const orderId = req.body?.orderId || req.body?.orderNumber;
+          if (orderId && isPdf) {
+            try {
+              const { OrderRepository } = await import('../repositories/OrderRepository');
+              await OrderRepository.updatePdfUrl(orderId, s3Result.url);
+            } catch (linkErr: any) {
+              console.warn('Could not auto-link PDF to order:', linkErr?.message);
+            }
+          }
 
           return res.status(200).json({
             url: s3Result.url,
             filename: s3Key,
             originalName: req.file.originalname,
             size: req.file.size,
-            mimeType: req.file.mimetype,
+            mimeType: req.file.mimetype || (isPdf ? 'application/pdf' : 'image/jpeg'),
             storage: 's3',
             bucket: s3Result.bucket,
           });
@@ -66,25 +82,36 @@ export class UploadController {
 
       // 2. Local disk storage fallback (for offline development)
       const uploadsDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
+      const targetDir = path.join(uploadsDir, folder);
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
       }
 
-      const localPath = path.join(uploadsDir, filename);
+      const localPath = path.join(targetDir, filename);
       if (req.file.buffer) {
         fs.writeFileSync(localPath, req.file.buffer);
       }
 
       const host = req.get('host') || 'localhost:4000';
       const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-      const fileUrl = `${protocol}://${host}/uploads/${filename}`;
+      const fileUrl = `${protocol}://${host}/uploads/${folder}/${filename}`;
+
+      const orderId = req.body?.orderId || req.body?.orderNumber;
+      if (orderId && isPdf) {
+        try {
+          const { OrderRepository } = await import('../repositories/OrderRepository');
+          await OrderRepository.updatePdfUrl(orderId, fileUrl);
+        } catch (linkErr: any) {
+          console.warn('Could not auto-link local PDF to order:', linkErr?.message);
+        }
+      }
 
       return res.status(200).json({
         url: fileUrl,
-        filename,
+        filename: `${folder}/${filename}`,
         originalName: req.file.originalname,
         size: req.file.size,
-        mimeType: req.file.mimetype,
+        mimeType: req.file.mimetype || (isPdf ? 'application/pdf' : 'image/jpeg'),
         storage: 'local',
       });
     } catch (err) {

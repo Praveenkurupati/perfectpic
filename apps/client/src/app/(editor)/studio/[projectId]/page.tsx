@@ -65,8 +65,44 @@ function StudioContent() {
 
   const handleApproveAndOrder = () => {
     const thumbnail = pagePhotos[0]?.url || template?.coverImage || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400';
+    const slotPhotoUrls = Object.values(slotPhotos || {})
+      .filter((p: any) => p && typeof p.url === 'string')
+      .map((p: any) => p.url);
+    const pagePhotoUrls = Object.values(pagePhotos || {})
+      .filter((p: any) => p && typeof p.url === 'string')
+      .map((p: any) => p.url);
+    const samplePhotos = template?.templatePhotos || [];
+    const combinedUserPhotos = Array.from(new Set([...slotPhotoUrls, ...pagePhotoUrls]));
+    const allPhotos = combinedUserPhotos.length > 0 ? combinedUserPhotos : samplePhotos;
+
+    const projectSnapshot = {
+      projectId,
+      title: template?.displayName || template?.title || 'Heirloom Custom Photobook',
+      subtitle: template?.subtitle || 'Curated Monograph Edition',
+      seriesLabel: template?.seriesLabel || 'THE TRAVEL SERIES',
+      dimensions: bookConfig.size || '8.25" × 8.25"',
+      pageCount,
+      theme: bookConfig.theme || 'Minimal Modern',
+      coverImage: template?.coverImage || samplePhotos[0],
+      coverColor: template?.coverColor || '#F8BAC7',
+      coverConfig,
+      bookConfig,
+      photos: allPhotos,
+      pagePhotos,
+      slotPhotos,
+      slotCrops,
+      pageLayouts,
+      pageBackgrounds,
+    };
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(`pp_snapshot_${projectId}`, JSON.stringify(projectSnapshot));
+      } catch {}
+    }
+
     addItem({
-      id: `cart-${Date.now()}`,
+      id: `cart-${projectId}-${Date.now()}`,
       projectId,
       title: template?.displayName || template?.title || 'Heirloom Custom Photobook',
       dimensions: `${bookConfig.size || '8.25" × 8.25"'} Precision-Bound`,
@@ -74,7 +110,8 @@ function StudioContent() {
       theme: bookConfig.theme || 'Minimal Modern',
       basePrice: bookConfig.price || 1999,
       extraPagesPrice: 0,
-      thumbnail
+      thumbnail,
+      projectSnapshot,
     });
     router.push('/cart');
   };

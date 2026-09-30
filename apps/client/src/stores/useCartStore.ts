@@ -11,6 +11,8 @@ interface CartItem {
   extraPagesPrice: number;
   thumbnail: string;
   quantity?: number;
+  pdfUrl?: string;
+  projectSnapshot?: any;
 }
 
 interface CartState {

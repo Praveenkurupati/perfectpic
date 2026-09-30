@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Search, ChevronLeft, ChevronRight, MoreVertical } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, MoreVertical, Download } from "lucide-react";
 import { recentOrders } from "@/lib/mock-data";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -19,13 +19,14 @@ export default function OrdersPage() {
       .then(res => {
         if (res && res.orders && res.orders.length > 0) {
           const apiOrders = res.orders.map((o: any) => ({
-            id: o.id,
+            id: o.orderNumber || o.id,
             customer: o.title || 'Guest Order',
-            date: o.date ? new Date(o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '26 Sep 2026',
+            date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '26 Sep 2026',
             pages: o.pageCount || 40,
             size: o.dimensions || '8.25" × 8.25"',
             status: o.status || 'confirmed',
-            amount: (o.amount || o.total || 1999).toLocaleString('en-IN')
+            amount: (o.amount || o.total || 1999).toLocaleString('en-IN'),
+            pdfUrl: o.pdfUrl,
           }));
           setOrders(apiOrders);
         }
@@ -141,6 +142,19 @@ export default function OrdersPage() {
                     <td className="p-4 text-sm font-medium tabular-nums text-noir-900">₹{order.amount}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {order.pdfUrl && (
+                          <a
+                            href={order.pdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            download={`PerfectPic-Print-${order.id}.pdf`}
+                            className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-sm flex items-center gap-1 shadow-xs"
+                            title="Download Print PDF directly from S3"
+                          >
+                            <Download className="w-3 h-3 text-emerald-700" />
+                            <span>PDF</span>
+                          </a>
+                        )}
                         <Link 
                           href={`/orders/${order.id}`}
                           className="text-xs font-medium text-noir-600 hover:text-noir-950 px-2 py-1 bg-cream-100 rounded-sm"

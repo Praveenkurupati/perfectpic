@@ -65,6 +65,17 @@ export class OrderService {
     return updated;
   }
 
+  public static async updatePdfUrl(id: string, pdfUrl: string) {
+    if (!pdfUrl) {
+      throw ApiError.badRequest('PDF URL is required.');
+    }
+    const updated = await OrderRepository.updatePdfUrl(id, pdfUrl);
+    if (!updated) {
+      throw ApiError.notFound(`Order with ID '${id}' not found.`);
+    }
+    return updated;
+  }
+
   public static async submitReview(id: string, reviewData: any) {
     if (!reviewData.rating) {
       throw ApiError.badRequest('Rating is required (1-5 stars).');
