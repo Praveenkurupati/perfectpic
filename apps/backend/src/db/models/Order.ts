@@ -92,6 +92,24 @@ export interface IOrder extends Document {
     currency?: string;
     [key: string]: any;
   };
+  packaging?: {
+    keepsakeBox?: boolean;
+    giftWrap?: boolean;
+    uvGlaze?: boolean;
+    miniPolaroids?: boolean;
+    total?: number;
+    [key: string]: any;
+  };
+  accessories?: {
+    keepsakeBox?: boolean;
+    giftWrap?: boolean;
+    uvGlaze?: boolean;
+    miniPolaroids?: boolean;
+    total?: number;
+    items?: Array<{ id: string; title?: string; name?: string; price: number; dimensions?: string }>;
+    [key: string]: any;
+  };
+  isGift?: boolean;
   shippingAddress?: {
     fullName?: string;
     phone?: string;
@@ -160,6 +178,9 @@ const OrderSchema: Schema = new Schema(
     projectSnapshot: { type: Object }, // Complete pages, layouts, slot photos, and crops snapshot
     specifications: { type: Object },
     pricing: { type: Object },
+    packaging: { type: Object },
+    accessories: { type: Object },
+    isGift: { type: Boolean, default: false },
     shippingAddress: { type: Object },
     deliveryOption: { type: String, default: 'standard' },
     shippingDetails: { type: Object },

@@ -18,16 +18,50 @@ export default function OrdersPage() {
     adminApi.getOrders()
       .then(res => {
         if (res && res.orders && res.orders.length > 0) {
-          const apiOrders = res.orders.map((o: any) => ({
-            id: o.orderNumber || o.id,
-            customer: o.title || 'Guest Order',
-            date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '26 Sep 2026',
-            pages: o.pageCount || 40,
-            size: o.dimensions || '8.25" × 8.25"',
-            status: o.status || 'confirmed',
-            amount: (o.amount || o.total || 1999).toLocaleString('en-IN'),
-            pdfUrl: o.pdfUrl,
-          }));
+          const apiOrders = res.orders.map((o: any) => {
+            const items = Array.isArray(o.items) ? o.items : [];
+            const hasKeepsakeBox = Boolean(
+              o.packaging?.keepsakeBox ||
+              o.accessories?.keepsakeBox ||
+              items.some((i: any) => i.id === 'acc-keepsake-box' || i.id === 'keepsakeBox' || /keepsake|velvet box/i.test(i.title || ''))
+            );
+            const hasGiftWrap = Boolean(
+              o.packaging?.giftWrap ||
+              o.accessories?.giftWrap ||
+              o.isGift ||
+              items.some((i: any) => i.id === 'acc-gift-wrap' || i.id === 'giftWrap' || /ribbon|gift wrap|calligraphy/i.test(i.title || ''))
+            );
+            const hasUvGlaze = Boolean(
+              o.packaging?.uvGlaze ||
+              o.accessories?.uvGlaze ||
+              items.some((i: any) => i.id === 'acc-uv-glaze' || i.id === 'uvGlaze' || /uv glaze|anti-scratch/i.test(i.title || ''))
+            );
+            const hasMiniPolaroids = Boolean(
+              o.packaging?.miniPolaroids ||
+              o.accessories?.miniPolaroids ||
+              items.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
+            );
+
+            const packagingBadges: string[] = [];
+            if (hasKeepsakeBox) packagingBadges.push('🎁 Velvet Box');
+            if (hasGiftWrap) packagingBadges.push('🎀 Ribbon Wrap');
+            if (hasUvGlaze) packagingBadges.push('🛡️ UV Glaze');
+            if (hasMiniPolaroids) packagingBadges.push('📷 Polaroids');
+
+            return {
+              id: o.orderNumber || o.id,
+              customer: o.title || 'Guest Order',
+              customerName: o.customerName || 'Valued Customer',
+              date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '26 Sep 2026',
+              pages: o.pageCount || 40,
+              size: o.dimensions || '8.25" × 8.25"',
+              status: o.status || 'confirmed',
+              amount: (o.amount || o.total || 1999).toLocaleString('en-IN'),
+              pdfUrl: o.pdfUrl,
+              packagingBadges,
+              isGift: Boolean(o.isGift || hasGiftWrap),
+            };
+          });
           setOrders(apiOrders);
         }
       })
@@ -121,7 +155,28 @@ export default function OrdersPage() {
                         {order.id}
                       </Link>
                     </td>
-                    <td className="p-4 text-sm text-noir-800 font-medium">{order.customer}</td>
+                    <td className="p-4 text-sm text-noir-800 font-medium">
+                      <div className="flex flex-col">
+                        <span>{order.customer}</span>
+                        {order.packagingBadges && order.packagingBadges.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {order.packagingBadges.map((badge: string, bIdx: number) => (
+                              <span 
+                                key={bIdx} 
+                                className="text-[10px] font-semibold bg-amber-50 text-amber-900 border border-amber-200/80 px-1.5 py-0.5 rounded-xs"
+                              >
+                                {badge}
+                              </span>
+                            ))}
+                            {order.isGift && (
+                              <span className="text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded-xs">
+                                🎁 Gift
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4 text-sm text-noir-500 whitespace-nowrap">{order.date}</td>
                     <td className="p-4 text-sm text-noir-600">
                       {order.pages}p, {order.size}

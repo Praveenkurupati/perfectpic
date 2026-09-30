@@ -27,6 +27,13 @@ export interface AdminPrintPdfOptions {
   pageLayouts?: Record<number, string>;
   pageBackgrounds?: Record<number, string>;
   dueDate?: string;
+  packaging?: {
+    keepsakeBox?: boolean;
+    giftWrap?: boolean;
+    uvGlaze?: boolean;
+    miniPolaroids?: boolean;
+    [key: string]: any;
+  } | string;
 }
 
 function hexToRgb(hex?: string, fallback: [number, number, number] = [250, 248, 245]): [number, number, number] {
@@ -444,6 +451,7 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
     pageLayouts = {},
     pageBackgrounds = {},
     dueDate = 'Immediate',
+    packaging,
   } = options;
 
   const imageCache = new Map<string, Promise<string | null>>();
@@ -521,9 +529,22 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
 
   // Ticket specifications table
   doc.setFillColor(28, 28, 28);
-  doc.roundedRect(15, 28, width - 30, 42, 2, 2, 'F');
+  doc.roundedRect(15, 28, width - 30, 48, 2, 2, 'F');
 
   const spineMetrics = getSpineMetrics(pages);
+
+  // Derive packaging text for bindery team
+  let packagingText = 'STANDARD ARCHIVAL PROTECTIVE SLEEVE';
+  if (typeof packaging === 'string') {
+    packagingText = packaging.toUpperCase();
+  } else if (packaging && typeof packaging === 'object') {
+    const pkgs: string[] = [];
+    if (packaging.keepsakeBox) pkgs.push('VELVET BOX');
+    if (packaging.giftWrap) pkgs.push('RIBBON WRAP + CARD');
+    if (packaging.uvGlaze) pkgs.push('UV GLAZE COAT');
+    if (packaging.miniPolaroids) pkgs.push('10 POLAROID PRINTS');
+    if (pkgs.length > 0) packagingText = pkgs.join(' • ');
+  }
 
   doc.setFont('courier', 'normal');
   doc.setFontSize(8);
@@ -533,6 +554,7 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
   doc.text(`PAGE COUNT    : ${pages} PAGES (${Math.ceil(pages / 2)} SPREADS)`, 20, 48);
   doc.text(`SPINE WIDTH   : ${spineMetrics.spineWidthMm} MM (${spineMetrics.spineWidthInches} IN) [CALCULATED]`, 20, 54);
   doc.text(`BINDING TYPE  : PUR-MELT 180° LAY-FLAT WITH ZERO GUTTER LOSS`, 20, 60);
+  doc.text(`PACKAGING     : ${packagingText}`, 20, 66);
   doc.text(`TARGET DUE    : ${dueDate.toUpperCase()}`, width - 75, 36);
   doc.text(`FOIL STAMP    : ${foilColor.toUpperCase()} METALLIC EMBOSS`, width - 75, 42);
 
@@ -540,7 +562,7 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
   const swatches = ['#000000', '#009ee0', '#e5007d', '#ffed00', '#009640', '#e30613', '#662483', '#d4af37'];
   swatches.forEach((sw, i) => {
     doc.setFillColor(sw);
-    doc.rect(15 + i * 22.5, 73, 20, 5, 'F');
+    doc.rect(15 + i * 22.5, 78, 20, 5, 'F');
   });
 
   // Cover Image Plate
@@ -552,9 +574,9 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
     'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
 
   const imgX = 25;
-  const imgY = 82;
+  const imgY = 86;
   const imgW = 160;
-  const imgH = 105;
+  const imgH = 100;
   const coverCrop = slotCrops['0'] || slotCrops['cover'];
   await drawPhotoSlot(doc, coverUrl, imgX, imgY, imgW, imgH, imageCache, 'Cover Plate High Resolution', false, coverCrop);
 

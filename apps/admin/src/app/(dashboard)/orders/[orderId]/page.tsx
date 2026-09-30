@@ -2,7 +2,20 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Download, Truck, FileText, CheckCircle2, Loader2 } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Printer, 
+  Download, 
+  Truck, 
+  FileText, 
+  CheckCircle2, 
+  Loader2, 
+  Package, 
+  Gift, 
+  Sparkles, 
+  Check, 
+  X 
+} from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { generateAdminProductionPdf } from "@/lib/pdfGenerator";
 import { generateGstInvoicePdf } from "@/lib/invoiceGenerator";
@@ -27,6 +40,56 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
       .finally(() => setLoading(false));
   }, [orderId]);
 
+  const displayTotal = order?.total || order?.amount || 1999;
+  const displayStatus = (order?.status || 'Confirmed').toUpperCase();
+  const displayTitle = order?.title || `Photobook Edition (${orderId})`;
+  const customerName = order?.customerName || order?.shippingAddress?.fullName || 'Valued Customer';
+  const customerEmail = order?.customerEmail || 'customer@perfectpic.in';
+  const customerPhone = order?.customerPhone || order?.shippingAddress?.phone || '+91 98765 43210';
+  const addressLine1 = order?.shippingAddress?.addressLine1 || 'Delivery Address on file';
+  const city = order?.shippingAddress?.city || 'Bangalore';
+  const state = order?.shippingAddress?.state || 'Karnataka';
+  const pincode = order?.shippingAddress?.pincode || '560001';
+
+  // Packaging & Add-on extraction
+  const orderItemsList = Array.isArray(order?.items) ? order.items : [];
+  
+  const hasKeepsakeBox = Boolean(
+    order?.packaging?.keepsakeBox ||
+    order?.accessories?.keepsakeBox ||
+    orderItemsList.some((i: any) => i.id === 'acc-keepsake-box' || i.id === 'keepsakeBox' || /keepsake|velvet box/i.test(i.title || ''))
+  );
+
+  const hasGiftWrap = Boolean(
+    order?.packaging?.giftWrap ||
+    order?.accessories?.giftWrap ||
+    order?.isGift ||
+    orderItemsList.some((i: any) => i.id === 'acc-gift-wrap' || i.id === 'giftWrap' || /ribbon|gift wrap|calligraphy/i.test(i.title || ''))
+  );
+
+  const hasUvGlaze = Boolean(
+    order?.packaging?.uvGlaze ||
+    order?.accessories?.uvGlaze ||
+    orderItemsList.some((i: any) => i.id === 'acc-uv-glaze' || i.id === 'uvGlaze' || /uv glaze|anti-scratch/i.test(i.title || ''))
+  );
+
+  const hasMiniPolaroids = Boolean(
+    order?.packaging?.miniPolaroids ||
+    order?.accessories?.miniPolaroids ||
+    orderItemsList.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
+  );
+
+  const packagingAddonCount = [hasKeepsakeBox, hasGiftWrap, hasUvGlaze, hasMiniPolaroids].filter(Boolean).length;
+  const packagingTotal = order?.pricing?.packagingPrice ?? order?.packaging?.total ?? (
+    (hasKeepsakeBox ? 499 : 0) +
+    (hasGiftWrap ? 199 : 0) +
+    (hasUvGlaze ? 249 : 0) +
+    (hasMiniPolaroids ? 149 : 0)
+  );
+
+  const isGiftOrder = Boolean(order?.isGift || hasGiftWrap);
+  const baseBookPrice = Math.max(0, displayTotal - packagingTotal);
+
   const handleDownloadInvoice = () => {
     try {
       setIsGeneratingInvoice(true);
@@ -37,14 +100,20 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
         customerEmail: order?.customerEmail,
         customerPhone: order?.customerPhone || order?.shippingAddress?.phone,
         shippingAddress: order?.shippingAddress,
-        items: order?.items && order.items.length > 0 ? order.items : [{
-          title: order?.title || 'Heirloom Photobook Keepsake',
-          quantity: 1,
-          price: order?.total || order?.amount || 1999,
-          dimensions: order?.dimensions || '8.25" × 8.25"',
-          pageCount: order?.pageCount || 40,
-        }],
-        total: order?.total || order?.amount || 1999,
+        items: order?.items && order.items.length > 0 ? order.items : [
+          {
+            title: order?.title || 'Heirloom Photobook Keepsake',
+            quantity: 1,
+            price: baseBookPrice > 0 ? baseBookPrice : displayTotal,
+            dimensions: order?.dimensions || '8.25" × 8.25"',
+            pageCount: order?.pageCount || 40,
+          },
+          ...(hasKeepsakeBox ? [{ title: 'Keepsake Velvet Presentation Box', quantity: 1, price: 499, pageCount: 0 }] : []),
+          ...(hasGiftWrap ? [{ title: 'Artisan Ribbon Wrap & Calligraphy Card', quantity: 1, price: 199, pageCount: 0 }] : []),
+          ...(hasUvGlaze ? [{ title: 'Archival UV Anti-Scratch Page Glaze', quantity: 1, price: 249, pageCount: 0 }] : []),
+          ...(hasMiniPolaroids ? [{ title: '10 Mini Polaroid Keepsake Prints', quantity: 1, price: 149, pageCount: 0 }] : []),
+        ],
+        total: displayTotal,
       });
     } catch (err) {
       console.error("Invoice PDF generation error:", err);
@@ -75,6 +144,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
         dimensions: order?.dimensions || '8.25" × 8.25"',
         pages: order?.pageCount || 40,
         status: order?.status || 'Production',
+        packaging: {
+          keepsakeBox: hasKeepsakeBox,
+          giftWrap: hasGiftWrap,
+          uvGlaze: hasUvGlaze,
+          miniPolaroids: hasMiniPolaroids,
+        },
         coverImage: order?.coverUrl || order?.thumbnail,
         coverConfig: order?.coverConfig,
         photos: order?.photos || [],
@@ -90,17 +165,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
       setIsRenderingPdf(false);
     }
   };
-
-  const displayTotal = order?.total || order?.amount || 1999;
-  const displayStatus = (order?.status || 'Confirmed').toUpperCase();
-  const displayTitle = order?.title || `Photobook Edition (${orderId})`;
-  const customerName = order?.customerName || order?.shippingAddress?.fullName || 'Valued Customer';
-  const customerEmail = order?.customerEmail || 'customer@perfectpic.in';
-  const customerPhone = order?.customerPhone || order?.shippingAddress?.phone || '+91 98765 43210';
-  const addressLine1 = order?.shippingAddress?.addressLine1 || 'Delivery Address on file';
-  const city = order?.shippingAddress?.city || 'Bangalore';
-  const state = order?.shippingAddress?.state || 'Karnataka';
-  const pincode = order?.shippingAddress?.pincode || '560001';
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -224,14 +288,186 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             </div>
           </div>
 
+          {/* Archival Packaging & Fulfillment Add-ons */}
+          <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-cream-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Package className="w-5 h-5 text-noir-800" />
+                <h2 className="text-lg font-semibold text-noir-950">Archival Packaging & Fulfillment Add-ons</h2>
+              </div>
+              {packagingAddonCount > 0 ? (
+                <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full flex items-center gap-1.5 shadow-2xs w-fit">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>{packagingAddonCount} Upgrades Active (+₹{packagingTotal.toLocaleString('en-IN')})</span>
+                </span>
+              ) : (
+                <span className="text-xs font-medium px-2.5 py-1 bg-cream-100 text-noir-600 border border-cream-200 rounded-full w-fit">
+                  Standard Packaging (No Add-ons)
+                </span>
+              )}
+            </div>
+
+            {/* Gift Order Fulfillment Callout */}
+            {isGiftOrder && (
+              <div className="p-3.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-sm flex items-start gap-3 text-emerald-950">
+                <Gift className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-0.5">
+                  <p className="font-semibold text-emerald-900 uppercase tracking-wider text-[11px] flex items-center gap-2">
+                    <span>Gift Fulfillment Notice</span>
+                    <span className="px-1.5 py-0.5 rounded-xs bg-emerald-200/70 text-emerald-800 text-[10px] font-bold">CONCEAL PRICING</span>
+                  </p>
+                  <p className="text-emerald-800 leading-relaxed">
+                    This order is marked as a gift. <strong>Do NOT include pricing or tax invoice in the presentation parcel.</strong> Wrap the book with artisan emerald satin ribbon and insert the personalized calligraphy message card.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Packaging Options 2x2 Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              {/* 1. Keepsake Box */}
+              <div className={`p-4 rounded-sm border transition-all ${
+                hasKeepsakeBox 
+                  ? 'bg-amber-50/50 border-amber-300 ring-1 ring-amber-300/50 shadow-2xs' 
+                  : 'bg-cream-50/40 border-cream-200 opacity-60'
+              }`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎁</span>
+                    <div>
+                      <h4 className="font-semibold text-sm text-noir-950">Keepsake Velvet Box</h4>
+                      <p className="text-[11px] text-noir-500 font-medium">₹499 Add-on</p>
+                    </div>
+                  </div>
+                  {hasKeepsakeBox ? (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-700" />
+                      <span>Pack in Box</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-cream-200/60 text-noir-400 text-[10px] font-medium uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <X className="w-3 h-3" />
+                      <span>Not Selected</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-noir-600 leading-relaxed">
+                  Rigid presentation box with gold foil insignia and magnetic ribbon closure.
+                </p>
+              </div>
+
+              {/* 2. Ribbon & Calligraphy Card */}
+              <div className={`p-4 rounded-sm border transition-all ${
+                hasGiftWrap 
+                  ? 'bg-emerald-50/50 border-emerald-300 ring-1 ring-emerald-300/50 shadow-2xs' 
+                  : 'bg-cream-50/40 border-cream-200 opacity-60'
+              }`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎀</span>
+                    <div>
+                      <h4 className="font-semibold text-sm text-noir-950">Ribbon Wrap & Card</h4>
+                      <p className="text-[11px] text-noir-500 font-medium">₹199 Add-on</p>
+                    </div>
+                  </div>
+                  {hasGiftWrap ? (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-700" />
+                      <span>Wrap Ribbon</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-cream-200/60 text-noir-400 text-[10px] font-medium uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <X className="w-3 h-3" />
+                      <span>Not Selected</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-noir-600 leading-relaxed">
+                  Emerald green satin ribbon wrap with personalized calligraphy note.
+                </p>
+              </div>
+
+              {/* 3. Archival UV Glaze */}
+              <div className={`p-4 rounded-sm border transition-all ${
+                hasUvGlaze 
+                  ? 'bg-blue-50/50 border-blue-300 ring-1 ring-blue-300/50 shadow-2xs' 
+                  : 'bg-cream-50/40 border-cream-200 opacity-60'
+              }`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🛡️</span>
+                    <div>
+                      <h4 className="font-semibold text-sm text-noir-950">Archival UV Glaze</h4>
+                      <p className="text-[11px] text-noir-500 font-medium">₹249 Add-on</p>
+                    </div>
+                  </div>
+                  {hasUvGlaze ? (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-700" />
+                      <span>Apply Glaze</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-cream-200/60 text-noir-400 text-[10px] font-medium uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <X className="w-3 h-3" />
+                      <span>Not Selected</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-noir-600 leading-relaxed">
+                  Diamond clear micro-coating protecting every page against fingerprints, spills, and UV fading.
+                </p>
+              </div>
+
+              {/* 4. Mini Polaroid Prints */}
+              <div className={`p-4 rounded-sm border transition-all ${
+                hasMiniPolaroids 
+                  ? 'bg-purple-50/50 border-purple-300 ring-1 ring-purple-300/50 shadow-2xs' 
+                  : 'bg-cream-50/40 border-cream-200 opacity-60'
+              }`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📷</span>
+                    <div>
+                      <h4 className="font-semibold text-sm text-noir-950">10 Mini Polaroid Prints</h4>
+                      <p className="text-[11px] text-noir-500 font-medium">₹149 Add-on</p>
+                    </div>
+                  </div>
+                  {hasMiniPolaroids ? (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-700" />
+                      <span>Print 10 Polaroids</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-cream-200/60 text-noir-400 text-[10px] font-medium uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <X className="w-3 h-3" />
+                      <span>Not Selected</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-noir-600 leading-relaxed">
+                  10 retro square 2×3" photo prints on archival 300 GSM fine-art cotton cardstock.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Pricing */}
           <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 p-6">
             <h2 className="text-lg font-semibold text-noir-950 mb-4 border-b border-cream-100 pb-2">Payment Summary</h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-noir-600">Base Book ({order?.pageCount || 40} pages)</span>
-                <span className="font-medium tabular-nums">₹{displayTotal.toLocaleString('en-IN')}</span>
+                <span className="font-medium tabular-nums">₹{baseBookPrice.toLocaleString('en-IN')}</span>
               </div>
+              {packagingTotal > 0 && (
+                <div className="flex justify-between text-amber-900">
+                  <span className="text-noir-700 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Archival Packaging & Accessories ({packagingAddonCount} upgrade{packagingAddonCount > 1 ? 's' : ''})</span>
+                  </span>
+                  <span className="font-medium tabular-nums text-amber-900">+₹{packagingTotal.toLocaleString('en-IN')}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-noir-600">Pan-India Courier (BlueDart Air)</span>
                 <span className="font-medium text-emerald-700">FREE</span>

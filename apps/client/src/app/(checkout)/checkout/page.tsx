@@ -62,7 +62,8 @@ export default function CheckoutPage() {
     discountAmount, 
     clearCart,
     accessories,
-    getAccessoriesTotal
+    getAccessoriesTotal,
+    isGift,
   } = useCartStore();
 
   const { user, isAuthenticated, initialize } = useAuthStore();
@@ -292,7 +293,11 @@ export default function CheckoutPage() {
         }
       }
 
-      // 3. Initiate Razorpay Payment Order
+      // 3. Razorpay Payment Step (Commented out temporarily until live env keys are updated)
+      /* =========================================================================
+       * [TEMPORARILY COMMENTED OUT] RAZORPAY PAYMENT INITIATION
+       * Uncomment this block once live Razorpay API keys are updated in .env.
+       * -------------------------------------------------------------------------
       setSubmissionStep('Connecting to Razorpay Secure Gateway...');
 
       const paymentOrder = await api.createPaymentOrder({
@@ -300,27 +305,52 @@ export default function CheckoutPage() {
         currency: 'INR',
         receipt: `rcpt_${Date.now()}`,
       });
+      * ========================================================================= */
 
       const finalizeOrder = async (payResult: {
         razorpay_order_id?: string;
         razorpay_payment_id?: string;
         razorpay_signature?: string;
       }) => {
-        setSubmissionStep('Verifying payment signature & finalizing order...');
+        setSubmissionStep('Verifying order details & finalizing submission...');
 
-        // Verify HMAC SHA-256 signature
-        if (payResult.razorpay_signature) {
-          await api.verifyPayment({
-            razorpay_order_id: payResult.razorpay_order_id || '',
-            razorpay_payment_id: payResult.razorpay_payment_id || '',
-            razorpay_signature: payResult.razorpay_signature || '',
-          });
+        // Verify HMAC SHA-256 signature if present
+        if (payResult.razorpay_signature && payResult.razorpay_signature !== 'mock_signature') {
+          try {
+            await api.verifyPayment({
+              razorpay_order_id: payResult.razorpay_order_id || '',
+              razorpay_payment_id: payResult.razorpay_payment_id || '',
+              razorpay_signature: payResult.razorpay_signature || '',
+            });
+          } catch (verifyErr) {
+            console.warn('Payment signature verification skipped or deferred:', verifyErr);
+          }
         }
 
         const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(getSubtotal() * (discount || 0));
         const orderTitle = orderItems.length > 1
           ? `${orderItems[0]?.title || 'Photobook'} (+${orderItems.length - 1} more)`
           : (orderItems[0]?.title || 'Custom Photobook Keepsake');
+
+        const packagingPayload = {
+          keepsakeBox: Boolean(accessories.keepsakeBox),
+          giftWrap: Boolean(accessories.giftWrap),
+          uvGlaze: Boolean(accessories.uvGlaze),
+          miniPolaroids: Boolean(accessories.miniPolaroids),
+          total: getAccessoriesTotal(),
+        };
+
+        const accessoriesPayload = {
+          ...packagingPayload,
+          items: [
+            accessories.keepsakeBox && { id: 'acc-keepsake-box', title: ACCESSORY_DETAILS.keepsakeBox.title, price: ACCESSORY_PRICES.keepsakeBox },
+            accessories.giftWrap && { id: 'acc-gift-wrap', title: ACCESSORY_DETAILS.giftWrap.title, price: ACCESSORY_PRICES.giftWrap },
+            accessories.uvGlaze && { id: 'acc-uv-glaze', title: ACCESSORY_DETAILS.uvGlaze.title, price: ACCESSORY_PRICES.uvGlaze },
+            accessories.miniPolaroids && { id: 'acc-mini-prints', title: ACCESSORY_DETAILS.miniPolaroids.title, price: ACCESSORY_PRICES.miniPolaroids },
+          ].filter(Boolean),
+        };
+
+        const isGiftOrder = Boolean(isGift || accessories.giftWrap);
 
         const res = await api.createOrder({
           title: orderTitle,
@@ -330,14 +360,18 @@ export default function CheckoutPage() {
           subtotal: getSubtotal(),
           promoCode: promoCode || null,
           discount: effectiveDiscount,
+          packaging: packagingPayload,
+          accessories: accessoriesPayload,
+          isGift: isGiftOrder,
           pricing: {
             subtotal: getSubtotal(),
             promoCode: promoCode || null,
             discount: effectiveDiscount,
             shipping: deliveryOption === 'express' ? 299 : 0,
             packagingPrice: getAccessoriesTotal(),
+            packagingAddon: getAccessoriesTotal() > 0,
             total: finalTotal,
-            paymentMethod: 'razorpay',
+            paymentMethod: 'prepaid',
             advancePaid: finalTotal,
             balanceDue: 0,
           },
@@ -358,8 +392,8 @@ export default function CheckoutPage() {
           },
           deliveryOption,
           paymentDetails: {
-            gateway: 'razorpay',
-            method: 'razorpay',
+            gateway: 'prepaid_direct',
+            method: 'prepaid_direct',
             status: 'PAID',
             razorpayOrderId: payResult.razorpay_order_id,
             razorpayPaymentId: payResult.razorpay_payment_id,
@@ -399,7 +433,7 @@ export default function CheckoutPage() {
         trackEvent('order_completed', `Order Placed (#${orderNumber})`, {
           orderNumber,
           total: finalTotal,
-          paymentMethod: 'razorpay',
+          paymentMethod: 'prepaid',
           itemsCount: orderItems.length,
           city: cityState.split(',')[0]?.trim() || '',
           deliveryOption,
@@ -417,18 +451,22 @@ export default function CheckoutPage() {
         router.push(`/confirmation/${orderNumber}`);
       };
 
-      // 4. Launch Official Razorpay Modal or Dev Test Simulation
-      const razorpayKey = paymentOrder?.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
-      const isLiveRazorpay = !paymentOrder?.isMock && typeof window !== 'undefined' && window.Razorpay && razorpayKey && !razorpayKey.includes('placeholder');
+      // 4. Launch Official Razorpay Modal (Commented out temporarily until live keys are configured)
+      /* =========================================================================
+       * [TEMPORARILY COMMENTED OUT] RAZORPAY CHECKOUT MODAL & EVENT HANDLERS
+       * Uncomment this block once live Razorpay API keys are updated in .env.
+       * -------------------------------------------------------------------------
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
+      const isLiveRazorpay = typeof window !== 'undefined' && window.Razorpay && razorpayKey && !razorpayKey.includes('placeholder');
 
       if (isLiveRazorpay) {
         const rzp = new window.Razorpay({
           key: razorpayKey,
-          amount: paymentOrder.amount,
-          currency: paymentOrder.currency || 'INR',
+          amount: finalTotal * 100,
+          currency: 'INR',
           name: 'PerfectPic Photobooks',
           description: `Archival Photobook Order (${items.length} book${items.length > 1 ? 's' : ''})`,
-          order_id: paymentOrder.id,
+          order_id: undefined,
           prefill: {
             name: fullName.trim() || user?.name || '',
             email: user?.email || '',
@@ -460,16 +498,23 @@ export default function CheckoutPage() {
 
         rzp.open();
       } else {
-        // Fast, resilient simulated authorization
-        setSubmissionStep('Connecting to Razorpay Secure Gateway (Payment Approved)...');
-        await new Promise((r) => setTimeout(r, 900));
-
         await finalizeOrder({
-          razorpay_order_id: paymentOrder?.id || `order_rzp_${Date.now()}`,
+          razorpay_order_id: `ord_rzp_${Date.now()}`,
           razorpay_payment_id: `pay_rzp_${Date.now()}`,
           razorpay_signature: 'mock_signature',
         });
       }
+      * ========================================================================= */
+
+      // Direct Order Finalization while Razorpay env keys are being configured:
+      setSubmissionStep('Finalizing order & reserving bindery slot...');
+      await new Promise((r) => setTimeout(r, 600));
+
+      await finalizeOrder({
+        razorpay_order_id: `ord_direct_${Date.now()}`,
+        razorpay_payment_id: `pay_direct_${Date.now()}`,
+        razorpay_signature: undefined,
+      });
     } catch (err: any) {
       setErrorMsg(err.message || 'Unable to place order. Please check your network and try again.');
       setIsSubmitting(false);

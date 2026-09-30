@@ -16,14 +16,41 @@ const mockOrders = [
     customerPhone: '+919876543210',
     date: '2026-09-25',
     createdAt: new Date('2026-09-25T10:30:00.000Z'),
-    amount: 1999,
-    total: 1999,
+    amount: 2846,
+    total: 2846,
     status: 'production',
     thumbnail: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
     coverUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
     itemsCount: 1,
     pageCount: 40,
     dimensions: '8.25" × 8.25"',
+    packaging: {
+      keepsakeBox: true,
+      giftWrap: true,
+      uvGlaze: false,
+      miniPolaroids: true,
+      total: 847,
+    },
+    accessories: {
+      keepsakeBox: true,
+      giftWrap: true,
+      uvGlaze: false,
+      miniPolaroids: true,
+      total: 847,
+      items: [
+        { id: 'acc-keepsake-box', title: 'Keepsake Velvet Presentation Box', price: 499 },
+        { id: 'acc-gift-wrap', title: 'Artisan Ribbon Wrap & Calligraphy Card', price: 199 },
+        { id: 'acc-mini-prints', title: '10 Mini Polaroid Keepsake Prints', price: 149 },
+      ],
+    },
+    isGift: true,
+    pricing: {
+      subtotal: 1999,
+      packagingPrice: 847,
+      packagingAddon: true,
+      shipping: 0,
+      total: 2846,
+    },
   },
   {
     id: 'PP-7201',
@@ -34,14 +61,40 @@ const mockOrders = [
     customerPhone: '+919876543211',
     date: '2026-08-14',
     createdAt: new Date('2026-08-14T14:15:00.000Z'),
-    amount: 1999,
-    total: 1999,
+    amount: 2447,
+    total: 2447,
     status: 'delivered',
     thumbnail: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
     coverUrl: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
     itemsCount: 1,
     pageCount: 36,
     dimensions: '8.25" × 8.25"',
+    packaging: {
+      keepsakeBox: false,
+      giftWrap: true,
+      uvGlaze: true,
+      miniPolaroids: false,
+      total: 448,
+    },
+    accessories: {
+      keepsakeBox: false,
+      giftWrap: true,
+      uvGlaze: true,
+      miniPolaroids: false,
+      total: 448,
+      items: [
+        { id: 'acc-gift-wrap', title: 'Artisan Ribbon Wrap & Calligraphy Card', price: 199 },
+        { id: 'acc-uv-glaze', title: 'Archival UV Anti-Scratch Page Glaze', price: 249 },
+      ],
+    },
+    isGift: true,
+    pricing: {
+      subtotal: 1999,
+      packagingPrice: 448,
+      packagingAddon: true,
+      shipping: 0,
+      total: 2447,
+    },
   },
   {
     id: 'PP-6350',
@@ -52,14 +105,40 @@ const mockOrders = [
     customerPhone: '+919876543212',
     date: '2026-07-02',
     createdAt: new Date('2026-07-02T09:00:00.000Z'),
-    amount: 2999,
-    total: 2999,
+    amount: 3747,
+    total: 3747,
     status: 'dispatched',
     thumbnail: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
     coverUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
     itemsCount: 1,
     pageCount: 48,
     dimensions: '10" × 10"',
+    packaging: {
+      keepsakeBox: true,
+      giftWrap: false,
+      uvGlaze: true,
+      miniPolaroids: false,
+      total: 748,
+    },
+    accessories: {
+      keepsakeBox: true,
+      giftWrap: false,
+      uvGlaze: true,
+      miniPolaroids: false,
+      total: 748,
+      items: [
+        { id: 'acc-keepsake-box', title: 'Keepsake Velvet Presentation Box', price: 499 },
+        { id: 'acc-uv-glaze', title: 'Archival UV Anti-Scratch Page Glaze', price: 249 },
+      ],
+    },
+    isGift: false,
+    pricing: {
+      subtotal: 2999,
+      packagingPrice: 748,
+      packagingAddon: true,
+      shipping: 0,
+      total: 3747,
+    },
   },
 ];
 
@@ -145,9 +224,29 @@ export class OrderRepository {
             quantity: 1,
           },
         ],
-        amount: 2499,
-        total: 2499,
+        amount: 3346,
+        total: 3346,
         status: 'paid',
+        packaging: {
+          keepsakeBox: true,
+          giftWrap: true,
+          uvGlaze: false,
+          miniPolaroids: true,
+          total: 847,
+        },
+        accessories: {
+          keepsakeBox: true,
+          giftWrap: true,
+          uvGlaze: false,
+          miniPolaroids: true,
+          total: 847,
+          items: [
+            { id: 'acc-keepsake-box', title: 'Keepsake Velvet Presentation Box', price: 499 },
+            { id: 'acc-gift-wrap', title: 'Artisan Ribbon Wrap & Calligraphy Card', price: 199 },
+            { id: 'acc-mini-prints', title: '10 Mini Polaroid Keepsake Prints', price: 149 },
+          ],
+        },
+        isGift: true,
       };
     }
 
@@ -167,6 +266,57 @@ export class OrderRepository {
       printProcess: 'HP Indigo 12K Digital Press (Ultra-HD)',
     };
 
+    // Auto-derive packaging & accessories if not explicitly passed
+    const itemsList = Array.isArray(orderData.items) ? orderData.items : [];
+    const hasKeepsakeBox = Boolean(
+      orderData.packaging?.keepsakeBox ||
+      orderData.accessories?.keepsakeBox ||
+      itemsList.some((i: any) => i.id === 'acc-keepsake-box' || i.id === 'keepsakeBox' || /keepsake|velvet box/i.test(i.title || ''))
+    );
+    const hasGiftWrap = Boolean(
+      orderData.packaging?.giftWrap ||
+      orderData.accessories?.giftWrap ||
+      orderData.isGift ||
+      itemsList.some((i: any) => i.id === 'acc-gift-wrap' || i.id === 'giftWrap' || /ribbon|gift wrap|calligraphy/i.test(i.title || ''))
+    );
+    const hasUvGlaze = Boolean(
+      orderData.packaging?.uvGlaze ||
+      orderData.accessories?.uvGlaze ||
+      itemsList.some((i: any) => i.id === 'acc-uv-glaze' || i.id === 'uvGlaze' || /uv glaze|anti-scratch/i.test(i.title || ''))
+    );
+    const hasMiniPolaroids = Boolean(
+      orderData.packaging?.miniPolaroids ||
+      orderData.accessories?.miniPolaroids ||
+      itemsList.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
+    );
+
+    const packagingTotal = orderData.packaging?.total ?? orderData.pricing?.packagingPrice ?? (
+      (hasKeepsakeBox ? 499 : 0) +
+      (hasGiftWrap ? 199 : 0) +
+      (hasUvGlaze ? 249 : 0) +
+      (hasMiniPolaroids ? 149 : 0)
+    );
+
+    const packaging = {
+      keepsakeBox: hasKeepsakeBox,
+      giftWrap: hasGiftWrap,
+      uvGlaze: hasUvGlaze,
+      miniPolaroids: hasMiniPolaroids,
+      total: packagingTotal,
+    };
+
+    const accessories = orderData.accessories || {
+      ...packaging,
+      items: [
+        hasKeepsakeBox && { id: 'acc-keepsake-box', title: 'Keepsake Velvet Presentation Box', price: 499 },
+        hasGiftWrap && { id: 'acc-gift-wrap', title: 'Artisan Ribbon Wrap & Calligraphy Card', price: 199 },
+        hasUvGlaze && { id: 'acc-uv-glaze', title: 'Archival UV Anti-Scratch Page Glaze', price: 249 },
+        hasMiniPolaroids && { id: 'acc-mini-prints', title: '10 Mini Polaroid Keepsake Prints', price: 149 },
+      ].filter(Boolean),
+    };
+
+    const isGift = Boolean(orderData.isGift || hasGiftWrap);
+
     const payload = {
       ...orderData,
       orderNumber,
@@ -179,8 +329,13 @@ export class OrderRepository {
       specifications,
       items: orderData.items || [],
       projectSnapshot: orderData.projectSnapshot,
+      packaging,
+      accessories,
+      isGift,
       pricing: orderData.pricing || {
-        subtotal: total,
+        subtotal: total - packagingTotal,
+        packagingPrice: packagingTotal,
+        packagingAddon: packagingTotal > 0,
         total,
         shipping: 0,
         currency: 'INR',
