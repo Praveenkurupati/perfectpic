@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useEditorStore, PageLayout } from '@/stores/useEditorStore';
 import { LayoutGrid, Sparkles, Type, Palette, Check } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
+import { getSpineMetrics } from '@/lib/spineCalculator';
 
 const panels = ['Layouts', 'Cover', 'Backgrounds'] as const;
 
@@ -375,6 +376,30 @@ export default function EditorToolbar() {
                       className="w-full border border-cream-300 px-3 py-2 text-xs rounded-sm bg-white text-noir-950 uppercase font-mono tracking-widest focus:outline-none focus:border-noir-950"
                     />
                   </div>
+
+                  {/* Dynamic Spine Bindery Specs Card */}
+                  {(() => {
+                    const metrics = getSpineMetrics(pageCount);
+                    return (
+                      <div className="p-3 bg-cream-50/80 border border-cream-200 rounded-sm space-y-1.5 mt-2">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-noir-800 uppercase tracking-wider">
+                            Calculated Spine
+                          </span>
+                          <span className="font-mono font-bold text-noir-950 bg-amber-100/80 border border-amber-300/70 px-1.5 py-0.5 rounded text-[11px]">
+                            {metrics.spineWidthMm} mm ({metrics.spineWidthInches}&quot;)
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-noir-500 leading-snug">
+                          Engineered for {metrics.pageCount} pages ({metrics.sheetCount} lay-flat sheets @ 200 GSM) + 4.0mm binder board wrap.
+                        </p>
+                        <div className="flex items-center gap-1.5 pt-0.5 text-[10px] text-emerald-700 font-medium">
+                          <Check size={11} className="stroke-[3]" />
+                          <span>Embossing Depth: {metrics.recommendedFontSizePt}pt Foil Approved</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

@@ -1,6 +1,7 @@
 // apps/client/src/lib/pdfGenerator.ts
 import { jsPDF } from 'jspdf';
 import { getApiBaseUrl } from './urls';
+import { calculateSpineWidthMm, getSpineMetrics } from './spineCalculator';
 
 export interface BookPdfOptions {
   title: string;
@@ -537,6 +538,10 @@ export async function buildBookPdfDocument(options: BookPdfOptions): Promise<jsP
     photos[0] ||
     'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
 
+  // Calculate dynamic bindery spine width
+  const spineMetrics = getSpineMetrics(pageCount);
+  const dynamicSpineMm = spineMetrics.spineWidthMm;
+
   // Initialize Square 210mm x 210mm document for Front Cover
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -550,13 +555,13 @@ export async function buildBookPdfDocument(options: BookPdfOptions): Promise<jsP
   doc.setFillColor(coverBgR, coverBgG, coverBgB);
   doc.rect(0, 0, 210, 210, 'F');
 
-  // Left spine crease & 3D shadow simulation
+  // Left spine crease & 3D shadow simulation (Dynamic Spine)
   doc.setFillColor(0, 0, 0);
-  doc.rect(0, 0, 8, 210, 'F');
+  doc.rect(0, 0, dynamicSpineMm, 210, 'F');
   const isCoverLight = (coverBgR * 299 + coverBgG * 587 + coverBgB * 114) / 1000 > 160;
   doc.setDrawColor(isCoverLight ? 170 : 55, isCoverLight ? 170 : 55, isCoverLight ? 170 : 55);
   doc.setLineWidth(0.35);
-  doc.line(8, 0, 8, 210);
+  doc.line(dynamicSpineMm, 0, dynamicSpineMm, 210);
 
   // Metallic foil embossed frame
   doc.setDrawColor(foilR, foilG, foilB);
@@ -708,12 +713,13 @@ export async function buildBookPdfDocument(options: BookPdfOptions): Promise<jsP
   doc.setFillColor(coverBgR, coverBgG, coverBgB);
   doc.rect(0, 0, 210, 210, 'F');
 
-  // Right spine crease & shadow simulation (for back cover)
+  // Right spine crease & shadow simulation (Dynamic Spine)
+  const backSpineX = 210 - dynamicSpineMm;
   doc.setFillColor(0, 0, 0);
-  doc.rect(202, 0, 8, 210, 'F');
+  doc.rect(backSpineX, 0, dynamicSpineMm, 210, 'F');
   doc.setDrawColor(isCoverLight ? 170 : 55, isCoverLight ? 170 : 55, isCoverLight ? 170 : 55);
   doc.setLineWidth(0.35);
-  doc.line(202, 0, 202, 210);
+  doc.line(backSpineX, 0, backSpineX, 210);
 
   // Debossed Gold Insignia frame
   doc.setDrawColor(foilR, foilG, foilB);
@@ -792,6 +798,211 @@ export async function generateBookProofPdf(options: BookPdfOptions): Promise<voi
  */
 export async function generateBookPdfBlob(options: BookPdfOptions): Promise<Blob> {
   const doc = await buildBookPdfDocument(options);
+  return doc.output('blob');
+}
+
+/**
+ * Builds the complete flat unfolded hardcover case wrap jacket PDF
+ * for industrial binderies (HP Indigo / Scodix / Horizon bindery).
+ * Total Width: Back Cover (210mm) + Dynamic Spine + Front Cover (210mm) + 30mm Wrap Bleed.
+ */
+export async function buildCoverWrapPdfDocument(options: BookPdfOptions): Promise<jsPDF> {
+  const {
+    title,
+    subtitle,
+    pageCount = 40,
+    coverImage,
+    coverColor = '#FAF8F5',
+    coverConfig = {},
+    projectId,
+    slotPhotos = {},
+    pagePhotos = {},
+    photos = [],
+    slotCrops = {},
+  } = options;
+
+  const displayTitle = coverConfig.title || title || 'Our Travel Journey';
+  const displaySubtitle = coverConfig.subtitle || subtitle || 'your journeys, perfectly told';
+  const spineText = coverConfig.spineText || displayTitle.toUpperCase();
+
+  const spineMetrics = getSpineMetrics(pageCount);
+  const spineMm = spineMetrics.spineWidthMm;
+
+  const wrapBleed = 15; // 15mm wrap-around turn-in margin for greyboard
+  const panelWidth = 210; // Square format standard
+  const panelHeight = 210;
+
+  const totalWidth = wrapBleed + panelWidth + spineMm + panelWidth + wrapBleed;
+  const totalHeight = wrapBleed + panelHeight + wrapBleed;
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [totalWidth, totalHeight],
+  });
+
+  const [bgR, bgG, bgB] = hexToRgb(coverConfig.backgroundColor || coverColor);
+  const [foilR, foilG, foilB] = getFoilRgb(coverConfig.foilColor);
+  const isLight = (bgR * 299 + bgG * 587 + bgB * 114) / 1000 > 160;
+
+  // Background flood (full wrap including bleed)
+  doc.setFillColor(bgR, bgG, bgB);
+  doc.rect(0, 0, totalWidth, totalHeight, 'F');
+
+  const backX = wrapBleed;
+  const spineX = wrapBleed + panelWidth;
+  const frontX = spineX + spineMm;
+  const contentY = wrapBleed;
+
+  // Draw Bindery Crease / Fold Guidelines
+  doc.setDrawColor(isLight ? 200 : 70, isLight ? 200 : 70, isLight ? 200 : 70);
+  doc.setLineWidth(0.3);
+  doc.line(backX, contentY, backX, contentY + panelHeight); // Left turn-in fold
+  doc.line(spineX, contentY, spineX, contentY + panelHeight); // Left spine crease
+  doc.line(frontX, contentY, frontX, contentY + panelHeight); // Right spine crease
+  doc.line(frontX + panelWidth, contentY, frontX + panelWidth, contentY + panelHeight); // Right turn-in fold
+
+  // Spine Strip background & vertical lettering
+  doc.setFillColor(0, 0, 0);
+  doc.rect(spineX, contentY, spineMm, panelHeight, 'F');
+
+  // Spine vertical foil text (centered on spine strip)
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(spineMetrics.recommendedFontSizePt);
+  doc.setTextColor(foilR, foilG, foilB);
+  const spineCenterX = spineX + spineMm / 2;
+  const spineCenterY = contentY + panelHeight / 2;
+  // Rotate -90 degrees for standard spine orientation
+  doc.text(spineText, spineCenterX, spineCenterY, { align: 'center', angle: 90 });
+
+  // ----------------------------------------------------
+  // BACK COVER PANEL (Left Side)
+  // ----------------------------------------------------
+  const backCenterX = backX + panelWidth / 2;
+  
+  // Back Cover Insignia Frame
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.65);
+  doc.rect(backX + 14, contentY + 14, panelWidth - 28, panelHeight - 28);
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text(displayTitle.toUpperCase(), backCenterX, contentY + 50, { align: 'center' });
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(isLight ? 60 : 210, isLight ? 60 : 210, isLight ? 60 : 210);
+  doc.text('“Every journey deserves a permanent place in print.”', backCenterX, contentY + 62, { align: 'center' });
+
+  // Archival Press Seal
+  doc.setFont('times', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(isLight ? 30 : 240, isLight ? 30 : 240, isLight ? 30 : 240);
+  doc.text('PERFECTPIC ARCHIVAL PRESS', backCenterX, contentY + 95, { align: 'center' });
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(isLight ? 90 : 170, isLight ? 90 : 170, isLight ? 90 : 170);
+  doc.text('180° PUR-MELT LAY-FLAT BINDING • ZERO GUTTER LOSS', backCenterX, contentY + 104, { align: 'center' });
+  doc.text('HP INDIGO 12000 DIGITAL PRESS • ACID-FREE CERTIFIED', backCenterX, contentY + 110, { align: 'center' });
+
+  // Barcode Box
+  doc.setFillColor(255, 255, 255);
+  doc.rect(backCenterX - 25, contentY + 145, 50, 20, 'F');
+  doc.setFillColor(0, 0, 0);
+  for (let b = 0; b < 36; b++) {
+    const barW = (b % 3 === 0) ? 1.4 : 0.7;
+    doc.rect(backCenterX - 22 + b * 1.2, contentY + 148, barW, 11, 'F');
+  }
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(0, 0, 0);
+  const cleanId = (projectId || 'PRINT').replace(/[^a-zA-Z0-9]/g, '').slice(0, 8).toUpperCase();
+  doc.text(`PP-ISBN-${cleanId}-26`, backCenterX, contentY + 162, { align: 'center' });
+
+  // ----------------------------------------------------
+  // FRONT COVER PANEL (Right Side)
+  // ----------------------------------------------------
+  const frontCenterX = frontX + panelWidth / 2;
+
+  // Front Cover Frame
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.65);
+  doc.rect(frontX + 14, contentY + 14, panelWidth - 28, panelHeight - 28);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(isLight ? 90 : 180, isLight ? 90 : 180, isLight ? 90 : 180);
+  doc.text((options.seriesLabel || 'THE TRAVEL SERIES').toUpperCase(), frontCenterX, contentY + 24, { align: 'center' });
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text(displayTitle.toUpperCase(), frontCenterX, contentY + 32, { align: 'center' });
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(isLight ? 70 : 210, isLight ? 70 : 210, isLight ? 70 : 210);
+  doc.text(displaySubtitle, frontCenterX, contentY + 38, { align: 'center' });
+
+  // Center Photo on Front Panel
+  const coverUrl =
+    slotPhotos['0']?.url ||
+    pagePhotos[0]?.url ||
+    coverImage ||
+    photos[0] ||
+    'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
+
+  const imageCache = new Map<string, Promise<string | null>>();
+  const coverCrop = slotCrops['0'] || slotCrops['cover'];
+  await drawPhotoSlot(
+    doc,
+    coverUrl,
+    frontX + 30,
+    contentY + 46,
+    150,
+    112,
+    imageCache,
+    displayTitle,
+    false,
+    coverCrop
+  );
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(isLight ? 80 : 180, isLight ? 80 : 180, isLight ? 80 : 180);
+  doc.text(`${pageCount} PAGES • ${spineMm}MM CALCULATED SPINE • ARCHIVAL EDITION`, frontCenterX, contentY + 178, { align: 'center' });
+
+  // Technical Bindery Specs Bar (at the very bottom wrap edge)
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(isLight ? 130 : 150, isLight ? 130 : 150, isLight ? 130 : 150);
+  doc.text(
+    `[BINDERY CASE JACKET: Total ${Math.round(totalWidth)}mm × ${Math.round(totalHeight)}mm | Front: 210mm | Spine: ${spineMm}mm | Back: 210mm | Wrap Bleed: 15mm]`,
+    totalWidth / 2,
+    totalHeight - 4,
+    { align: 'center' }
+  );
+
+  return doc;
+}
+
+/**
+ * Downloads the industrial case wrap jacket PDF for bookbinding.
+ */
+export async function generateCoverWrapPdf(options: BookPdfOptions): Promise<void> {
+  const doc = await buildCoverWrapPdfDocument(options);
+  const displayTitle = options.coverConfig?.title || options.title || 'Photobook';
+  const cleanTitle = displayTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+  doc.save(`${cleanTitle}_Cover_Wrap_Jacket.pdf`);
+}
+
+/**
+ * Returns the case wrap jacket PDF as a binary Blob for cloud upload.
+ */
+export async function generateCoverWrapPdfBlob(options: BookPdfOptions): Promise<Blob> {
+  const doc = await buildCoverWrapPdfDocument(options);
   return doc.output('blob');
 }
 

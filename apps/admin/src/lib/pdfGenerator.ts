@@ -1,6 +1,7 @@
 // apps/admin/src/lib/pdfGenerator.ts
 import { jsPDF } from 'jspdf';
 import { getApiBaseUrl } from './urls';
+import { calculateSpineWidthMm, getSpineMetrics } from './spineCalculator';
 
 export interface AdminPrintPdfOptions {
   orderNumber: string;
@@ -522,13 +523,15 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
   doc.setFillColor(28, 28, 28);
   doc.roundedRect(15, 28, width - 30, 42, 2, 2, 'F');
 
+  const spineMetrics = getSpineMetrics(pages);
+
   doc.setFont('courier', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(220, 220, 220);
   doc.text(`PROJECT TITLE : ${displayTitle.toUpperCase()}`, 20, 36);
   doc.text(`CUSTOMER NAME : ${customerName.toUpperCase()}`, 20, 42);
   doc.text(`PAGE COUNT    : ${pages} PAGES (${Math.ceil(pages / 2)} SPREADS)`, 20, 48);
-  doc.text(`DIMENSIONS    : ${dimensions}`, 20, 54);
+  doc.text(`SPINE WIDTH   : ${spineMetrics.spineWidthMm} MM (${spineMetrics.spineWidthInches} IN) [CALCULATED]`, 20, 54);
   doc.text(`BINDING TYPE  : PUR-MELT 180° LAY-FLAT WITH ZERO GUTTER LOSS`, 20, 60);
   doc.text(`TARGET DUE    : ${dueDate.toUpperCase()}`, width - 75, 36);
   doc.text(`FOIL STAMP    : ${foilColor.toUpperCase()} METALLIC EMBOSS`, width - 75, 42);
@@ -760,4 +763,155 @@ export async function generateAdminInvoicePdf(order: any): Promise<void> {
   doc.text(`₹${Number(total).toLocaleString('en-IN')}`, width - 20, y, { align: 'right' });
 
   doc.save(`Admin_Invoice_${orderNum}.pdf`);
+}
+
+/**
+ * Generates the print-ready full case wrap jacket PDF for sending directly to the bindery printer.
+ */
+export async function generateAdminCoverWrapPdf(options: AdminPrintPdfOptions): Promise<void> {
+  const {
+    orderNumber,
+    title,
+    pages = 40,
+    coverImage,
+    coverColor = '#FAF8F5',
+    coverConfig = {},
+    slotPhotos = {},
+    pagePhotos = {},
+    photos = [],
+    slotCrops = {},
+  } = options;
+
+  const displayTitle = coverConfig.title || title || 'Heirloom Photobook';
+  const displaySubtitle = coverConfig.subtitle || 'Archival Edition';
+  const spineText = coverConfig.spineText || displayTitle.toUpperCase();
+
+  const spineMetrics = getSpineMetrics(pages);
+  const spineMm = spineMetrics.spineWidthMm;
+
+  const wrapBleed = 15;
+  const panelWidth = 210;
+  const panelHeight = 210;
+
+  const totalWidth = wrapBleed + panelWidth + spineMm + panelWidth + wrapBleed;
+  const totalHeight = wrapBleed + panelHeight + wrapBleed;
+
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: [totalWidth, totalHeight],
+  });
+
+  const [bgR, bgG, bgB] = hexToRgb(coverConfig.backgroundColor || coverColor);
+  const [foilR, foilG, foilB] = getFoilRgb(coverConfig.foilColor);
+  const isLight = (bgR * 299 + bgG * 587 + bgB * 114) / 1000 > 160;
+
+  // Background
+  doc.setFillColor(bgR, bgG, bgB);
+  doc.rect(0, 0, totalWidth, totalHeight, 'F');
+
+  const backX = wrapBleed;
+  const spineX = wrapBleed + panelWidth;
+  const frontX = spineX + spineMm;
+  const contentY = wrapBleed;
+
+  // Guides
+  doc.setDrawColor(isLight ? 200 : 70, isLight ? 200 : 70, isLight ? 200 : 70);
+  doc.setLineWidth(0.3);
+  doc.line(backX, contentY, backX, contentY + panelHeight);
+  doc.line(spineX, contentY, spineX, contentY + panelHeight);
+  doc.line(frontX, contentY, frontX, contentY + panelHeight);
+  doc.line(frontX + panelWidth, contentY, frontX + panelWidth, contentY + panelHeight);
+
+  // Spine Strip
+  doc.setFillColor(0, 0, 0);
+  doc.rect(spineX, contentY, spineMm, panelHeight, 'F');
+
+  // Spine Text
+  doc.setFont('courier', 'bold');
+  doc.setFontSize(spineMetrics.recommendedFontSizePt);
+  doc.setTextColor(foilR, foilG, foilB);
+  const spineCenterX = spineX + spineMm / 2;
+  const spineCenterY = contentY + panelHeight / 2;
+  doc.text(spineText, spineCenterX, spineCenterY, { align: 'center', angle: 90 });
+
+  // Back panel
+  const backCenterX = backX + panelWidth / 2;
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.65);
+  doc.rect(backX + 14, contentY + 14, panelWidth - 28, panelHeight - 28);
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(15);
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text(displayTitle.toUpperCase(), backCenterX, contentY + 55, { align: 'center' });
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(isLight ? 30 : 240, isLight ? 30 : 240, isLight ? 30 : 240);
+  doc.text('PERFECTPIC ARCHIVAL PRESS', backCenterX, contentY + 95, { align: 'center' });
+
+  // Barcode
+  doc.setFillColor(255, 255, 255);
+  doc.rect(backCenterX - 25, contentY + 145, 50, 20, 'F');
+  doc.setFillColor(0, 0, 0);
+  for (let b = 0; b < 36; b++) {
+    const barW = (b % 3 === 0) ? 1.4 : 0.7;
+    doc.rect(backCenterX - 22 + b * 1.2, contentY + 148, barW, 11, 'F');
+  }
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`PP-ORDER-${orderNumber}-26`, backCenterX, contentY + 162, { align: 'center' });
+
+  // Front panel
+  const frontCenterX = frontX + panelWidth / 2;
+  doc.setDrawColor(foilR, foilG, foilB);
+  doc.setLineWidth(0.65);
+  doc.rect(frontX + 14, contentY + 14, panelWidth - 28, panelHeight - 28);
+
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(foilR, foilG, foilB);
+  doc.text(displayTitle.toUpperCase(), frontCenterX, contentY + 32, { align: 'center' });
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(9.5);
+  doc.setTextColor(isLight ? 70 : 210, isLight ? 70 : 210, isLight ? 70 : 210);
+  doc.text(displaySubtitle, frontCenterX, contentY + 38, { align: 'center' });
+
+  // Center Photo
+  const coverUrl =
+    slotPhotos['0']?.url ||
+    pagePhotos[0]?.url ||
+    coverImage ||
+    photos[0] ||
+    'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
+
+  const imageCache = new Map<string, Promise<string | null>>();
+  const coverCrop = slotCrops['0'] || slotCrops['cover'];
+  await drawPhotoSlot(
+    doc,
+    coverUrl,
+    frontX + 30,
+    contentY + 46,
+    150,
+    112,
+    imageCache,
+    displayTitle,
+    false,
+    coverCrop
+  );
+
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(isLight ? 130 : 150, isLight ? 130 : 150, isLight ? 130 : 150);
+  doc.text(
+    `[BINDERY CASE JACKET: Total ${Math.round(totalWidth)}mm × ${Math.round(totalHeight)}mm | Order: ${orderNumber} | Spine: ${spineMm}mm]`,
+    totalWidth / 2,
+    totalHeight - 4,
+    { align: 'center' }
+  );
+
+  doc.save(`Order_${orderNumber}_Hardcover_Wrap_Jacket.pdf`);
 }

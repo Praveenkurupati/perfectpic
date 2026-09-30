@@ -16,7 +16,11 @@ export class PaymentController {
 
       if (env.RAZORPAY_KEY_ID && env.RAZORPAY_KEY_SECRET) {
         const order = await razorpay.orders.create(options);
-        return res.status(200).json(order);
+        return res.status(200).json({
+          ...(typeof order === 'object' ? order : {}),
+          key: env.RAZORPAY_KEY_ID,
+          isMock: false,
+        });
       }
 
       // Simulated mock payment order
@@ -26,6 +30,8 @@ export class PaymentController {
         currency: 'INR',
         receipt: options.receipt,
         status: 'created',
+        key: env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+        isMock: true,
       });
     } catch (err) {
       next(err);

@@ -15,6 +15,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import PortionCutModal from './PortionCutModal';
+import { getSpineMetrics } from '@/lib/spineCalculator';
 
 interface SlotProps {
   slotId: string;
@@ -435,6 +436,7 @@ export default function BookCanvas() {
     (template?.coverImage ? { id: 'cover', url: template.coverImage, usedCount: 1, flagged: false } : null);
 
   const coverBg = coverConfig.backgroundColor || template?.coverColor || '#F8BAC7';
+  const spineMetrics = getSpineMetrics(pageCount);
   const spineText = coverConfig.spineText || template?.spineText || 'PERFECTPIC';
   const coverTitle = coverConfig.title || template?.displayName || template?.title || 'Our Travel Journey';
   const coverSubtitle = coverConfig.subtitle || template?.tagline || 'your journeys, perfectly told';
@@ -525,9 +527,16 @@ export default function BookCanvas() {
             }`}
             style={{ backgroundColor: coverBg }}
           >
-            {/* Book Spine */}
-            <div className="w-10 bg-black/15 flex items-center justify-center border-r border-black/15 relative overflow-hidden shrink-0">
-              <span className="text-[10px] font-bold text-white tracking-[0.3em] uppercase transform -rotate-90 whitespace-nowrap drop-shadow-sm font-mono">
+            {/* Book Spine (Dynamic Bindery Spine Calculator) */}
+            <div 
+              style={{ width: `${spineMetrics.spineWidthPx}px` }}
+              className="bg-black/20 flex items-center justify-center border-r border-black/15 relative overflow-hidden shrink-0 transition-all duration-300 group/spine"
+              title={`Dynamic Spine: ${spineMetrics.spineWidthMm}mm (${spineMetrics.spineWidthInches} in) • ${spineMetrics.pageCount} Pages (${spineMetrics.sheetCount} Layflat Spreads)`}
+            >
+              <span 
+                className="font-bold text-white tracking-[0.25em] uppercase transform -rotate-90 whitespace-nowrap drop-shadow-sm font-mono select-none"
+                style={{ fontSize: `${spineMetrics.recommendedFontSizePt}px` }}
+              >
                 {spineText}
               </span>
               <div className="absolute inset-y-0 right-0 w-[1px] bg-white/20" />

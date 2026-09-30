@@ -30,6 +30,55 @@ export interface AppliedPromo {
   message?: string;
 }
 
+export interface PackagingAccessories {
+  keepsakeBox: boolean; // ₹499
+  giftWrap: boolean; // ₹199
+  uvGlaze: boolean; // ₹249
+  miniPolaroids: boolean; // ₹149
+}
+
+export const ACCESSORY_PRICES: Record<keyof PackagingAccessories, number> = {
+  keepsakeBox: 499,
+  giftWrap: 199,
+  uvGlaze: 249,
+  miniPolaroids: 149,
+};
+
+export const ACCESSORY_DETAILS = {
+  keepsakeBox: {
+    id: 'keepsakeBox' as keyof PackagingAccessories,
+    title: 'Keepsake Velvet Presentation Box',
+    price: 499,
+    badge: 'Bestseller',
+    description: 'Custom-fitted rigid presentation box with gold foil insignia and magnetic ribbon closure.',
+    icon: '🎁',
+  },
+  giftWrap: {
+    id: 'giftWrap' as keyof PackagingAccessories,
+    title: 'Artisan Ribbon Wrap & Calligraphy Card',
+    price: 199,
+    badge: 'Gift Ready',
+    description: 'Emerald green satin ribbon wrap with personalized handwritten calligraphy message.',
+    icon: '🎀',
+  },
+  uvGlaze: {
+    id: 'uvGlaze' as keyof PackagingAccessories,
+    title: 'Archival UV Anti-Scratch Page Glaze',
+    price: 249,
+    badge: 'Recommended',
+    description: 'Diamond clear micro-coating protecting every page against fingerprints, spills, and UV fading.',
+    icon: '🛡️',
+  },
+  miniPolaroids: {
+    id: 'miniPolaroids' as keyof PackagingAccessories,
+    title: '10 Mini Polaroid Keepsake Prints',
+    price: 149,
+    badge: 'Popular',
+    description: 'Pack of 10 retro square 2×3" photo prints on archival 300 GSM fine-art cotton cardstock.',
+    icon: '📷',
+  },
+};
+
 interface CartState {
   items: CartItem[];
   promoCode: string | null;
@@ -39,6 +88,7 @@ interface CartState {
   shipping: number;
   packagingAddon: boolean;
   isGift: boolean;
+  accessories: PackagingAccessories;
   
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
@@ -54,6 +104,9 @@ interface CartState {
   
   setPackagingAddon: (enabled: boolean) => void;
   setIsGift: (isGift: boolean) => void;
+  toggleAccessory: (key: keyof PackagingAccessories) => void;
+  setAccessory: (key: keyof PackagingAccessories, enabled: boolean) => void;
+  getAccessoriesTotal: () => number;
   
   getSubtotal: () => number;
   getTotal: () => number;
@@ -82,15 +135,42 @@ const saveCart = (items: CartItem[]) => {
   }
 };
 
-export const useCartStore = create<CartState>((set, get) => ({
-  items: getStoredCart(),
-  promoCode: null,
-  discount: 0,
-  discountAmount: 0,
-  appliedPromo: null,
-  shipping: 0,
-  packagingAddon: false,
-  isGift: false,
+const DEFAULT_ACCESSORIES: PackagingAccessories = {
+  keepsakeBox: false,
+  giftWrap: false,
+  uvGlaze: false,
+  miniPolaroids: false,
+};
+
+const getStoredAccessories = (): PackagingAccessories => {
+  if (typeof window === 'undefined') return { ...DEFAULT_ACCESSORIES };
+  try {
+    const raw = localStorage.getItem('pp_cart_accessories');
+    if (raw) return { ...DEFAULT_ACCESSORIES, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_ACCESSORIES };
+};
+
+const saveAccessories = (acc: PackagingAccessories) => {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('pp_cart_accessories', JSON.stringify(acc));
+    } catch {}
+  }
+};
+
+export const useCartStore = create<CartState>((set, get) => {
+  const initialAccessories = getStoredAccessories();
+  return {
+    items: getStoredCart(),
+    promoCode: null,
+    discount: 0,
+    discountAmount: 0,
+    appliedPromo: null,
+    shipping: 0,
+    packagingAddon: initialAccessories.keepsakeBox,
+    isGift: false,
+    accessories: initialAccessories,
 
   addItem: (item) => {
     // Dispatch Meta AddToCart tracking
@@ -138,9 +218,11 @@ export const useCartStore = create<CartState>((set, get) => ({
         localStorage.removeItem('pp_cart_items');
       } catch {}
     }
+    saveAccessories(DEFAULT_ACCESSORIES);
     set({
       items: [],
       packagingAddon: false,
+      accessories: { ...DEFAULT_ACCESSORIES },
       promoCode: null,
       discount: 0,
       discountAmount: 0,
@@ -265,14 +347,54 @@ export const useCartStore = create<CartState>((set, get) => ({
     });
   },
 
-  setPackagingAddon: (enabled) => set({ packagingAddon: enabled }),
+  setPackagingAddon: (enabled) => {
+    set((state) => {
+      const updated = { ...state.accessories, keepsakeBox: enabled };
+      saveAccessories(updated);
+      return { packagingAddon: enabled, accessories: updated };
+    });
+  },
+  
   setIsGift: (isGift) => set({ isGift }),
+
+  toggleAccessory: (key) => {
+    set((state) => {
+      const updated = { ...state.accessories, [key]: !state.accessories[key] };
+      saveAccessories(updated);
+      return {
+        accessories: updated,
+        packagingAddon: updated.keepsakeBox,
+      };
+    });
+  },
+
+  setAccessory: (key, enabled) => {
+    set((state) => {
+      const updated = { ...state.accessories, [key]: enabled };
+      saveAccessories(updated);
+      return {
+        accessories: updated,
+        packagingAddon: updated.keepsakeBox,
+      };
+    });
+  },
+
+  getAccessoriesTotal: () => {
+    const { accessories } = get();
+    let total = 0;
+    if (accessories?.keepsakeBox) total += ACCESSORY_PRICES.keepsakeBox;
+    if (accessories?.giftWrap) total += ACCESSORY_PRICES.giftWrap;
+    if (accessories?.uvGlaze) total += ACCESSORY_PRICES.uvGlaze;
+    if (accessories?.miniPolaroids) total += ACCESSORY_PRICES.miniPolaroids;
+    return total;
+  },
   
   getSubtotal: () => {
     const state = get();
-    return state.items.reduce((total, item) => 
+    const itemsTotal = state.items.reduce((total, item) => 
       total + (item.basePrice + (item.extraPagesPrice || 0)) * (item.quantity || 1), 0
-    ) + (state.packagingAddon ? 499 : 0);
+    );
+    return itemsTotal + state.getAccessoriesTotal();
   },
 
   getTotal: () => {
@@ -284,4 +406,5 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     return Math.max(0, subtotal - calculatedDiscount + state.shipping);
   },
-}));
+};
+});
