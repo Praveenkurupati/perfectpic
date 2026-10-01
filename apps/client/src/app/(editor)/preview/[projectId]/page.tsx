@@ -23,7 +23,8 @@ import {
   BookOpen,
   Loader2,
   Download,
-  FileText
+  FileText,
+  X
 } from 'lucide-react';
 import { useEditorStore } from '@/stores/useEditorStore';
 import { useCartStore } from '@/stores/useCartStore';
@@ -91,6 +92,7 @@ function PreviewContent() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Synchronize initial spread from editor store if available
   useEffect(() => {
@@ -273,14 +275,160 @@ function PreviewContent() {
     }
   };
 
+  const renderPreflightContent = () => (
+    <>
+      <div className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-5 sm:space-y-6">
+        {/* Book Spec Summary Card */}
+        <div className="p-3.5 sm:p-4 bg-noir-950 border border-noir-800 rounded-sm space-y-2.5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-noir-400 uppercase tracking-wider text-[10px]">Edition</span>
+            <span className="font-semibold text-cream-100">{bookTitle}</span>
+          </div>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-noir-400 uppercase tracking-wider text-[10px]">Dimensions</span>
+            <span className="font-mono text-cream-100">{dimensions} Precision Square</span>
+          </div>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-noir-400 uppercase tracking-wider text-[10px]">Page Count</span>
+            <span className="font-mono text-cream-100">{pageCount} Pages (1 Photo/Page)</span>
+          </div>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-noir-400 uppercase tracking-wider text-[10px]">Binding</span>
+            <span className="text-cream-100">180° Lay-Flat Hardcover</span>
+          </div>
+          <div className="flex justify-between items-center text-xs pt-2 border-t border-noir-800">
+            <span className="text-noir-400 uppercase tracking-wider text-[10px]">Order Value</span>
+            <span className="font-serif text-base font-bold text-foil-gold">₹{price.toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+
+        {/* Checklist Items */}
+        <div>
+          <h3 className="text-xs font-mono uppercase tracking-widest text-noir-400 mb-3 font-semibold">
+            Print Quality Verification
+          </h3>
+          <ul className="space-y-3.5 text-xs">
+            <li className="flex items-start gap-3">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-cream-100 block">Editorial Multi-Photo & Panoramic Spreads</span>
+                <span className="text-[11px] text-noir-400">All grid collage and 180° panoramic spreads calibrated for print.</span>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-cream-100 block">12K Ultra-HD Indigo Standard</span>
+                <span className="text-[11px] text-noir-400">Optimal 300 DPI resolution for crisp color rendering.</span>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-cream-100 block">Lay-Flat Zero Gutter Loss</span>
+                <span className="text-[11px] text-noir-400">Binding core verified. No photos swallowed in the center crease.</span>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold text-cream-100 block">Safe Bleed & Spine Debossing</span>
+                <span className="text-[11px] text-noir-400">Title and spine aligned with industrial cutting tolerances.</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        {/* PDF Proof Download Card */}
+        <div className="p-3.5 bg-noir-900 border border-noir-800 rounded-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-cream-100 flex items-center gap-1.5">
+              <FileText size={14} className="text-foil-gold" />
+              Print Proof PDF
+            </span>
+            <span className="text-[10px] font-mono text-noir-400">12K Indigo</span>
+          </div>
+          <p className="text-[11px] text-noir-400 leading-relaxed">
+            Download your complete lay-flat photobook layout with precision trim marks and archival color bars.
+          </p>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="w-full py-2 bg-noir-800 hover:bg-noir-700 border border-noir-700 rounded-sm text-xs text-cream-100 font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <Loader2 size={13} className="animate-spin text-foil-gold" />
+                <span>Generating PDF...</span>
+              </>
+            ) : (
+              <>
+                <Download size={13} className="text-foil-gold" />
+                <span>Download PDF Proof</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Shipping Trust Note */}
+        <div className="p-3 bg-noir-950/70 border border-noir-800 rounded-sm flex items-center gap-3 text-xs text-noir-400">
+          <Truck size={16} className="text-foil-gold shrink-0" />
+          <span>Pan-India Insured Express Delivery included on this edition.</span>
+        </div>
+      </div>
+
+      {/* Bottom Approval & Checkout Footer */}
+      <div className="p-4 sm:p-6 border-t border-noir-800 bg-noir-950 space-y-3.5 sm:space-y-4 shrink-0">
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input 
+            type="checkbox" 
+            className="mt-0.5 accent-foil-gold w-4 h-4 cursor-pointer"
+            checked={approved}
+            onChange={(e) => setApproved(e.target.checked)}
+          />
+          <span className="text-xs text-noir-300 group-hover:text-cream-50 transition-colors leading-relaxed">
+            I have inspected all {pageCount} pages, margins, and cover details. I approve this photobook for print production.
+          </span>
+        </label>
+        
+        <div className="space-y-2.5">
+          <button 
+            onClick={handleApproveAndAddToCart}
+            disabled={!approved || isAddingToCart}
+            className="w-full py-3.5 bg-foil-gold text-noir-950 font-bold rounded-sm text-xs uppercase tracking-widest hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-foil-gold/10"
+          >
+            {isAddingToCart ? (
+              <>
+                <Loader2 size={15} className="animate-spin" />
+                <span>Preparing Cart...</span>
+              </>
+            ) : (
+              <>
+                <ShoppingBag size={15} />
+                <span>Approve & Add to Cart • ₹{price.toLocaleString('en-IN')}</span>
+              </>
+            )}
+          </button>
+
+          <button 
+            onClick={() => router.push(`/studio/${projectId}`)}
+            className="w-full py-2.5 border border-noir-700 text-cream-200 rounded-sm hover:bg-noir-800 transition-colors text-xs uppercase tracking-wider font-semibold"
+          >
+            Modify in Studio
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="h-screen flex flex-col bg-noir-950 text-cream-50 font-sans select-none overflow-hidden">
       {/* Top Header */}
-      <header className="h-16 flex items-center justify-between px-6 border-b border-noir-800 bg-noir-900/90 backdrop-blur-md shrink-0 z-30">
-        <div className="flex items-center gap-4">
+      <header className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 border-b border-noir-800 bg-noir-900/90 backdrop-blur-md shrink-0 z-30">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <button 
             onClick={() => router.push(`/studio/${projectId}`)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-xs uppercase tracking-wider text-noir-300 hover:text-cream-50 hover:bg-noir-800 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-xs uppercase tracking-wider text-noir-300 hover:text-cream-50 hover:bg-noir-800 transition-colors shrink-0"
             title="Return to Studio Editor"
           >
             <ArrowLeft size={16} />
@@ -289,71 +437,71 @@ function PreviewContent() {
           
           <div className="h-5 w-px bg-noir-800 hidden sm:block" />
 
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-lg font-bold tracking-wide text-cream-50 leading-tight">
+              <h1 className="font-serif text-sm sm:text-lg font-bold tracking-wide text-cream-50 leading-tight truncate max-w-[130px] sm:max-w-[240px] md:max-w-none">
                 {bookTitle}
               </h1>
-              <span className="px-2 py-0.5 rounded-full bg-noir-800 border border-noir-700 text-[10px] font-mono text-foil-gold uppercase tracking-wider">
+              <span className="px-1.5 py-0.5 rounded-full bg-noir-800 border border-noir-700 text-[9px] sm:text-[10px] font-mono text-foil-gold uppercase tracking-wider shrink-0">
                 3D Proof
               </span>
             </div>
-            <p className="text-[11px] font-mono text-noir-400 mt-0.5">
-              {pageCount} Pages • {dimensions} • Editorial & Panoramic Layouts • 180° Lay-Flat Zero Gutter Loss
+            <p className="text-[10px] sm:text-[11px] font-mono text-noir-400 mt-0.5 hidden sm:block truncate">
+              {pageCount} Pages • {dimensions} • Editorial & Panoramic Layouts
             </p>
           </div>
         </div>
 
         {/* View Controls & Action */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Zoom Controls */}
           <div className="flex items-center bg-noir-800 border border-noir-700 rounded-sm p-0.5 text-xs text-noir-300">
             <button 
               onClick={handleZoomOut} 
-              className="p-1.5 hover:text-cream-50 hover:bg-noir-700 rounded-xs transition-colors"
+              className="p-1 sm:p-1.5 hover:text-cream-50 hover:bg-noir-700 rounded-xs transition-colors"
               title="Zoom Out"
             >
-              <ZoomOut size={14} />
+              <ZoomOut size={13} />
             </button>
             <button 
               onClick={handleResetZoom} 
-              className="px-2 py-1 hover:text-cream-50 text-[11px] font-mono transition-colors"
+              className="px-1.5 sm:px-2 py-0.5 sm:py-1 hover:text-cream-50 text-[10px] sm:text-[11px] font-mono transition-colors"
               title="Reset Zoom"
             >
               {Math.round(zoomLevel * 100)}%
             </button>
             <button 
               onClick={handleZoomIn} 
-              className="p-1.5 hover:text-cream-50 hover:bg-noir-700 rounded-xs transition-colors"
+              className="p-1 sm:p-1.5 hover:text-cream-50 hover:bg-noir-700 rounded-xs transition-colors"
               title="Zoom In"
             >
-              <ZoomIn size={14} />
+              <ZoomIn size={13} />
             </button>
           </div>
 
           <button 
             onClick={toggleFullscreen} 
-            className="p-2 bg-noir-800 border border-noir-700 hover:text-cream-50 text-noir-300 rounded-sm transition-colors"
+            className="p-1.5 sm:p-2 bg-noir-800 border border-noir-700 hover:text-cream-50 text-noir-300 rounded-sm transition-colors"
             title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
           >
-            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
 
           <button 
             onClick={handleDownloadPdf}
             disabled={isGeneratingPdf}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-noir-800 hover:bg-noir-700 text-cream-100 border border-noir-700 rounded-sm text-xs font-medium tracking-wide transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-noir-800 hover:bg-noir-700 text-cream-100 border border-noir-700 rounded-sm text-xs font-medium tracking-wide transition-colors disabled:opacity-50"
             title="Download Print Proof PDF"
           >
             {isGeneratingPdf ? (
               <>
                 <Loader2 size={13} className="animate-spin text-foil-gold" />
-                <span className="hidden sm:inline">Generating PDF...</span>
+                <span className="hidden md:inline">Generating PDF...</span>
               </>
             ) : (
               <>
                 <Download size={13} className="text-foil-gold" />
-                <span className="hidden sm:inline">PDF Proof</span>
+                <span className="hidden md:inline">PDF Proof</span>
               </>
             )}
           </button>
@@ -371,7 +519,7 @@ function PreviewContent() {
       {/* Main Preview Body */}
       <main className="flex-1 flex overflow-hidden relative">
         {/* Center 3D Book Stage */}
-        <div className="flex-1 flex flex-col items-center justify-center relative p-6 md:p-12 overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-noir-900 via-noir-950 to-black">
+        <div className="flex-1 flex flex-col items-center justify-center relative p-2 sm:p-6 md:p-12 overflow-hidden bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-noir-900 via-noir-950 to-black">
           {/* 3D Book Rendering Component */}
           <div className="flex-1 flex items-center justify-center w-full">
             <BookFlipPreview
@@ -396,8 +544,8 @@ function PreviewContent() {
             />
           </div>
 
-          {/* Bottom Interactive Spread Switcher & Controls */}
-          <div className="w-full max-w-2xl bg-noir-900/90 border border-noir-800 rounded-full px-6 py-3 shadow-2xl backdrop-blur-md flex items-center justify-between z-20 mt-4 shrink-0">
+          {/* Desktop Interactive Spread Switcher & Controls */}
+          <div className="hidden lg:flex w-full max-w-2xl bg-noir-900/90 border border-noir-800 rounded-full px-6 py-3 shadow-2xl backdrop-blur-md items-center justify-between z-20 mt-4 shrink-0">
             {/* Previous Spread Button */}
             <button
               onClick={() => setCurrentSpread((prev) => Math.max(0, prev - 1))}
@@ -405,7 +553,7 @@ function PreviewContent() {
               className="flex items-center gap-1 text-xs font-mono uppercase tracking-wider text-cream-200 hover:text-foil-gold disabled:opacity-30 disabled:hover:text-cream-200 transition-colors"
             >
               <ChevronLeft size={18} />
-              <span className="hidden sm:inline">Prev</span>
+              <span>Prev</span>
             </button>
 
             {/* Current Position Indicator */}
@@ -446,18 +594,18 @@ function PreviewContent() {
               disabled={currentSpread > totalSpreads}
               className="flex items-center gap-1 text-xs font-mono uppercase tracking-wider text-cream-200 hover:text-foil-gold disabled:opacity-30 disabled:hover:text-cream-200 transition-colors"
             >
-              <span className="hidden sm:inline">Next</span>
+              <span>Next</span>
               <ChevronRight size={18} />
             </button>
           </div>
 
-          <p className="text-[11px] text-noir-500 font-mono mt-2 tracking-wider">
+          <p className="hidden lg:block text-[11px] text-noir-500 font-mono mt-2 tracking-wider">
             Tip: Use keyboard <kbd className="px-1.5 py-0.5 bg-noir-800 border border-noir-700 rounded text-noir-300">←</kbd> and <kbd className="px-1.5 py-0.5 bg-noir-800 border border-noir-700 rounded text-noir-300">→</kbd> to turn pages
           </p>
         </div>
 
-        {/* Right Sidebar: Pre-flight Audit & Approval */}
-        <aside className="w-[340px] lg:w-[380px] bg-noir-900 border-l border-noir-800 flex flex-col shrink-0 z-20">
+        {/* Right Sidebar: Pre-flight Audit & Approval (Desktop) */}
+        <aside className="hidden lg:flex w-[340px] lg:w-[380px] bg-noir-900 border-l border-noir-800 flex-col shrink-0 z-20">
           <div className="p-6 border-b border-noir-800 flex items-center justify-between">
             <div>
               <h2 className="font-serif text-lg font-bold text-foil-gold tracking-wide">
@@ -472,149 +620,95 @@ function PreviewContent() {
             </div>
           </div>
 
-          <div className="p-6 flex-1 overflow-y-auto space-y-6">
-            {/* Book Spec Summary Card */}
-            <div className="p-4 bg-noir-950 border border-noir-800 rounded-sm space-y-2.5">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-noir-400 uppercase tracking-wider text-[10px]">Edition</span>
-                <span className="font-semibold text-cream-100">{bookTitle}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-noir-400 uppercase tracking-wider text-[10px]">Dimensions</span>
-                <span className="font-mono text-cream-100">{dimensions} Precision Square</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-noir-400 uppercase tracking-wider text-[10px]">Page Count</span>
-                <span className="font-mono text-cream-100">{pageCount} Pages (1 Photo/Page)</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-noir-400 uppercase tracking-wider text-[10px]">Binding</span>
-                <span className="text-cream-100">180° Lay-Flat Hardcover</span>
-              </div>
-              <div className="flex justify-between items-center text-xs pt-2 border-t border-noir-800">
-                <span className="text-noir-400 uppercase tracking-wider text-[10px]">Order Value</span>
-                <span className="font-serif text-base font-bold text-foil-gold">₹{price.toLocaleString('en-IN')}</span>
-              </div>
-            </div>
-
-            {/* Checklist Items */}
-            <div>
-              <h3 className="text-xs font-mono uppercase tracking-widest text-noir-400 mb-3 font-semibold">
-                Print Quality Verification
-              </h3>
-              <ul className="space-y-3.5 text-xs">
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-cream-100 block">Editorial Multi-Photo & Panoramic Spreads</span>
-                    <span className="text-[11px] text-noir-400">All grid collage and 180° panoramic spreads calibrated for print.</span>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-cream-100 block">12K Ultra-HD Indigo Standard</span>
-                    <span className="text-[11px] text-noir-400">Optimal 300 DPI resolution for crisp color rendering.</span>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-cream-100 block">Lay-Flat Zero Gutter Loss</span>
-                    <span className="text-[11px] text-noir-400">Binding core verified. No photos swallowed in the center crease.</span>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-cream-100 block">Safe Bleed & Spine Debossing</span>
-                    <span className="text-[11px] text-noir-400">Title and spine aligned with industrial cutting tolerances.</span>
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            {/* PDF Proof Download Card */}
-            <div className="p-3.5 bg-noir-900 border border-noir-800 rounded-sm space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-cream-100 flex items-center gap-1.5">
-                  <FileText size={14} className="text-foil-gold" />
-                  Print Proof PDF
-                </span>
-                <span className="text-[10px] font-mono text-noir-400">12K Indigo</span>
-              </div>
-              <p className="text-[11px] text-noir-400 leading-relaxed">
-                Download your complete lay-flat photobook layout with precision trim marks and archival color bars.
-              </p>
-              <button
-                onClick={handleDownloadPdf}
-                disabled={isGeneratingPdf}
-                className="w-full py-2 bg-noir-800 hover:bg-noir-700 border border-noir-700 rounded-sm text-xs text-cream-100 font-medium flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-              >
-                {isGeneratingPdf ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin text-foil-gold" />
-                    <span>Generating PDF...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download size={13} className="text-foil-gold" />
-                    <span>Download PDF Proof</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Shipping Trust Note */}
-            <div className="p-3 bg-noir-950/70 border border-noir-800 rounded-sm flex items-center gap-3 text-xs text-noir-400">
-              <Truck size={16} className="text-foil-gold shrink-0" />
-              <span>Pan-India Insured Express Delivery included on this edition.</span>
-            </div>
-          </div>
-
-          {/* Bottom Approval & Checkout Footer */}
-          <div className="p-6 border-t border-noir-800 bg-noir-950 space-y-4">
-            <label className="flex items-start gap-3 cursor-pointer group">
-              <input 
-                type="checkbox" 
-                className="mt-0.5 accent-foil-gold w-4 h-4 cursor-pointer"
-                checked={approved}
-                onChange={(e) => setApproved(e.target.checked)}
-              />
-              <span className="text-xs text-noir-300 group-hover:text-cream-50 transition-colors leading-relaxed">
-                I have inspected all {pageCount} pages, margins, and cover details. I approve this photobook for print production.
-              </span>
-            </label>
-            
-            <div className="space-y-2.5">
-              <button 
-                onClick={handleApproveAndAddToCart}
-                disabled={!approved || isAddingToCart}
-                className="w-full py-3.5 bg-foil-gold text-noir-950 font-bold rounded-sm text-xs uppercase tracking-widest hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-foil-gold/10"
-              >
-                {isAddingToCart ? (
-                  <>
-                    <Loader2 size={15} className="animate-spin" />
-                    <span>Preparing Cart...</span>
-                  </>
-                ) : (
-                  <>
-                    <ShoppingBag size={15} />
-                    <span>Approve & Add to Cart • ₹{price.toLocaleString('en-IN')}</span>
-                  </>
-                )}
-              </button>
-
-              <button 
-                onClick={() => router.push(`/studio/${projectId}`)}
-                className="w-full py-2.5 border border-noir-700 text-cream-200 rounded-sm hover:bg-noir-800 transition-colors text-xs uppercase tracking-wider font-semibold"
-              >
-                Modify in Studio
-              </button>
-            </div>
-          </div>
+          {renderPreflightContent()}
         </aside>
       </main>
+
+      {/* Mobile Bottom Spread Navigator & Order Bar (< lg) */}
+      <div className="lg:hidden bg-noir-900/95 border-t border-noir-800 px-3 py-2 flex items-center justify-between z-20 shrink-0 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setCurrentSpread((prev) => Math.max(0, prev - 1))}
+            disabled={currentSpread === 0}
+            className="p-1.5 rounded-full text-cream-200 hover:text-foil-gold disabled:opacity-30 transition-colors"
+            title="Previous Spread"
+          >
+            <ChevronLeft size={18} />
+          </button>
+
+          <div className="flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 bg-noir-800/90 rounded-full border border-noir-700">
+            <span className="text-foil-gold font-bold">
+              {currentSpread === 0
+                ? 'Cover'
+                : currentSpread > totalSpreads
+                ? 'Back'
+                : `P.${(currentSpread - 1) * 2 + 1}–${(currentSpread - 1) * 2 + 2}`}
+            </span>
+            <span className="text-noir-500">/{pageCount}</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCurrentSpread((prev) => Math.min(totalSpreads + 1, prev + 1))}
+            disabled={currentSpread > totalSpreads}
+            className="p-1.5 rounded-full text-cream-200 hover:text-foil-gold disabled:opacity-30 transition-colors"
+            title="Next Spread"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-foil-gold text-noir-950 text-xs font-bold uppercase tracking-wider shadow-lg shadow-foil-gold/20 hover:brightness-110 transition-all shrink-0"
+        >
+          <ShoppingBag size={14} />
+          <span>Order • ₹{price.toLocaleString('en-IN')}</span>
+        </button>
+      </div>
+
+      {/* Mobile Slide-Up Drawer for Pre-Flight Inspection (< lg) */}
+      {isMobileDrawerOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/75 backdrop-blur-xs animate-fade-in">
+          <div 
+            className="absolute inset-0" 
+            onClick={() => setIsMobileDrawerOpen(false)} 
+          />
+          <div className="relative bg-noir-900 rounded-t-2xl shadow-2xl flex flex-col max-h-[88vh] h-[85vh] z-10 overflow-hidden border-t border-noir-700">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-noir-800 bg-noir-950/80 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-emerald-950/80 border border-emerald-600/50 flex items-center justify-center text-emerald-400">
+                  <ShieldCheck size={18} />
+                </div>
+                <div>
+                  <h3 className="font-serif font-bold text-sm text-foil-gold tracking-wide">
+                    Pre-Flight Inspection
+                  </h3>
+                  <p className="text-[10px] text-noir-400 font-mono">
+                    Automated Print Production Checklist
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileDrawerOpen(false)}
+                className="p-1.5 rounded-full hover:bg-noir-800 text-noir-400 hover:text-cream-50 transition-colors"
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Drawer Body with Checklist & Order Buttons */}
+            <div className="flex-1 overflow-y-auto flex flex-col justify-between">
+              {renderPreflightContent()}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

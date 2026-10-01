@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, BookOpen, Sparkles, Layers } from 'lucide-react';
 import { Photo, PageLayout, CoverConfig, SlotCropConfig } from '@/stores/useEditorStore';
@@ -236,12 +236,49 @@ export default function BookFlipPreview({
     }
   };
 
+  const isCoverOrBack = currentSpread === 0 || currentSpread > totalSpreads;
+  const baseWidth = isCoverOrBack ? 460 : 880;
+  const baseHeight = isCoverOrBack ? 460 : 480;
+
+  const [autoScale, setAutoScale] = useState(1);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+      const padding = screenWidth < 640 ? 20 : 48;
+      const maxAvailableWidth = Math.max(280, Math.min(screenWidth - padding, 1200));
+      const computedScale = Math.min(1, maxAvailableWidth / baseWidth);
+      setAutoScale(computedScale);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [baseWidth, isCoverOrBack, currentSpread, totalSpreads]);
+
+  const effectiveScale = autoScale * (zoomLevel || 1);
+
   return (
     <div 
-      className="relative flex items-center justify-center transition-transform duration-300 select-none"
-      style={{ transform: `scale(${zoomLevel})` }}
+      ref={containerRef}
+      className="relative flex items-center justify-center transition-all duration-300 select-none max-w-full"
+      style={{
+        width: `${baseWidth * effectiveScale}px`,
+        height: `${baseHeight * effectiveScale}px`,
+      }}
     >
-      <AnimatePresence mode="wait">
+      <div
+        style={{
+          width: `${baseWidth}px`,
+          height: `${baseHeight}px`,
+          transform: `scale(${effectiveScale})`,
+          transformOrigin: 'center center',
+          position: 'absolute',
+        }}
+        className="transition-transform duration-200 shrink-0"
+      >
+        <AnimatePresence mode="wait">
         {/* ======================================================== */}
         {/* SPREAD 0: FRONT COVER (3D Hardcover Book with Custom Foil & Color) */}
         {/* ======================================================== */}
@@ -492,6 +529,7 @@ export default function BookFlipPreview({
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }
