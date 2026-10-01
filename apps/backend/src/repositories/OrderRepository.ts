@@ -385,7 +385,6 @@ export class OrderRepository {
   ) {
     const normalizedStatus = status.toLowerCase();
     const now = new Date();
-    const updateObj: any = { status: normalizedStatus };
 
     // Extract options or trackingData
     const notes = optionsOrTracking?.notes;
@@ -398,52 +397,96 @@ export class OrderRepository {
       } : (optionsOrTracking && !optionsOrTracking.notes ? optionsOrTracking : undefined)
     );
 
-    if (tracking) {
-      updateObj.shippingDetails = {
-        ...tracking,
-        dispatchedAt: normalizedStatus === 'dispatched' ? now : undefined,
-      };
-    }
-
-    if (notes) {
-      const noteEntry = {
-        stage: normalizedStatus,
-        note: notes,
-        createdAt: now,
-        updatedBy,
-      };
-      updateObj.$push = {
-        'production.stageNotes': noteEntry,
-      };
-      updateObj['production.notes'] = notes;
-    }
-
-    // Set stage-specific timestamps
-    if (normalizedStatus === 'production') updateObj['production.startedAt'] = now;
-    if (normalizedStatus === 'printing') updateObj['production.printedAt'] = now;
-    if (normalizedStatus === 'qc') updateObj['production.qcAt'] = now;
-    if (normalizedStatus === 'dispatched') {
-      updateObj['shippingDetails.dispatchedAt'] = now;
-      if (!updateObj['shippingDetails.carrier'] && !tracking?.carrier) {
-        updateObj['shippingDetails.carrier'] = 'BlueDart Express';
-      }
-    }
-    if (normalizedStatus === 'delivered') updateObj['shippingDetails.deliveredAt'] = now;
-
     if (isDbConnected()) {
       let query: any = { orderNumber: idParam };
       if (mongoose.isValidObjectId(idParam)) {
         query = { $or: [{ _id: idParam }, { orderNumber: idParam }] };
       }
-      return await Order.findOneAndUpdate(query, updateObj, { new: true });
+
+      const orderDoc = await Order.findOne(query);
+      if (!orderDoc) {
+        return null;
+      }
+
+      orderDoc.status = normalizedStatus;
+
+      // Update shippingDetails safely on the document to avoid MongoDB path conflicts
+      if (tracking || normalizedStatus === 'dispatched' || normalizedStatus === 'delivered') {
+        const existingShipping = (orderDoc.shippingDetails && typeof orderDoc.shippingDetails === 'object')
+          ? { ...orderDoc.shippingDetails }
+          : {};
+
+        if (tracking?.carrier) existingShipping.carrier = tracking.carrier;
+        if (tracking?.trackingNumber) existingShipping.trackingNumber = tracking.trackingNumber;
+        if (tracking?.trackingUrl) existingShipping.trackingUrl = tracking.trackingUrl;
+        if (tracking?.estimatedDelivery) existingShipping.estimatedDelivery = tracking.estimatedDelivery;
+
+        if (normalizedStatus === 'dispatched') {
+          existingShipping.dispatchedAt = now;
+          if (!existingShipping.carrier) {
+            existingShipping.carrier = 'BlueDart Express';
+          }
+        }
+        if (normalizedStatus === 'delivered') {
+          existingShipping.deliveredAt = now;
+        }
+
+        orderDoc.shippingDetails = existingShipping;
+        orderDoc.markModified('shippingDetails');
+      }
+
+      // Update production notes and stage transitions
+      if (notes) {
+        if (!orderDoc.production) orderDoc.production = {};
+        orderDoc.production.notes = notes;
+        if (!Array.isArray(orderDoc.production.stageNotes)) {
+          orderDoc.production.stageNotes = [];
+        }
+        orderDoc.production.stageNotes.push({
+          stage: normalizedStatus,
+          note: notes,
+          createdAt: now,
+          updatedBy,
+        });
+        orderDoc.markModified('production');
+      }
+
+      if (normalizedStatus === 'production') {
+        if (!orderDoc.production) orderDoc.production = {};
+        orderDoc.production.startedAt = now;
+        orderDoc.markModified('production');
+      }
+      if (normalizedStatus === 'printing') {
+        if (!orderDoc.production) orderDoc.production = {};
+        orderDoc.production.printedAt = now;
+        orderDoc.markModified('production');
+      }
+      if (normalizedStatus === 'qc') {
+        if (!orderDoc.production) orderDoc.production = {};
+        orderDoc.production.qcAt = now;
+        orderDoc.markModified('production');
+      }
+
+      await orderDoc.save();
+      return orderDoc;
     }
 
     const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
     if (index !== -1) {
       const order = mockOrders[index]!;
       order.status = normalizedStatus;
-      if (tracking) {
-        (order as any).shippingDetails = { ...((order as any).shippingDetails || {}), ...tracking };
+      if (tracking || normalizedStatus === 'dispatched' || normalizedStatus === 'delivered') {
+        if (!(order as any).shippingDetails) (order as any).shippingDetails = {};
+        if (tracking) {
+          (order as any).shippingDetails = { ...((order as any).shippingDetails || {}), ...tracking };
+        }
+        if (normalizedStatus === 'dispatched') {
+          (order as any).shippingDetails.dispatchedAt = now;
+          if (!(order as any).shippingDetails.carrier) (order as any).shippingDetails.carrier = 'BlueDart Express';
+        }
+        if (normalizedStatus === 'delivered') {
+          (order as any).shippingDetails.deliveredAt = now;
+        }
       }
       if (!(order as any).production) (order as any).production = {};
       if (notes) {
@@ -459,15 +502,6 @@ export class OrderRepository {
       if (normalizedStatus === 'production') (order as any).production.startedAt = now;
       if (normalizedStatus === 'printing') (order as any).production.printedAt = now;
       if (normalizedStatus === 'qc') (order as any).production.qcAt = now;
-      if (normalizedStatus === 'dispatched') {
-        if (!(order as any).shippingDetails) (order as any).shippingDetails = {};
-        (order as any).shippingDetails.dispatchedAt = now;
-        if (!(order as any).shippingDetails.carrier) (order as any).shippingDetails.carrier = 'BlueDart Express';
-      }
-      if (normalizedStatus === 'delivered') {
-        if (!(order as any).shippingDetails) (order as any).shippingDetails = {};
-        (order as any).shippingDetails.deliveredAt = now;
-      }
       return order;
     }
     return null;

@@ -198,35 +198,61 @@ router.put(['/:id/status', '/:id'], async (req, res) => {
       if (mongoose.isValidObjectId(idParam)) {
         filter = { $or: [{ orderNumber: idParam }, { _id: idParam }] };
       }
-      const updateObj: any = { status: targetStatus };
-      if (trackingData) {
-        updateObj.shippingDetails = trackingData;
-      }
-      if (notes) {
-        updateObj['production.notes'] = notes;
-        updateObj.$push = {
-          'production.stageNotes': {
+      const orderDoc = await Order.findOne(filter);
+      if (orderDoc) {
+        orderDoc.status = targetStatus;
+
+        if (trackingData || targetStatus === 'dispatched' || targetStatus === 'delivered') {
+          const currentShipping = (orderDoc.shippingDetails && typeof orderDoc.shippingDetails === 'object')
+            ? { ...orderDoc.shippingDetails }
+            : {};
+          if (trackingData?.carrier) currentShipping.carrier = trackingData.carrier;
+          if (trackingData?.trackingNumber) currentShipping.trackingNumber = trackingData.trackingNumber;
+          if (trackingData?.trackingUrl) currentShipping.trackingUrl = trackingData.trackingUrl;
+          if (targetStatus === 'dispatched') {
+            currentShipping.dispatchedAt = now;
+            if (!currentShipping.carrier) currentShipping.carrier = 'BlueDart Express';
+          }
+          if (targetStatus === 'delivered') {
+            currentShipping.deliveredAt = now;
+          }
+          orderDoc.shippingDetails = currentShipping;
+          orderDoc.markModified('shippingDetails');
+        }
+
+        if (notes) {
+          if (!orderDoc.production) orderDoc.production = {};
+          orderDoc.production.notes = notes;
+          if (!Array.isArray(orderDoc.production.stageNotes)) {
+            orderDoc.production.stageNotes = [];
+          }
+          orderDoc.production.stageNotes.push({
             stage: targetStatus,
             note: notes,
             createdAt: now,
             updatedBy: updatedBy || 'Admin',
-          },
-        };
-      }
-      if (targetStatus === 'production') updateObj['production.startedAt'] = now;
-      if (targetStatus === 'printing') updateObj['production.printedAt'] = now;
-      if (targetStatus === 'qc') updateObj['production.qcAt'] = now;
-      if (targetStatus === 'dispatched') {
-        updateObj['shippingDetails.dispatchedAt'] = now;
-        if (!updateObj['shippingDetails.carrier'] && !trackingData?.carrier) {
-          updateObj['shippingDetails.carrier'] = 'BlueDart Express';
+          });
+          orderDoc.markModified('production');
         }
-      }
-      if (targetStatus === 'delivered') updateObj['shippingDetails.deliveredAt'] = now;
 
-      const updated = await Order.findOneAndUpdate(filter, updateObj, { new: true });
-      if (updated) {
-        return res.json({ message: 'Order status updated in MongoDB', order: updated });
+        if (targetStatus === 'production') {
+          if (!orderDoc.production) orderDoc.production = {};
+          orderDoc.production.startedAt = now;
+          orderDoc.markModified('production');
+        }
+        if (targetStatus === 'printing') {
+          if (!orderDoc.production) orderDoc.production = {};
+          orderDoc.production.printedAt = now;
+          orderDoc.markModified('production');
+        }
+        if (targetStatus === 'qc') {
+          if (!orderDoc.production) orderDoc.production = {};
+          orderDoc.production.qcAt = now;
+          orderDoc.markModified('production');
+        }
+
+        await orderDoc.save();
+        return res.json({ message: 'Order status updated in MongoDB', order: orderDoc });
       }
     }
   } catch (err) {
