@@ -84,8 +84,11 @@ interface EditorState {
     price?: number;
   };
   autoSaveStatus: 'saved' | 'saving' | 'error';
+  currentProjectId: string | null;
   
   // Actions
+  initProject: (projectId: string, initialConfig?: any) => void;
+  resetProject: (projectId?: string) => void;
   setCanvas: (canvas: any) => void;
   setSelectedObject: (id: string | null) => void;
   pushHistory: (stateJson: string) => void;
@@ -183,6 +186,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     price: 1999
   },
   autoSaveStatus: 'saved',
+  currentProjectId: null,
 
   setCanvas: (canvas) => set({ canvas }),
   setSelectedObject: (id) => set({ selectedObjectId: id }),
@@ -386,5 +390,127 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setTemplate: (template) => set({ template }),
   setBookConfig: (config) => set((state) => ({
     bookConfig: { ...state.bookConfig, ...config }
-  }))
+  })),
+
+  initProject: (projectId: string, initialConfig?: any) => {
+    const currentId = get().currentProjectId;
+    // If project is already initialized with this exact ID, keep existing state and sync page count if needed
+    if (currentId === projectId) {
+      if (initialConfig?.pages && initialConfig.pages !== get().pageCount) {
+        get().setPageCount(initialConfig.pages);
+      }
+      return;
+    }
+
+    // Attempt to hydrate from saved localStorage snapshot for this project
+    let snapshot: any = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(`pp_snapshot_${projectId}`);
+        if (raw) snapshot = JSON.parse(raw);
+      } catch (err) {
+        console.warn('Failed to parse project snapshot:', err);
+      }
+    }
+
+    if (snapshot) {
+      const pCount = snapshot.pageCount || initialConfig?.pages || 32;
+      set({
+        currentProjectId: projectId,
+        pageCount: pCount,
+        pages: generateSpreads(pCount),
+        currentSpreadIndex: 1,
+        selectedSlot: '1',
+        photos: Array.isArray(snapshot.photos)
+          ? snapshot.photos.map((p: any, idx: number) =>
+              typeof p === 'string'
+                ? { id: `photo-${idx}`, url: p, usedCount: 0, flagged: false }
+                : p
+            )
+          : [],
+        pagePhotos: snapshot.pagePhotos || {},
+        slotPhotos: snapshot.slotPhotos || {},
+        slotCrops: snapshot.slotCrops || {},
+        pageLayouts: snapshot.pageLayouts || {},
+        pageBackgrounds: snapshot.pageBackgrounds || {},
+        coverConfig: snapshot.coverConfig || {
+          title: snapshot.title || 'PERFECTPIC',
+          subtitle: snapshot.subtitle || 'Keepsake Edition 2026',
+          spineText: 'PERFECTPIC',
+          foilColor: 'gold',
+        },
+        bookConfig: {
+          size: snapshot.dimensions || initialConfig?.size || '8.25x8.25',
+          coverType: snapshot.bookConfig?.coverType || initialConfig?.coverType || 'cov-1',
+          theme: snapshot.theme || initialConfig?.theme || 'theme-1',
+          color: snapshot.coverColor || initialConfig?.color || 'col-1',
+          packaging: snapshot.bookConfig?.packaging || initialConfig?.packaging || 'pack-1',
+          pages: pCount,
+          price: snapshot.bookConfig?.price || initialConfig?.price || 1999,
+        },
+        autoSaveStatus: 'saved',
+      });
+    } else {
+      // New project: completely wipe photos, slot assignments, and crops
+      const pCount = initialConfig?.pages || 32;
+      set({
+        currentProjectId: projectId,
+        pageCount: pCount,
+        pages: generateSpreads(pCount),
+        currentSpreadIndex: 1,
+        selectedSlot: '1',
+        photos: [],
+        pagePhotos: {},
+        slotPhotos: {},
+        slotCrops: {},
+        pageLayouts: {},
+        pageBackgrounds: {},
+        coverConfig: {
+          title: 'PERFECTPIC',
+          subtitle: 'Keepsake Edition 2026',
+          spineText: 'PERFECTPIC',
+          foilColor: 'gold',
+        },
+        bookConfig: {
+          size: initialConfig?.size || '8.25x8.25',
+          coverType: initialConfig?.coverType || 'cov-1',
+          theme: initialConfig?.theme || 'theme-1',
+          color: initialConfig?.color || 'col-1',
+          packaging: initialConfig?.packaging || 'pack-1',
+          pages: pCount,
+          price: initialConfig?.price || 1999,
+        },
+        autoSaveStatus: 'saved',
+      });
+    }
+  },
+
+  resetProject: (projectId?: string) => {
+    if (typeof window !== 'undefined' && projectId) {
+      try {
+        localStorage.removeItem(`pp_snapshot_${projectId}`);
+      } catch {}
+    }
+    const pageCount = 32;
+    set({
+      currentProjectId: null,
+      pageCount,
+      pages: generateSpreads(pageCount),
+      currentSpreadIndex: 1,
+      selectedSlot: '1',
+      photos: [],
+      pagePhotos: {},
+      slotPhotos: {},
+      slotCrops: {},
+      pageLayouts: {},
+      pageBackgrounds: {},
+      coverConfig: {
+        title: 'PERFECTPIC',
+        subtitle: 'Keepsake Edition 2026',
+        spineText: 'PERFECTPIC',
+        foilColor: 'gold',
+      },
+      autoSaveStatus: 'saved',
+    });
+  }
 }));

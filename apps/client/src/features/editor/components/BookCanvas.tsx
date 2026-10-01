@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import PortionCutModal from './PortionCutModal';
 import { getSpineMetrics } from '@/lib/spineCalculator';
+import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
 
 interface SlotProps {
   slotId: string;
@@ -48,6 +49,13 @@ function PhotoSlot({
 
   // Track image natural dimensions for printed DPI calculation
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [imgSrc, setImgSrc] = useState<string>(() => normalizeImageUrl(photo?.url));
+  const [hasRetriedProxy, setHasRetriedProxy] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(normalizeImageUrl(photo?.url));
+    setHasRetriedProxy(false);
+  }, [photo?.url]);
 
   const isLargeBook = (bookSize || '').includes('10');
   const baseInches = isLargeBook ? 10 : 8.25;
@@ -72,9 +80,14 @@ function PhotoSlot({
       {photo ? (
         <>
           <img
-            src={photo.url}
+            src={imgSrc || normalizeImageUrl(photo.url)}
             alt={label || 'Slot Photo'}
-            crossOrigin="anonymous"
+            onError={() => {
+              if (!hasRetriedProxy && photo.url && !photo.url.startsWith('data:')) {
+                setHasRetriedProxy(true);
+                setImgSrc(getImageProxyUrl(photo.url));
+              }
+            }}
             onLoad={(e) => {
               const img = e.currentTarget;
               if (img.naturalWidth && img.naturalHeight) {

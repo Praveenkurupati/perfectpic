@@ -21,7 +21,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useEditorStore, getMinPhotosRequired } from '@/stores/useEditorStore';
-import { compressImage } from '@/lib/imageCompressor';
+import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
+import { normalizeImageUrl } from '@/lib/urls';
 import { trackEvent } from '@/lib/analytics';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 
@@ -74,16 +75,29 @@ function UploadContent() {
   const initialPageCount = parseInt(pagesParam, 10) || 32;
 
   const [currentPageCount, setCurrentPageCount] = useState<number>(initialPageCount);
-  const { photos, setPhotos, addPhoto, removePhoto, setTemplate, setPageCount } = useEditorStore();
+  const { photos, setPhotos, addPhoto, removePhoto, setTemplate, setPageCount, initProject } = useEditorStore();
   const [loadingTemplate, setLoadingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [uploadTotal, setUploadTotal] = useState<number>(0);
+  const [uploadCurrent, setUploadCurrent] = useState<number>(0);
+  const [uploadPercent, setUploadPercent] = useState<number>(0);
+  const [currentUploadingName, setCurrentUploadingName] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [validationAlert, setValidationAlert] = useState<string | null>(null);
   const [pickerModalOpen, setPickerModalOpen] = useState(false);
   const [pickerInitialTab, setPickerInitialTab] = useState<'photos' | 'drive'>('photos');
   const [cloudImportToast, setCloudImportToast] = useState<string | null>(null);
+
+  // Initialize or restore project state scoped to this specific project ID
+  useEffect(() => {
+    if (projectId) {
+      initProject(projectId, {
+        pages: initialPageCount,
+      });
+    }
+  }, [projectId, initProject, initialPageCount]);
 
   // Dynamic minimum photos calculation based on selected pages
   const minRequired = getMinPhotosRequired(currentPageCount);
@@ -130,26 +144,37 @@ function UploadContent() {
   }, [templateSlug, setPhotos, setTemplate]);
 
   const processFiles = async (files: FileList | File[]) => {
-    const fileArray = Array.from(files).filter((f) => f.type.startsWith('image/'));
-    if (fileArray.length === 0) return;
+    const fileArray = Array.from(files).filter(isImageFile);
+    if (fileArray.length === 0) {
+      setValidationAlert('No supported image files detected. We accept JPEG, PNG, WebP, HEIC, TIFF, RAW, and BMP photos.');
+      return;
+    }
 
     setIsUploading(true);
     setValidationAlert(null);
     const total = fileArray.length;
+    setUploadTotal(total);
+    setUploadCurrent(0);
+    setUploadPercent(0);
 
     for (let i = 0; i < total; i++) {
       const file = fileArray[i]!;
-      setUploadStatus(`Optimizing & uploading ${i + 1} of ${total} (${file.name})...`);
+      setCurrentUploadingName(file.name);
+      setUploadCurrent(i + 1);
+      const pct = Math.round(((i + 1) / total) * 100);
+      setUploadPercent(pct);
+      setUploadStatus(`Optimizing photo ${i + 1} of ${total} (${file.name})...`);
 
       try {
-        const compressed = await compressImage(file, { maxDimension: 1800, quality: 0.82 });
+        const compressed = await compressImage(file, { maxDimension: 2400, quality: 0.85 });
 
         let photoUrl = '';
         try {
           const res = await api.uploadPhoto(compressed);
           photoUrl = res.url;
-        } catch {
-          photoUrl = URL.createObjectURL(compressed);
+        } catch (uploadErr) {
+          console.warn('API photo upload failed, converting to permanent data URL:', uploadErr);
+          photoUrl = await fileToDataUrl(compressed);
         }
 
         addPhoto({
@@ -166,6 +191,10 @@ function UploadContent() {
 
     setIsUploading(false);
     setUploadStatus('');
+    setUploadTotal(0);
+    setUploadCurrent(0);
+    setUploadPercent(0);
+    setCurrentUploadingName('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -431,6 +460,55 @@ function UploadContent() {
           </div>
         )}
 
+        {/* Real-time Upload Progress Banner */}
+        {isUploading && (
+          <div className="p-5 bg-gradient-to-r from-noir-950 via-noir-900 to-noir-950 text-cream-50 rounded-sm border border-foil-gold/50 shadow-luxury-md animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-foil-gold/20 flex items-center justify-center border border-foil-gold/40 shrink-0">
+                  <Loader2 size={20} className="text-foil-gold animate-spin" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif font-semibold text-base tracking-wide text-cream-50">
+                      Uploading & Optimizing Photos
+                    </span>
+                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-foil-gold/20 text-foil-gold font-mono font-bold">
+                      {uploadCurrent} of {uploadTotal}
+                    </span>
+                  </div>
+                  <p className="text-xs text-cream-200/80 mt-0.5 truncate max-w-md font-mono">
+                    {currentUploadingName ? `Processing: ${currentUploadingName}` : 'Calibrating high-resolution photo...'}
+                  </p>
+                </div>
+              </div>
+              <div className="sm:text-right shrink-0">
+                <span className="font-serif text-2xl font-bold text-foil-gold font-mono">
+                  {uploadPercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* Real-time Progress Bar */}
+            <div className="w-full bg-noir-800 rounded-full h-3 overflow-hidden p-0.5 border border-white/10">
+              <div 
+                className="bg-gradient-to-r from-foil-gold via-amber-300 to-foil-gold h-full rounded-full transition-all duration-300 ease-out shadow-xs"
+                style={{ width: `${Math.max(5, uploadPercent)}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between mt-2.5 text-[11px] text-cream-300/80">
+              <span className="flex items-center gap-1.5">
+                <Sparkles size={13} className="text-foil-gold" />
+                Archival compression preserving 300+ DPI press quality
+              </span>
+              <span className="font-mono text-cream-200/90 hidden sm:inline">
+                Uploaded photos appear below dynamically
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Main Grid: Upload Dropzone & Collection */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-3 space-y-8">
@@ -442,17 +520,31 @@ function UploadContent() {
               onDrop={handleDrop}
               className={`border-2 border-dashed ${
                 isDragging ? 'border-foil-gold bg-cream-100 scale-[1.01]' : 'border-cream-400 bg-white'
-              } p-10 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group`}
+              } p-8 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group`}
             >
               {isUploading ? (
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-cream-100 rounded-full flex items-center justify-center mb-4">
-                    <Loader2 size={28} className="text-foil-gold animate-spin" />
+                <div className="flex flex-col items-center w-full max-w-md mx-auto py-2">
+                  <div className="w-14 h-14 bg-foil-gold/15 rounded-full flex items-center justify-center mb-3 border border-foil-gold/40">
+                    <Loader2 size={26} className="text-foil-gold animate-spin" />
                   </div>
-                  <span className="text-sm font-semibold text-noir-950 mb-1">
-                    Compressing & Uploading Photos
+                  <span className="text-base font-serif font-semibold text-noir-950 mb-1">
+                    Processing Photos ({uploadCurrent} / {uploadTotal})
                   </span>
-                  <p className="text-xs text-noir-500 font-mono animate-pulse">{uploadStatus}</p>
+                  <div className="w-full mt-3 mb-2">
+                    <div className="flex justify-between items-center text-xs font-mono mb-1.5">
+                      <span className="text-noir-600 font-medium">Photo {uploadCurrent} of {uploadTotal}</span>
+                      <span className="font-bold text-foil-gold">{uploadPercent}%</span>
+                    </div>
+                    <div className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden border border-cream-300">
+                      <div 
+                        className="bg-gradient-to-r from-foil-gold to-amber-500 h-full rounded-full transition-all duration-300 ease-out"
+                        style={{ width: `${Math.max(5, uploadPercent)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-noir-500 font-mono truncate max-w-sm">
+                    {currentUploadingName || uploadStatus}
+                  </p>
                 </div>
               ) : (
                 <>
@@ -464,14 +556,14 @@ function UploadContent() {
                   </span>
                   <p className="text-noir-800 text-sm font-medium">Or drag and drop photos directly here</p>
                   <p className="text-xs text-noir-500 mt-2">
-                    Minimum requirement: <strong>{minRequired} photos</strong> for {currentPageCount} pages • High-res JPEG, PNG, HEIC, WebP
+                    Minimum requirement: <strong>{minRequired} photos</strong> for {currentPageCount} pages • High-res JPEG, PNG, HEIC, TIFF, RAW, WebP
                   </p>
                 </>
               )}
               <input 
                 type="file" 
                 multiple 
-                accept="image/*" 
+                accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" 
                 onChange={handleFileUpload} 
                 disabled={isUploading}
                 className="hidden" 
@@ -513,7 +605,7 @@ function UploadContent() {
                       key={photo.id} 
                       className="group relative aspect-square bg-cream-100 rounded-sm overflow-hidden border border-cream-200 shadow-xs"
                     >
-                      <img src={photo.url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={normalizeImageUrl(photo.url)} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                       
                       {/* Photo number indicator */}
                       <span className="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-[2px] font-mono">
@@ -536,7 +628,7 @@ function UploadContent() {
                   <label className="aspect-square border border-dashed border-cream-400 bg-cream-50 hover:bg-cream-100 rounded-sm flex flex-col items-center justify-center cursor-pointer transition-colors text-noir-600">
                     <Plus size={24} className="mb-1" />
                     <span className="text-xs font-semibold">Add More</span>
-                    <input type="file" multiple accept="image/*" onChange={handleFileUpload} className="hidden" />
+                    <input type="file" multiple accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" onChange={handleFileUpload} className="hidden" />
                   </label>
                 </div>
               ) : (

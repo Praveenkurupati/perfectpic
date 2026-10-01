@@ -8,15 +8,17 @@ const router = Router();
 // Configure multer memory storage so file buffers are kept in RAM for direct S3 streaming
 const storage = multer.memoryStorage();
 
+const IMAGE_EXTENSIONS_REGEX = /\.(jpe?g|png|webp|avif|heic|heif|gif|bmp|tiff?|dng|raw|cr2|nef|arw|svg)$/i;
+
 const upload = multer({
   storage,
   limits: { fileSize: 45 * 1024 * 1024 }, // 45MB limit for high-res photos and HD print PDFs
   fileFilter: (_req, file, cb) => {
-    if (
-      file.mimetype.startsWith('image/') ||
-      file.mimetype === 'application/pdf' ||
-      file.originalname.toLowerCase().endsWith('.pdf')
-    ) {
+    const isImageMime = file.mimetype.startsWith('image/');
+    const isPdf = file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf');
+    const isImageExt = IMAGE_EXTENSIONS_REGEX.test(file.originalname);
+
+    if (isImageMime || isPdf || isImageExt) {
       cb(null, true);
     } else {
       cb(new Error('Only image and PDF files are allowed.'));

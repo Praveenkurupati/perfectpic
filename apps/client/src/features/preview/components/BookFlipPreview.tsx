@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, BookOpen, Sparkles, Layers } from 'lucide-react';
 import { Photo, PageLayout, CoverConfig, SlotCropConfig } from '@/stores/useEditorStore';
+import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
 
 interface BookFlipPreviewProps {
   currentSpread: number; // 0 = Cover, 1 = Pages 1-2, ..., totalSpreads + 1 = Back
@@ -125,13 +126,25 @@ export default function BookFlipPreview({
     const focalX = crop?.x ?? 50;
     const focalY = crop?.y ?? 50;
     const zoom = crop?.zoom ?? 1;
+    const [imgSrc, setImgSrc] = useState(() => normalizeImageUrl(url));
+    const [hasRetriedProxy, setHasRetriedProxy] = useState(false);
+
+    useEffect(() => {
+      setImgSrc(normalizeImageUrl(url));
+      setHasRetriedProxy(false);
+    }, [url]);
 
     return (
       <div className="w-full h-full rounded-xs overflow-hidden shadow-sm border border-noir-200/60 bg-cream-100 relative group">
         <img
-          src={url}
+          src={imgSrc || normalizeImageUrl(url)}
           alt={label || 'Photo'}
-          crossOrigin="anonymous"
+          onError={() => {
+            if (!hasRetriedProxy && url && !url.startsWith('data:')) {
+              setHasRetriedProxy(true);
+              setImgSrc(getImageProxyUrl(url));
+            }
+          }}
           style={{
             objectFit: 'cover',
             objectPosition: `${focalX}% ${focalY}%`,
@@ -320,9 +333,8 @@ export default function BookFlipPreview({
               {/* Cover Center Archival Photo */}
               <div className="mx-8 mb-4 flex-1 rounded-sm overflow-hidden shadow-lg border border-black/15 bg-white relative">
                 <img
-                  src={effectiveCover}
+                  src={normalizeImageUrl(effectiveCover)}
                   alt={displayTitle}
-                  crossOrigin="anonymous"
                   style={{
                     objectFit: 'cover',
                     objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
@@ -378,9 +390,8 @@ export default function BookFlipPreview({
                 {/* Grand Panoramic Photo Container */}
                 <div className="flex-1 my-3 relative overflow-hidden rounded-xs shadow-md border border-noir-300/60 bg-cream-100 group">
                   <img
-                    src={getPanoramicPhotoUrl(currentSpread, leftPageNumber)}
+                    src={normalizeImageUrl(getPanoramicPhotoUrl(currentSpread, leftPageNumber))}
                     alt={`Panoramic Spread ${leftPageNumber}-${rightPageNumber}`}
-                    crossOrigin="anonymous"
                     style={{
                       objectFit: 'cover',
                       objectPosition: `${(slotCrops[`spread_${currentSpread}`]?.x ?? slotCrops[`${leftPageNumber}_0`]?.x ?? slotCrops[`${leftPageNumber}`]?.x ?? 50)}% ${(slotCrops[`spread_${currentSpread}`]?.y ?? slotCrops[`${leftPageNumber}_0`]?.y ?? slotCrops[`${leftPageNumber}`]?.y ?? 50)}%`,

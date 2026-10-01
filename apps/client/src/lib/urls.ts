@@ -55,3 +55,58 @@ export function getApiBaseUrl(): string {
   }
   return 'http://localhost:4000';
 }
+
+/**
+ * Returns a proxy URL for an external or non-CORS image to prevent canvas tainting or mixed-content blocking.
+ */
+export function getImageProxyUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  return `${getApiBaseUrl()}/api/v1/upload/proxy?url=${encodeURIComponent(rawUrl)}`;
+}
+
+/**
+ * Normalizes an image URL for display:
+ * 1. Preserves data: and blob: URLs
+ * 2. Replaces localhost:4000 or relative /uploads/ with active API base URL
+ * 3. Rewrites http:// to https:// or routes through proxy when on https:// page to avoid mixed-content blocks
+ */
+export function normalizeImageUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+
+  // Data URLs or active Blob URLs
+  if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  const apiBase = getApiBaseUrl();
+
+  // If URL contains /uploads/ pointing to localhost:4000 or 127.0.0.1:4000
+  if (trimmed.includes('/uploads/')) {
+    const relativePath = trimmed.substring(trimmed.indexOf('/uploads/'));
+    return `${apiBase}${relativePath}`;
+  }
+
+  // If relative path
+  if (trimmed.startsWith('/')) {
+    return `${apiBase}${trimmed}`;
+  }
+
+  // Handle mixed-content: if browser is on HTTPS and image is HTTP
+  if (
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    trimmed.startsWith('http://') &&
+    !trimmed.includes('localhost') &&
+    !trimmed.includes('127.0.0.1')
+  ) {
+    // If it's a known service supporting HTTPS, upgrade protocol
+    if (trimmed.includes('unsplash.com') || trimmed.includes('googleusercontent.com')) {
+      return trimmed.replace('http://', 'https://');
+    }
+    // Otherwise route through backend proxy
+    return getImageProxyUrl(trimmed);
+  }
+
+  return trimmed;
+}

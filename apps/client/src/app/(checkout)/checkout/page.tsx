@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore, ACCESSORY_PRICES, ACCESSORY_DETAILS } from '@/stores/useCartStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useEditorStore } from '@/stores/useEditorStore';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { 
@@ -456,6 +457,14 @@ export default function CheckoutPage() {
         });
 
         clearCart();
+        try {
+          useEditorStore.getState().resetProject();
+          items.forEach(it => {
+            if (it.projectId && typeof window !== 'undefined') {
+              localStorage.removeItem(`pp_snapshot_${it.projectId}`);
+            }
+          });
+        } catch {}
         router.push(`/confirmation/${orderNumber}`);
       };
 

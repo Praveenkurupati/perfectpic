@@ -7,6 +7,7 @@ import { ChevronRight, ArrowRight, Check, Image as ImageIcon, Sparkles } from "l
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
+import { useEditorStore } from "@/stores/useEditorStore";
 
 function ConfigureContent() {
   const searchParams = useSearchParams();
@@ -22,6 +23,13 @@ function ConfigureContent() {
   const [theme, setTheme] = useState("theme-1");
   const [color, setColor] = useState("col-1");
   const [packaging, setPackaging] = useState("pack-1");
+  const [targetProjectId, setTargetProjectId] = useState<string>("");
+
+  useEffect(() => {
+    // Generate a fresh unique project ID for this book creation session
+    const pid = `proj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    setTargetProjectId(pid);
+  }, []);
 
   const [configData, setConfigData] = useState<any>(null);
   const [templateData, setTemplateData] = useState<any>(null);
@@ -788,9 +796,20 @@ function ConfigureContent() {
             </div>
 
             <Link 
-              href={`/upload/new-project?size=${encodeURIComponent(size)}&pages=${pageCount}&cover=${encodeURIComponent(cover)}&theme=${encodeURIComponent(theme)}&color=${encodeURIComponent(color)}&packaging=${encodeURIComponent(packaging)}${templateSlug ? `&template=${encodeURIComponent(templateSlug)}` : ''}`} 
+              href={`/upload/${targetProjectId || 'new-project'}?size=${encodeURIComponent(size)}&pages=${pageCount}&cover=${encodeURIComponent(cover)}&theme=${encodeURIComponent(theme)}&color=${encodeURIComponent(color)}&packaging=${encodeURIComponent(packaging)}${templateSlug ? `&template=${encodeURIComponent(templateSlug)}` : ''}`} 
               onClick={() => {
+                const activeId = targetProjectId || `proj-${Date.now()}`;
+                useEditorStore.getState().initProject(activeId, {
+                  size,
+                  pages: pageCount,
+                  coverType: cover,
+                  theme,
+                  color,
+                  packaging,
+                  price: currentPrice,
+                });
                 trackEvent('config_change', `Configured Book: ${size} (${pageCount} Pages)`, {
+                  projectId: activeId,
                   size,
                   pageCount,
                   cover,

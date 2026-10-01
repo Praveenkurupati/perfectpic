@@ -48,9 +48,10 @@ export class UploadController {
         const localPath = path.join(process.cwd(), 'uploads', relativePart);
         if (fs.existsSync(localPath)) {
           const ext = path.extname(localPath).toLowerCase();
-          const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+          const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
           res.setHeader('Content-Type', mime);
           res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
           return fs.createReadStream(localPath).pipe(res);
         }
       }
@@ -76,6 +77,7 @@ export class UploadController {
           res.setHeader('Content-Length', s3Obj.buffer.length);
           res.setHeader('Cache-Control', 'public, max-age=86400');
           res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
           return res.status(200).send(s3Obj.buffer);
         }
       }
@@ -100,6 +102,7 @@ export class UploadController {
         res.setHeader('Content-Length', buffer.length);
         res.setHeader('Cache-Control', 'public, max-age=86400');
         res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
         return res.status(200).send(buffer);
       }
 

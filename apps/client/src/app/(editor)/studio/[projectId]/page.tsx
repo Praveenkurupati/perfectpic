@@ -50,10 +50,18 @@ function StudioContent() {
     slotCrops, 
     pageLayouts, 
     pageBackgrounds, 
-    coverConfig 
+    coverConfig,
+    initProject
   } = useEditorStore();
 
   const { addItem } = useCartStore();
+
+  // Initialize and hydrate project state for this projectId
+  useEffect(() => {
+    if (projectId) {
+      initProject(projectId);
+    }
+  }, [projectId, initProject]);
 
   // Read URL query parameter ?pages= and synchronize with store
   useEffect(() => {

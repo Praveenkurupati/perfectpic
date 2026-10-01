@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { normalizeImageUrl } from '@/lib/urls';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
@@ -73,7 +74,7 @@ export default function ProjectsPage() {
                 <div key={project.id} className="bg-white border border-cream-200 rounded-sm overflow-hidden group">
                   <div className="aspect-square bg-cream-100 relative">
                     {(project.coverUrl || project.coverImage) ? (
-                      <img src={project.coverUrl || project.coverImage} alt={project.title} className="w-full h-full object-cover" />
+                      <img src={normalizeImageUrl(project.coverUrl || project.coverImage)} alt={project.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-cream-400">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>

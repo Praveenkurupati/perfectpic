@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useEditorStore, Photo } from '@/stores/useEditorStore';
-import { UploadCloud, Check, Plus, ArrowLeftRight, Image as ImageIcon, Cloud } from 'lucide-react';
+import { UploadCloud, Check, Plus, ArrowLeftRight, Image as ImageIcon, Cloud, Loader2 } from 'lucide-react';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
+import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
+import { api } from '@/lib/api';
+import { normalizeImageUrl } from '@/lib/urls';
 
 const defaultSamplePhotos: Photo[] = [
   { id: 'sample-1', url: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop', usedCount: 0, flagged: false, name: 'Himalayan Ridge' },
@@ -32,6 +35,42 @@ export default function PhotoTray() {
 
   const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
   const [cloudInitialTab, setCloudInitialTab] = useState<'photos' | 'drive'>('photos');
+  const [isUploadingTray, setIsUploadingTray] = useState(false);
+  const [trayProgress, setTrayProgress] = useState('');
+
+  const handleTrayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const fileArray = Array.from(e.target.files).filter(isImageFile);
+    if (fileArray.length === 0) return;
+
+    setIsUploadingTray(true);
+    for (let idx = 0; idx < fileArray.length; idx++) {
+      const file = fileArray[idx]!;
+      setTrayProgress(`${idx + 1}/${fileArray.length}`);
+      try {
+        const compressed = await compressImage(file, { maxDimension: 2400, quality: 0.85 });
+        let photoUrl = '';
+        try {
+          const res = await api.uploadPhoto(compressed);
+          photoUrl = res.url;
+        } catch {
+          photoUrl = await fileToDataUrl(compressed);
+        }
+        addPhoto({
+          id: `upload-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+          url: photoUrl,
+          usedCount: 0,
+          flagged: false,
+          name: file.name
+        });
+      } catch (err) {
+        console.error('Tray upload error:', err);
+      }
+    }
+    setIsUploadingTray(false);
+    setTrayProgress('');
+    e.target.value = '';
+  };
 
   const displayPhotos: Photo[] = photos.length > 0 ? photos : defaultSamplePhotos;
 
@@ -127,7 +166,7 @@ export default function PhotoTray() {
               title="Click to place on target page or slot"
             >
               <img 
-                src={photo.url} 
+                src={normalizeImageUrl(photo.url)} 
                 alt={photo.name || 'Photo'} 
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
               />
@@ -180,30 +219,24 @@ export default function PhotoTray() {
       
       {/* Upload and Cloud Import Action Buttons */}
       <div className="p-3 border-t border-cream-300 bg-cream-50 space-y-2">
-        <label className="w-full py-2 bg-white border border-dashed border-cream-400 rounded-sm text-xs font-semibold text-noir-900 hover:border-noir-950 transition-colors flex items-center justify-center cursor-pointer text-center gap-1.5 shadow-xs">
-          <UploadCloud size={14} />
-          <span>Upload from Device</span>
-          <input 
-            type="file" 
-            multiple 
-            accept="image/*" 
-            className="hidden" 
-            onChange={(e) => {
-              if (e.target.files) {
-                Array.from(e.target.files).forEach((file, idx) => {
-                  const url = URL.createObjectURL(file);
-                  addPhoto({
-                    id: `upload-${Date.now()}-${idx}`,
-                    url,
-                    usedCount: 0,
-                    flagged: false,
-                    name: file.name
-                  });
-                });
-              }
-            }} 
-          />
-        </label>
+        {isUploadingTray ? (
+          <div className="w-full py-2 bg-cream-100 border border-foil-gold/50 rounded-sm text-xs font-semibold text-noir-900 flex items-center justify-center text-center gap-1.5 shadow-xs">
+            <Loader2 size={14} className="text-foil-gold animate-spin" />
+            <span>Uploading photo {trayProgress}...</span>
+          </div>
+        ) : (
+          <label className="w-full py-2 bg-white border border-dashed border-cream-400 rounded-sm text-xs font-semibold text-noir-900 hover:border-noir-950 transition-colors flex items-center justify-center cursor-pointer text-center gap-1.5 shadow-xs">
+            <UploadCloud size={14} />
+            <span>Upload from Device</span>
+            <input 
+              type="file" 
+              multiple 
+              accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" 
+              className="hidden" 
+              onChange={handleTrayUpload} 
+            />
+          </label>
+        )}
 
         {/* Quick Google Cloud Import Buttons */}
         <div className="grid grid-cols-2 gap-1.5">

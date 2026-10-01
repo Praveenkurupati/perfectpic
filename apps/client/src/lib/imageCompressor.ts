@@ -10,19 +10,58 @@ export interface CompressionOptions {
   mimeType?: string;
 }
 
+/**
+ * Checks whether a file is an image by MIME type or file extension.
+ * Recognizes standard web formats as well as camera RAW, HEIC, TIFF, BMP, etc.
+ */
+export function isImageFile(file: File): boolean {
+  if (file.type && file.type.startsWith('image/')) return true;
+  const name = file.name.toLowerCase();
+  return /\.(jpe?g|png|webp|avif|heic|heif|gif|bmp|tiff?|dng|raw|cr2|nef|arw|svg)$/i.test(name);
+}
+
+/**
+ * Converts a File or Blob into a permanent Base64 Data URL.
+ * Unlike URL.createObjectURL(blob), Base64 Data URLs never expire upon navigation
+ * or page reload, guaranteeing images remain visible across sessions.
+ */
+export function fileToDataUrl(fileOrBlob: File | Blob): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(typeof reader.result === 'string' ? reader.result : '');
+    };
+    reader.onerror = () => {
+      // In worst-case fallback, create a temporary object URL
+      try {
+        resolve(URL.createObjectURL(fileOrBlob));
+      } catch {
+        resolve('');
+      }
+    };
+    reader.readAsDataURL(fileOrBlob);
+  });
+}
+
 export async function compressImage(
   file: File,
   options: CompressionOptions = {}
 ): Promise<File> {
   const { maxDimension = 3800, quality = 0.92, mimeType = 'image/jpeg' } = options;
 
-  // If not an image or SVG, return as is
-  if (!file.type.startsWith('image/') || file.type.includes('svg')) {
+  // If not an image, return as is
+  if (!isImageFile(file)) {
     return file;
   }
 
-  // If already under 1.5MB and reasonably sized, no compression needed
-  if (file.size < 1.5 * 1024 * 1024) {
+  // If SVG, return as is
+  if (file.type.includes('svg') || file.name.toLowerCase().endsWith('.svg')) {
+    return file;
+  }
+
+  // If already under 1.5MB and standard web format, no compression needed
+  const isStandardWeb = /\.(jpe?g|png|webp)$/i.test(file.name);
+  if (isStandardWeb && file.size < 1.5 * 1024 * 1024) {
     return file;
   }
 
@@ -31,7 +70,11 @@ export async function compressImage(
     reader.onerror = () => resolve(file);
     reader.onload = (event) => {
       const img = new Image();
-      img.onerror = () => resolve(file);
+      img.onerror = () => {
+        // If browser cannot decode this image natively (e.g. raw camera format),
+        // safely pass original file to backend without breaking flow
+        resolve(file);
+      };
       img.onload = () => {
         try {
           let width = img.naturalWidth || img.width;
