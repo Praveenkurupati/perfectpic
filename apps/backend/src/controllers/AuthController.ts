@@ -4,6 +4,7 @@ import { AuthService } from '../services/AuthService';
 import { OtpService } from '../services/OtpService';
 import { OAuthService } from '../services/OAuthService';
 import { UserRepository } from '../repositories/UserRepository';
+import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import { ApiResponse } from '../utils/apiResponse';
 import { ApiError } from '../utils/apiError';
@@ -158,10 +159,28 @@ export class AuthController {
     }
   }
 
+  private static getCallbackUrl(req: Request, provider: 'google' | 'apple'): string {
+    const envCallback = provider === 'google' ? env.GOOGLE_CALLBACK_URL : env.APPLE_CALLBACK_URL;
+    if (envCallback && !envCallback.includes('localhost') && !envCallback.includes('127.0.0.1')) {
+      return envCallback;
+    }
+
+    const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
+    const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+    const host = (rawHost.split(',')[0] || '').trim();
+    const proto = (rawProto.split(',')[0] || 'http').trim();
+    if (host) {
+      return `${proto}://${host}/api/v1/auth/${provider}/callback`;
+    }
+
+    return envCallback || `http://localhost:4000/api/v1/auth/${provider}/callback`;
+  }
+
   public static async googleInit(req: Request, res: Response, next: NextFunction) {
     try {
       const redirect = (req.query.redirect as string) || '/';
-      const authUrl = OAuthService.getGoogleAuthUrl(redirect);
+      const callbackUrl = AuthController.getCallbackUrl(req, 'google');
+      const authUrl = OAuthService.getGoogleAuthUrl(redirect, callbackUrl);
       return res.redirect(authUrl);
     } catch (err) {
       next(err);
@@ -169,14 +188,20 @@ export class AuthController {
   }
 
   private static getFrontendUrl(req: Request): string {
-    if (process.env.FRONTEND_URL) {
+    if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes('localhost')) {
       return process.env.FRONTEND_URL.replace(/\/+$/, '');
     }
-    const host = req.get('host');
+    const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
+    const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
+    const host = (rawHost.split(',')[0] || '').trim();
+    const proto = (rawProto.split(',')[0] || 'http').trim();
     if (host) {
-      const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
-      const hostname = host.split(':')[0];
-      return `${protocol}://${hostname}:3000`;
+      const hostname = host.split(':')[0] || host;
+      const port = host.includes(':') ? host.split(':')[1] : '';
+      if (port === '4000') {
+        return `${proto}://${hostname}:3000`;
+      }
+      return `${proto}://${host}`;
     }
     return 'http://localhost:3000';
   }
@@ -186,8 +211,9 @@ export class AuthController {
       const code = (req.query.code as string) || '';
       const state = (req.query.state as string) || '/';
       const redirectUrl = decodeURIComponent(state);
+      const callbackUrl = AuthController.getCallbackUrl(req, 'google');
 
-      const result = await OAuthService.handleGoogleCallback(code, redirectUrl);
+      const result = await OAuthService.handleGoogleCallback(code, redirectUrl, callbackUrl);
       const frontendUrl = AuthController.getFrontendUrl(req);
       const frontendRedirect = `${frontendUrl}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
       return res.redirect(frontendRedirect);
@@ -199,7 +225,8 @@ export class AuthController {
   public static async appleInit(req: Request, res: Response, next: NextFunction) {
     try {
       const redirect = (req.query.redirect as string) || '/';
-      const authUrl = OAuthService.getAppleAuthUrl(redirect);
+      const callbackUrl = AuthController.getCallbackUrl(req, 'apple');
+      const authUrl = OAuthService.getAppleAuthUrl(redirect, callbackUrl);
       return res.redirect(authUrl);
     } catch (err) {
       next(err);

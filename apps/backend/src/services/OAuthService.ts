@@ -18,9 +18,9 @@ export class OAuthService {
   /**
    * Generates official Google OAuth 2.0 consent URL
    */
-  public static getGoogleAuthUrl(redirectPath: string = '/'): string {
+  public static getGoogleAuthUrl(redirectPath: string = '/', customCallbackUrl?: string): string {
     const clientId = env.GOOGLE_CLIENT_ID;
-    const callbackUrl = env.GOOGLE_CALLBACK_URL;
+    const callbackUrl = customCallbackUrl || env.GOOGLE_CALLBACK_URL;
     const state = encodeURIComponent(redirectPath);
 
     const isRealKey = clientId && !clientId.includes('your_google_client_id');
@@ -36,9 +36,9 @@ export class OAuthService {
   /**
    * Generates official Apple Sign-In authorization URL
    */
-  public static getAppleAuthUrl(redirectPath: string = '/'): string {
+  public static getAppleAuthUrl(redirectPath: string = '/', customCallbackUrl?: string): string {
     const clientId = env.APPLE_CLIENT_ID;
-    const callbackUrl = env.APPLE_CALLBACK_URL;
+    const callbackUrl = customCallbackUrl || env.APPLE_CALLBACK_URL;
     const state = encodeURIComponent(redirectPath);
 
     const isRealKey = clientId && !clientId.includes('com.perfectpic');
@@ -53,10 +53,14 @@ export class OAuthService {
   /**
    * Handles Google callback code exchange
    */
-  public static async handleGoogleCallback(code: string, redirectUrl: string = '/'): Promise<{ token: string; user: any; redirectUrl: string }> {
+  public static async handleGoogleCallback(
+    code: string,
+    redirectUrl: string = '/',
+    customCallbackUrl?: string
+  ): Promise<{ token: string; user: any; redirectUrl: string }> {
     const clientId = env.GOOGLE_CLIENT_ID;
     const clientSecret = env.GOOGLE_CLIENT_SECRET;
-    const callbackUrl = env.GOOGLE_CALLBACK_URL;
+    const callbackUrl = customCallbackUrl || env.GOOGLE_CALLBACK_URL;
 
     if (!code) {
       throw ApiError.badRequest('Authorization code is missing from Google callback.');
