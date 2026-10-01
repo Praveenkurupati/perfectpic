@@ -126,6 +126,9 @@ export default function RootLayout({
         <AnimationProvider>
           {children}
         </AnimationProvider>
+        {/* Google Identity Services & Google Picker API SDKs */}
+        <script src="https://accounts.google.com/gsi/client" async defer />
+        <script src="https://apis.google.com/js/api.js" async defer />
       </body>
     </html>
   );
