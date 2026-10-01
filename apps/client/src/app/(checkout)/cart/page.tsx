@@ -16,8 +16,13 @@ import {
   Tag, 
   X, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Minus,
+  Boxes,
+  Truck
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 
 export default function CartPage() {
@@ -25,6 +30,12 @@ export default function CartPage() {
   const { 
     items, 
     removeItem, 
+    increaseQuantity,
+    decreaseQuantity,
+    setQuantity,
+    fetchBundleTiers,
+    getPhotobookCount,
+    getBundleDiscount,
     getSubtotal, 
     getTotal, 
     discount,
@@ -45,7 +56,8 @@ export default function CartPage() {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    fetchBundleTiers();
+  }, [fetchBundleTiers]);
 
   const handleApplyPromo = async (codeToApply?: string) => {
     const code = (codeToApply || inputCode).trim().toUpperCase();
@@ -118,6 +130,9 @@ export default function CartPage() {
 
   const subtotal = getSubtotal();
   const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(subtotal * (discount || 0));
+  const totalBooks = getPhotobookCount();
+  const bundleInfo = getBundleDiscount();
+  const bundleDiscount = bundleInfo.discountAmount;
 
   return (
     <div className="min-h-screen bg-cream-50 py-12 font-sans text-noir-900">
@@ -127,6 +142,68 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Items List */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Volume Bundle Savings Progress Banner */}
+            <div className="bg-gradient-to-r from-cream-100 via-amber-50/60 to-cream-100 border border-foil-gold/40 rounded-sm p-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-noir-950 text-cream-50 flex items-center justify-center shrink-0 shadow-xs">
+                    <Boxes size={18} className="text-foil-gold" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold text-noir-950">
+                      {bundleInfo.qualifyingTier ? (
+                        <span className="text-emerald-800">
+                          🎉 {bundleInfo.qualifyingTier.name} Applied: Saved ₹{bundleDiscount.toLocaleString('en-IN')} off!
+                        </span>
+                      ) : (
+                        <span>Multi-Book Volume Savings</span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-noir-600">
+                      {bundleInfo.nextTier ? (
+                        <span>
+                          Add <strong>{bundleInfo.booksNeededForNext} more {bundleInfo.booksNeededForNext === 1 ? 'copy' : 'copies'}</strong> to unlock <strong>Save ₹{bundleInfo.nextTier.discountAmount.toLocaleString('en-IN')} off</strong> + Free Shipping!
+                        </span>
+                      ) : (
+                        <span className="text-emerald-700 font-medium">
+                          👑 Maximum volume tier unlocked (₹4,500 Saved + Free All-India Express Delivery)!
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-cream-300 rounded-full text-xs font-mono font-bold text-noir-950 self-start sm:self-auto shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>{totalBooks} {totalBooks === 1 ? 'Book' : 'Books'} in Cart</span>
+                </div>
+              </div>
+
+              {/* Progress Milestones Bar */}
+              <div className="relative mt-2 pt-1">
+                <div className="w-full h-2 bg-cream-200/90 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-noir-950 transition-all duration-500 ease-out rounded-full"
+                    style={{
+                      width: `${Math.min(100, Math.max(8, Math.round((totalBooks / 12) * 100)))}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center text-[10px] font-mono text-noir-600 mt-2 font-medium">
+                  <span className={cn(totalBooks >= 3 ? "text-emerald-700 font-bold" : "")}>
+                    3 Books (Save ₹300)
+                  </span>
+                  <span className={cn(totalBooks >= 6 ? "text-emerald-700 font-bold" : "")}>
+                    6 Books (Save ₹1,800)
+                  </span>
+                  <span className={cn(totalBooks >= 12 ? "text-emerald-700 font-bold" : "")}>
+                    12 Books (Save ₹4,500)
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-white rounded-sm shadow-sm border border-cream-200 divide-y divide-cream-200">
               {items.map((item) => (
                 <div key={item.id} className="p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
@@ -143,12 +220,39 @@ export default function CartPage() {
                     <div className="text-xs text-noir-500 mt-1 space-y-0.5">
                       <p>Format: {item.dimensions} • {item.pageCount} Pages (Lay-Flat Archival)</p>
                       <p>Theme: {item.theme.replace(/-/g, " ")}</p>
-                      {item.quantity && item.quantity > 1 && (
-                        <p className="font-semibold text-noir-700">Quantity: {item.quantity}</p>
-                      )}
                     </div>
-                    <div className="mt-3 font-medium text-noir-900">
-                      ₹{((item.basePrice + (item.extraPagesPrice || 0)) * (item.quantity || 1)).toLocaleString("en-IN")}
+
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="inline-flex items-center border border-cream-300 rounded-sm bg-cream-50 overflow-hidden shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => decreaseQuantity(item.id)}
+                          className="px-2.5 py-1 text-noir-600 hover:text-black hover:bg-cream-200 transition-colors text-sm font-bold"
+                          title="Decrease quantity"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="px-3 py-1 text-xs font-mono font-bold text-noir-950 min-w-[28px] text-center bg-white">
+                          {item.quantity || 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => increaseQuantity(item.id)}
+                          className="px-2.5 py-1 text-noir-600 hover:text-black hover:bg-cream-200 transition-colors text-sm font-bold"
+                          title="Increase quantity"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+
+                      <span className="text-[11px] text-noir-500 font-mono">
+                        ₹{(item.basePrice + (item.extraPagesPrice || 0)).toLocaleString("en-IN")} each
+                      </span>
+                    </div>
+
+                    <div className="mt-2.5 font-bold text-noir-900 font-mono text-sm">
+                      Total: ₹{((item.basePrice + (item.extraPagesPrice || 0)) * (item.quantity || 1)).toLocaleString("en-IN")}
                     </div>
                   </div>
 
@@ -288,10 +392,22 @@ export default function CartPage() {
                   <span>₹{subtotal.toLocaleString("en-IN")}</span>
                 </div>
 
+                {bundleDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-medium">
+                    <span className="flex items-center gap-1">
+                      <span>Volume Bundle Savings</span>
+                      <span className="font-mono text-xs bg-emerald-100/70 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                        {totalBooks} Books
+                      </span>
+                    </span>
+                    <span className="font-mono font-bold">-₹{bundleDiscount.toLocaleString("en-IN")}</span>
+                  </div>
+                )}
+
                 {effectiveDiscount > 0 && (
                   <div className="flex justify-between text-emerald-700 font-medium">
                     <span className="flex items-center gap-1">
-                      <span>Discount</span>
+                      <span>Coupon Discount</span>
                       {promoCode && (
                         <span className="font-mono text-xs bg-emerald-100/70 px-1 py-0.5 rounded">
                           {promoCode}

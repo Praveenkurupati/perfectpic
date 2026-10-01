@@ -46,6 +46,53 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Multi-Book Bundles & Volume Discounts */}
+      <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 overflow-hidden">
+        <div className="p-6 border-b border-cream-200 bg-cream-50/50 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-noir-950">Multi-Book Bundles & Volume Discounts</h2>
+            <p className="text-sm text-noir-500 mt-1">
+              Configure automated tier discounts for multi-copy orders: 3 Books (Save ₹300), 6 Books (Save ₹1,800), 12 Books (Save ₹4,500) + Free Shipping.
+            </p>
+          </div>
+          <a
+            href="/bundles"
+            className="px-4 py-2 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1.5 shrink-0"
+          >
+            Manage Bundles &rarr;
+          </a>
+        </div>
+        <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3.5 bg-cream-50 border border-cream-200 rounded-sm">
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono">Popular</span>
+              <span className="text-[10px] text-emerald-700 font-bold uppercase font-mono">Free Ship</span>
+            </div>
+            <p className="font-serif text-xl font-bold text-noir-950 mt-1.5">3 Books</p>
+            <p className="text-xs font-mono font-bold text-emerald-700">Save ₹300 off</p>
+            <p className="text-[11px] text-noir-500 mt-0.5">Parent & family gift pack</p>
+          </div>
+          <div className="p-3.5 bg-cream-50 border border-cream-200 rounded-sm">
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 bg-blue-100 px-1.5 py-0.5 rounded font-mono">Extended</span>
+              <span className="text-[10px] text-emerald-700 font-bold uppercase font-mono">Free Ship</span>
+            </div>
+            <p className="font-serif text-xl font-bold text-noir-950 mt-1.5">6 Books</p>
+            <p className="text-xs font-mono font-bold text-emerald-700">Save ₹1,800 off</p>
+            <p className="text-[11px] text-noir-500 mt-0.5">Family trips & reunions</p>
+          </div>
+          <div className="p-3.5 bg-cream-50 border border-cream-200 rounded-sm">
+            <div className="flex justify-between items-start">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 bg-purple-100 px-1.5 py-0.5 rounded font-mono">Collector&apos;s Master</span>
+              <span className="text-[10px] text-emerald-700 font-bold uppercase font-mono">Free Ship</span>
+            </div>
+            <p className="font-serif text-xl font-bold text-noir-950 mt-1.5">12 Books</p>
+            <p className="text-xs font-mono font-bold text-emerald-700">Save ₹4,500 off</p>
+            <p className="text-[11px] text-noir-500 mt-0.5">Weddings & annual archives</p>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 overflow-hidden">
         <div className="p-6 border-b border-cream-200 bg-cream-50/50">
           <h2 className="text-lg font-semibold text-noir-950">Promo Codes</h2>

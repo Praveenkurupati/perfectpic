@@ -19,7 +19,8 @@ import {
   Activity,
   Tag,
   Award,
-  Layers
+  Layers,
+  Boxes
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -30,6 +31,7 @@ const navItems = [
   { name: "User Behaviour", href: "/analytics/behaviour", icon: Activity },
   { name: "Template Books", href: "/templates", icon: BookOpen },
   { name: "Page Options", href: "/pages", icon: Layers },
+  { name: "Volume Bundles", href: "/bundles", icon: Boxes },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Promo Codes", href: "/promos", icon: Tag },
   { name: "Influencers", href: "/influencers", icon: Award },

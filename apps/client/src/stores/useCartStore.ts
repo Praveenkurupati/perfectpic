@@ -30,6 +30,47 @@ export interface AppliedPromo {
   message?: string;
 }
 
+export interface BundleTier {
+  id?: string;
+  bundleId: string;
+  minQuantity: number;
+  name: string;
+  discountAmount: number;
+  freeShipping: boolean;
+  badge?: string;
+  description?: string;
+}
+
+export const DEFAULT_BUNDLE_TIERS: BundleTier[] = [
+  {
+    bundleId: 'bundle-3',
+    minQuantity: 3,
+    name: '3 Books Pack',
+    discountAmount: 300,
+    freeShipping: true,
+    badge: 'Popular',
+    description: 'Save ₹300 off + Free All-India Shipping',
+  },
+  {
+    bundleId: 'bundle-6',
+    minQuantity: 6,
+    name: '6 Books Pack',
+    discountAmount: 1800,
+    freeShipping: true,
+    badge: 'Extended Family',
+    description: 'Save ₹1,800 off + Free All-India Shipping',
+  },
+  {
+    bundleId: 'bundle-12',
+    minQuantity: 12,
+    name: '12 Books Master Pack',
+    discountAmount: 4500,
+    freeShipping: true,
+    badge: "Collector's Master",
+    description: 'Save ₹4,500 off + Free All-India Shipping',
+  },
+];
+
 export interface PackagingAccessories {
   keepsakeBox: boolean; // ₹499
   giftWrap: boolean; // ₹199
@@ -81,6 +122,7 @@ export const ACCESSORY_DETAILS = {
 
 interface CartState {
   items: CartItem[];
+  bundleTiers: BundleTier[];
   promoCode: string | null;
   discount: number; // Decimal fraction for backward compatibility (e.g. 0.2 for 20%)
   discountAmount: number; // Absolute discount in ₹ (e.g. 500)
@@ -93,7 +135,11 @@ interface CartState {
   addItem: (item: CartItem) => void;
   removeItem: (id: string) => void;
   updateItem: (id: string, updates: Partial<CartItem>) => void;
+  increaseQuantity: (id: string) => void;
+  decreaseQuantity: (id: string) => void;
+  setQuantity: (id: string, qty: number) => void;
   clearCart: () => void;
+  fetchBundleTiers: () => Promise<void>;
   
   applyPromoCode: (
     code: string,
@@ -108,6 +154,15 @@ interface CartState {
   setAccessory: (key: keyof PackagingAccessories, enabled: boolean) => void;
   getAccessoriesTotal: () => number;
   
+  getPhotobookCount: () => number;
+  getBundleDiscount: () => {
+    qualifyingTier: BundleTier | null;
+    discountAmount: number;
+    freeShipping: boolean;
+    nextTier: BundleTier | null;
+    booksNeededForNext: number;
+  };
+
   getSubtotal: () => number;
   getTotal: () => number;
 }
@@ -163,6 +218,7 @@ export const useCartStore = create<CartState>((set, get) => {
   const initialAccessories = getStoredAccessories();
   return {
     items: getStoredCart(),
+    bundleTiers: DEFAULT_BUNDLE_TIERS,
     promoCode: null,
     discount: 0,
     discountAmount: 0,
@@ -211,6 +267,55 @@ export const useCartStore = create<CartState>((set, get) => {
     saveCart(newItems);
     return { items: newItems };
   }),
+
+  increaseQuantity: (id) => {
+    set((state) => {
+      const newItems = state.items.map((i) =>
+        i.id === id ? { ...i, quantity: (i.quantity || 1) + 1 } : i
+      );
+      saveCart(newItems);
+      return { items: newItems };
+    });
+  },
+
+  decreaseQuantity: (id) => {
+    set((state) => {
+      const target = state.items.find((i) => i.id === id);
+      if (!target) return state;
+      let newItems: CartItem[];
+      if ((target.quantity || 1) <= 1) {
+        newItems = state.items.filter((i) => i.id !== id);
+      } else {
+        newItems = state.items.map((i) =>
+          i.id === id ? { ...i, quantity: (i.quantity || 1) - 1 } : i
+        );
+      }
+      saveCart(newItems);
+      return { items: newItems };
+    });
+  },
+
+  setQuantity: (id, qty) => {
+    set((state) => {
+      const safeQty = Math.max(1, Math.min(99, qty));
+      const newItems = state.items.map((i) =>
+        i.id === id ? { ...i, quantity: safeQty } : i
+      );
+      saveCart(newItems);
+      return { items: newItems };
+    });
+  },
+
+  fetchBundleTiers: async () => {
+    try {
+      const res = await api.getBundles();
+      if (res && res.bundles && res.bundles.length > 0) {
+        set({ bundleTiers: res.bundles });
+      }
+    } catch {
+      // keep fallback DEFAULT_BUNDLE_TIERS
+    }
+  },
 
   clearCart: () => {
     if (typeof window !== 'undefined') {
@@ -389,6 +494,36 @@ export const useCartStore = create<CartState>((set, get) => {
     return total;
   },
   
+  getPhotobookCount: () => {
+    const { items } = get();
+    return items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  },
+
+  getBundleDiscount: () => {
+    const state = get();
+    const totalBooks = state.getPhotobookCount();
+    const tiers = (state.bundleTiers && state.bundleTiers.length > 0)
+      ? state.bundleTiers
+      : DEFAULT_BUNDLE_TIERS;
+
+    // Highest matching tier
+    const sortedDesc = [...tiers].sort((a, b) => b.minQuantity - a.minQuantity);
+    const qualifyingTier = sortedDesc.find((t) => totalBooks >= t.minQuantity) || null;
+
+    // Next unlockable tier
+    const sortedAsc = [...tiers].sort((a, b) => a.minQuantity - b.minQuantity);
+    const nextTier = sortedAsc.find((t) => t.minQuantity > totalBooks) || null;
+    const booksNeededForNext = nextTier ? nextTier.minQuantity - totalBooks : 0;
+
+    return {
+      qualifyingTier,
+      discountAmount: qualifyingTier ? qualifyingTier.discountAmount : 0,
+      freeShipping: qualifyingTier ? qualifyingTier.freeShipping : false,
+      nextTier,
+      booksNeededForNext,
+    };
+  },
+  
   getSubtotal: () => {
     const state = get();
     const itemsTotal = state.items.reduce((total, item) => 
@@ -400,11 +535,17 @@ export const useCartStore = create<CartState>((set, get) => {
   getTotal: () => {
     const state = get();
     const subtotal = state.getSubtotal();
-    const calculatedDiscount = state.discountAmount > 0 
+    const couponDiscount = state.discountAmount > 0 
       ? state.discountAmount 
       : subtotal * (state.discount || 0);
 
-    return Math.max(0, subtotal - calculatedDiscount + state.shipping);
+    const bundleInfo = state.getBundleDiscount();
+    const bundleDiscount = bundleInfo.discountAmount;
+
+    // Qualifying bundle orders automatically receive 100% Free Shipping
+    const effectiveShipping = bundleInfo.freeShipping ? 0 : state.shipping;
+
+    return Math.max(0, subtotal - bundleDiscount - couponDiscount + effectiveShipping);
   },
 };
 });

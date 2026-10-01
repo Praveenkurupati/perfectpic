@@ -115,6 +115,11 @@ const fallbackTemplates: BookItem[] = [
 export default function Home() {
   const [allProducts, setAllProducts] = useState<BookItem[]>(fallbackTemplates);
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [bundles, setBundles] = useState<any[]>([
+    { id: 'b-3', minQuantity: 3, name: '3 Books Pack', discountAmount: 300, badge: 'Popular', freeShipping: true, description: 'Perfect for trios, gifts, and family keepsakes.' },
+    { id: 'b-6', minQuantity: 6, name: '6 Books Pack', discountAmount: 1800, badge: 'Best Value', freeShipping: true, description: 'Ideal for annual compilations and grand events.' },
+    { id: 'b-12', minQuantity: 12, name: '12 Books Pack', discountAmount: 4500, badge: "Collector's Choice", freeShipping: true, description: 'Ultimate archival volume savings for whole family series.' },
+  ]);
 
   useEffect(() => {
     // Dynamic fetch from centralized backend API
@@ -128,6 +133,21 @@ export default function Home() {
       .catch((err) => {
         console.warn("Backend API not reachable, using offline catalog:", err);
       });
+
+    // Dynamic fetch of volume discount bundle tiers
+    api
+      .getBundles()
+      .then((res) => {
+        if (res && res.bundles && res.bundles.length > 0) {
+          const active = res.bundles
+            .filter((b: any) => b.active !== false)
+            .sort((a: any, b: any) => a.minQuantity - b.minQuantity);
+          if (active.length > 0) {
+            setBundles(active);
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const categories = [
@@ -570,35 +590,54 @@ export default function Home() {
       </section>
 
       {/* Bundle Promotion */}
-      <section className="py-16 bg-white">
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-4 md:px-8 max-w-6xl">
-          <div className="bg-cream-100 border border-foil-gold/30 p-8 md:p-12 rounded-sm text-center shadow-luxury-md">
+          <div className="bg-cream-100/70 border border-foil-gold/30 p-8 md:p-12 rounded-sm text-center shadow-luxury-md">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100/90 border border-amber-300 text-amber-900 rounded-full text-xs font-semibold uppercase tracking-wider mb-4">
+              <Sparkles size={13} className="text-foil-gold" />
+              <span>Volume Discount Perks</span>
+            </div>
             <h2 className="font-serif text-3xl md:text-4xl text-noir-900 mb-4">
               Family & Adventure Bundles
             </h2>
-            <p className="text-noir-700 mb-8 max-w-2xl mx-auto">
-              Perfect for gifting. The more you print, the more you save.
+            <p className="text-noir-700 mb-10 max-w-2xl mx-auto text-sm md:text-base">
+              The more copies you print for family or your collection, the more you save. Discounts and Free Shipping apply automatically at checkout!
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-              {[
-                { count: 3, discount: "₹300 off" },
-                { count: 6, discount: "₹1,800 off" },
-                { count: 12, discount: "₹4,500 off" },
-              ].map((bundle, i) => (
+              {bundles.map((bundle, i) => (
                 <div
-                  key={i}
-                  className="bg-white border border-cream-300 p-6 rounded-sm"
+                  key={bundle.id || i}
+                  className="bg-white border border-cream-300 p-6 rounded-sm text-left flex flex-col justify-between hover:shadow-luxury-md transition-all relative hover:-translate-y-0.5"
                 >
-                  <div className="font-serif text-2xl font-semibold mb-2">
-                    {bundle.count} Books
+                  {bundle.badge && (
+                    <span className="absolute -top-3 left-6 bg-noir-950 text-cream-50 text-[10px] uppercase font-bold tracking-widest px-3 py-0.5 rounded-full shadow-xs">
+                      {bundle.badge}
+                    </span>
+                  )}
+                  <div>
+                    <div className="font-serif text-2xl font-bold text-noir-950 mt-1 mb-1">
+                      {bundle.minQuantity} Books
+                    </div>
+                    <div className="text-emerald-700 font-bold text-lg mb-2">
+                      Save ₹{bundle.discountAmount?.toLocaleString('en-IN')} off
+                    </div>
+                    <p className="text-xs text-noir-600 mb-4 leading-relaxed min-h-[32px]">
+                      {bundle.description || 'Automatic savings applied when you add qualifying books to cart.'}
+                    </p>
                   </div>
-                  <div className="text-foil-gold font-medium mb-4">
-                    Save {bundle.discount}
-                  </div>
-                  <div className="text-xs text-noir-700 flex items-center justify-center">
-                    <Check size={12} className="mr-1 text-green-600" /> Free
-                    Shipping
+                  <div className="pt-4 border-t border-cream-200">
+                    <div className="text-xs text-noir-700 flex items-center mb-4 font-medium">
+                      <Check size={14} className="mr-1.5 text-emerald-600 shrink-0" />
+                      <span>{bundle.freeShipping ? 'Free Insured Pan-India Shipping' : 'Standard Delivery'}</span>
+                    </div>
+                    <Link
+                      href="/templates"
+                      className="w-full inline-flex items-center justify-center py-2.5 px-4 bg-noir-950 hover:bg-noir-900 text-cream-50 text-xs font-semibold uppercase tracking-wider rounded-xs transition-colors"
+                    >
+                      <span>Explore Catalog</span>
+                      <ArrowRight size={13} className="ml-1.5" />
+                    </Link>
                   </div>
                 </div>
               ))}

@@ -184,6 +184,33 @@ export const adminApi = {
       headers: authHeaders(),
     }),
 
+  // Bundles & Volume Discounts
+  getBundles: () => fetcher<{ bundles: any[]; total: number }>('/bundles'),
+  getAllBundles: () => fetcher<{ bundles: any[]; total: number }>('/bundles/all', { headers: authHeaders() }),
+  getBundle: (id: string) => fetcher<any>(`/bundles/${id}`, { headers: authHeaders() }),
+  createBundle: (data: any) =>
+    fetcher<{ message: string; bundle: any }>('/bundles', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updateBundle: (id: string, data: any) =>
+    fetcher<{ message: string; bundle: any }>(`/bundles/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  deleteBundle: (id: string) =>
+    fetcher<{ message: string }>(`/bundles/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  resetBundles: () =>
+    fetcher<{ message: string; bundles: any[] }>('/bundles/reset', {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+
   // Health
   health: () => fetcher<{ status: string }>('/health'),
 };

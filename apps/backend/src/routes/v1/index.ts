@@ -14,6 +14,7 @@ import analyticsRoutes from './analytics.routes';
 import addressesRoutes from './addresses.routes';
 import promosRoutes from './promos.routes';
 import pageOptionRoutes from './pageOptions.routes';
+import bundleRoutes from './bundles.routes';
 
 const v1Router = Router();
 
@@ -32,5 +33,6 @@ v1Router.use('/analytics', analyticsRoutes);
 v1Router.use('/addresses', addressesRoutes);
 v1Router.use('/promos', promosRoutes);
 v1Router.use('/page-options', pageOptionRoutes);
+v1Router.use('/bundles', bundleRoutes);
 
 export default v1Router;

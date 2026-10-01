@@ -64,6 +64,9 @@ export default function CheckoutPage() {
     accessories,
     getAccessoriesTotal,
     isGift,
+    getBundleDiscount,
+    getPhotobookCount,
+    fetchBundleTiers,
   } = useCartStore();
 
   const { user, isAuthenticated, initialize } = useAuthStore();
@@ -92,6 +95,7 @@ export default function CheckoutPage() {
     initialize();
     loadAddresses();
     loadRazorpayScript();
+    fetchBundleTiers();
     setMounted(true);
     if (items.length > 0) {
       trackMetaInitiateCheckout({
@@ -100,7 +104,7 @@ export default function CheckoutPage() {
         items: items.map(it => ({ id: it.id, title: it.title, price: it.basePrice })),
       });
     }
-  }, [initialize, loadAddresses]);
+  }, [initialize, loadAddresses, fetchBundleTiers]);
 
   useEffect(() => {
     if (user) {
@@ -327,6 +331,8 @@ export default function CheckoutPage() {
           }
         }
 
+        const bundleInfo = getBundleDiscount();
+        const bundleDiscount = bundleInfo.discountAmount;
         const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(getSubtotal() * (discount || 0));
         const orderTitle = orderItems.length > 1
           ? `${orderItems[0]?.title || 'Photobook'} (+${orderItems.length - 1} more)`
@@ -359,7 +365,7 @@ export default function CheckoutPage() {
           amount: finalTotal,
           subtotal: getSubtotal(),
           promoCode: promoCode || null,
-          discount: effectiveDiscount,
+          discount: effectiveDiscount + bundleDiscount,
           packaging: packagingPayload,
           accessories: accessoriesPayload,
           isGift: isGiftOrder,
@@ -367,6 +373,8 @@ export default function CheckoutPage() {
             subtotal: getSubtotal(),
             promoCode: promoCode || null,
             discount: effectiveDiscount,
+            bundleDiscount: bundleDiscount,
+            bundleTier: bundleInfo.qualifyingTier?.name || null,
             shipping: deliveryOption === 'express' ? 299 : 0,
             packagingPrice: getAccessoriesTotal(),
             packagingAddon: getAccessoriesTotal() > 0,
@@ -555,6 +563,9 @@ export default function CheckoutPage() {
     );
   }
 
+  const bundleInfo = getBundleDiscount();
+  const bundleDiscount = bundleInfo.discountAmount;
+  const totalBooks = getPhotobookCount();
   const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(getSubtotal() * (discount || 0));
   const finalTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
   const accessoriesTotal = getAccessoriesTotal();
@@ -900,9 +911,20 @@ export default function CheckoutPage() {
               {/* Price Breakdown */}
               <div className="space-y-3 pb-6 border-b border-cream-200 text-sm">
                 <div className="flex justify-between text-noir-600">
-                  <span>Subtotal</span>
+                  <span>Subtotal ({totalBooks} {totalBooks === 1 ? 'Book' : 'Books'})</span>
                   <span>₹{getSubtotal().toLocaleString('en-IN')}</span>
                 </div>
+
+                {/* Volume Bundle Savings */}
+                {bundleDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-medium bg-emerald-50/80 -mx-2 px-2 py-1.5 rounded-xs border border-emerald-200/60">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-emerald-600" />
+                      <span>Volume Savings ({bundleInfo.qualifyingTier?.name || `${totalBooks} Books`})</span>
+                    </span>
+                    <span className="font-semibold">-₹{bundleDiscount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
 
                 {effectiveDiscount > 0 && (
                   <div className="flex justify-between text-emerald-700 font-medium">
@@ -919,7 +941,14 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="flex justify-between text-noir-600">
-                  <span>Insured Pan-India Shipping</span>
+                  <span className="flex items-center gap-1.5">
+                    <span>Insured Pan-India Shipping</span>
+                    {bundleInfo.freeShipping && (
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded">
+                        Bundle Perk
+                      </span>
+                    )}
+                  </span>
                   <span className="text-emerald-700">{deliveryOption === 'express' ? '₹299' : 'FREE'}</span>
                 </div>
 
