@@ -7,18 +7,11 @@ import {
   CheckCircle2, 
   Image as ImageIcon, 
   Folder, 
-  FolderOpen, 
   Search, 
-  Calendar, 
-  Sparkles, 
   Loader2, 
-  CheckSquare, 
   Square, 
   ExternalLink,
-  Info,
-  Layers,
   ArrowRight,
-  HardDrive,
   RefreshCw,
   AlertCircle,
   LogIn
@@ -78,117 +71,10 @@ export interface CloudPhotoItem {
   url: string;
   title: string;
   source: 'photos' | 'drive';
-  album?: string;
-  folder?: string;
   date?: string;
   sizeMb?: number;
   dimensions?: string;
-  isReal?: boolean;
 }
-
-// Fallback sample photography for offline exploration
-const SAMPLE_PHOTOS_DATA: CloudPhotoItem[] = [
-  {
-    id: 'sp-1',
-    url: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=1200&auto=format&fit=crop',
-    title: 'Himalayan Ridge Sunrise',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'Oct 2025',
-    dimensions: '4032 × 3024',
-    isReal: false,
-  },
-  {
-    id: 'sp-2',
-    url: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&auto=format&fit=crop',
-    title: 'Alpine Pass Afternoon',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'Oct 2025',
-    dimensions: '3840 × 2160',
-    isReal: false,
-  },
-  {
-    id: 'sp-3',
-    url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&auto=format&fit=crop',
-    title: 'Yosemite Valley Stream',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'Sep 2025',
-    dimensions: '4000 × 2667',
-    isReal: false,
-  },
-  {
-    id: 'sp-4',
-    url: 'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=1200&auto=format&fit=crop',
-    title: 'Emerald Mountain Palms',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'Aug 2025',
-    dimensions: '3900 × 2600',
-    isReal: false,
-  },
-  {
-    id: 'sp-5',
-    url: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&auto=format&fit=crop',
-    title: 'Parisian Bistro Autumn',
-    source: 'photos',
-    album: 'Favorites & Portraits',
-    date: 'Jul 2025',
-    dimensions: '4200 × 2800',
-    isReal: false,
-  },
-  {
-    id: 'sp-6',
-    url: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&auto=format&fit=crop',
-    title: 'Tropical Turquoise Shore',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'Jun 2025',
-    dimensions: '4032 × 3024',
-    isReal: false,
-  },
-  {
-    id: 'sp-7',
-    url: 'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=1200&auto=format&fit=crop',
-    title: 'Sigiriya Rock Fortress',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'May 2025',
-    dimensions: '4240 × 2832',
-    isReal: false,
-  },
-  {
-    id: 'sp-8',
-    url: 'https://images.unsplash.com/photo-1529636798458-92182e662485?w=1200&auto=format&fit=crop',
-    title: 'Golden Hour Portrait',
-    source: 'photos',
-    album: 'Family & Celebrations',
-    date: 'Apr 2025',
-    dimensions: '3800 × 2533',
-    isReal: false,
-  },
-  {
-    id: 'sp-9',
-    url: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1200&auto=format&fit=crop',
-    title: 'Kyoto Bamboo Pathway',
-    source: 'photos',
-    album: 'Vacation & Travel',
-    date: 'Mar 2025',
-    dimensions: '4000 × 2667',
-    isReal: false,
-  },
-  {
-    id: 'sp-10',
-    url: 'https://images.unsplash.com/photo-1512100356356-de1b84283e18?w=1200&auto=format&fit=crop',
-    title: 'White Sands Coastline',
-    source: 'photos',
-    album: 'Recent Camera Roll',
-    date: 'Feb 2025',
-    dimensions: '3600 × 2400',
-    isReal: false,
-  },
-];
 
 interface GooglePhotoPickerModalProps {
   isOpen: boolean;
@@ -211,93 +97,21 @@ export default function GooglePhotoPickerModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
-  // Live Google Cloud Auth & Data State
+  // Live Google Cloud State
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [isLoadingRealFiles, setIsLoadingRealFiles] = useState(false);
   const [realDrivePhotos, setRealDrivePhotos] = useState<CloudPhotoItem[]>([]);
   const [realGooglePhotos, setRealGooglePhotos] = useState<CloudPhotoItem[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [apiWarning, setApiWarning] = useState<string | null>(null);
-  const [activeViewMode, setActiveViewMode] = useState<'real' | 'sample'>('real');
-
-  // Sync initial tab when opened
-  useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialTab);
-      // Check if session has access token
-      if (typeof window !== 'undefined') {
-        const storedToken = sessionStorage.getItem('google_cloud_access_token');
-        if (storedToken) {
-          setAccessToken(storedToken);
-        }
-      }
-    }
-  }, [isOpen, initialTab]);
-
-  // Request Access Token from Google Identity Services
-  const handleConnectGoogle = useCallback(() => {
-    setAuthError(null);
-    setApiWarning(null);
-
-    if (typeof window === 'undefined') return;
-
-    const clientId =
-      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
-      '422350650190-m70n8patc0s9rv9ltqt787n14952kov8.apps.googleusercontent.com';
-
-    const googleAccounts = (window as any).google?.accounts;
-    if (!googleAccounts?.oauth2) {
-      setAuthError(
-        'Google Identity Services SDK is loading. Please check your internet connection or try again in a few seconds.'
-      );
-      return;
-    }
-
-    setIsAuthorizing(true);
-
-    try {
-      // Request only the scope needed for the active tab (Drive vs Photos)
-      const scopes = activeTab === 'drive'
-        ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file'
-        : 'https://www.googleapis.com/auth/photoslibrary.readonly';
-
-      const tokenClient = googleAccounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: scopes,
-        hint: user?.email,
-        callback: async (tokenResponse: any) => {
-          setIsAuthorizing(false);
-
-          if (tokenResponse.error) {
-            setAuthError(`Google authorization failed: ${tokenResponse.error_description || tokenResponse.error}`);
-            return;
-          }
-
-          if (tokenResponse.access_token) {
-            setAccessToken(tokenResponse.access_token);
-            sessionStorage.setItem('google_cloud_access_token', tokenResponse.access_token);
-            fetchGoogleCloudFiles(tokenResponse.access_token, activeTab);
-          }
-        },
-      });
-
-      tokenClient.requestAccessToken({ prompt: '' });
-    } catch (err: any) {
-      setIsAuthorizing(false);
-      setAuthError(err.message || 'Failed to initialize Google authorization.');
-    }
-  }, [user?.email, activeTab]);
 
   // Fetch real Google Drive / Photos files using token
-  const fetchGoogleCloudFiles = async (token: string, tab: 'photos' | 'drive') => {
+  const fetchGoogleCloudFiles = useCallback(async (token: string, tab: 'photos' | 'drive') => {
     setIsLoadingRealFiles(true);
     setAuthError(null);
-    setApiWarning(null);
 
     try {
       if (tab === 'drive') {
-        // Fetch files from Google Drive API
         const q = encodeURIComponent("mimeType contains 'image/' and trashed = false");
         const fields = encodeURIComponent('files(id,name,mimeType,thumbnailLink,webContentLink,size,createdTime,imageMediaMetadata)');
         const url = `https://www.googleapis.com/drive/v3/files?q=${q}&fields=${fields}&pageSize=100`;
@@ -309,13 +123,7 @@ export default function GooglePhotoPickerModal({
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           const errMsg = errData.error?.message || res.statusText;
-          if (errMsg.includes('has not been used') || errMsg.includes('disabled') || res.status === 403) {
-            setApiWarning(
-              'Google Drive API is not yet enabled in your Google Cloud Project. Enable it in Google Cloud Console > APIs & Services > Library > search "Google Drive API" > Enable.'
-            );
-          } else {
-            setAuthError(`Google Drive API error: ${errMsg}`);
-          }
+          setAuthError(`Google Drive: ${errMsg}`);
           return;
         }
 
@@ -323,31 +131,28 @@ export default function GooglePhotoPickerModal({
         const files = data.files || [];
 
         const items: CloudPhotoItem[] = files.map((f: any) => {
-          // Replace =s220 with =s1600 for crystal clear high-res photo rendering
           const highResThumbnail = f.thumbnailLink ? f.thumbnailLink.replace(/=s\d+/, '=s1600') : f.webContentLink;
           const dimensions = f.imageMediaMetadata
             ? `${f.imageMediaMetadata.width} × ${f.imageMediaMetadata.height}`
             : undefined;
           const sizeMb = f.size ? +(f.size / (1024 * 1024)).toFixed(1) : undefined;
-          const date = f.createdTime ? new Date(f.createdTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
+          const date = f.createdTime
+            ? new Date(f.createdTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : undefined;
 
           return {
             id: f.id,
             url: highResThumbnail,
-            title: f.name || 'Drive Photo',
+            title: f.name || 'Drive Image',
             source: 'drive' as const,
-            folder: 'Google Drive',
             date,
             sizeMb,
             dimensions,
-            isReal: true,
           };
         });
 
         setRealDrivePhotos(items);
-        setActiveViewMode('real');
       } else {
-        // Fetch from Google Photos Library API
         const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=100', {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -355,14 +160,7 @@ export default function GooglePhotoPickerModal({
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           const errMsg = errData.error?.message || res.statusText;
-
-          if (errMsg.includes('has not been used') || errMsg.includes('disabled') || res.status === 403) {
-            setApiWarning(
-              'Google Photos API is not enabled in your Google Cloud Console. Enable it in Google Cloud Console > APIs & Services > Library > search "Photos Library API" > Enable.'
-            );
-          } else {
-            setAuthError(`Google Photos API note: ${errMsg}`);
-          }
+          setAuthError(`Google Photos: ${errMsg}`);
           return;
         }
 
@@ -382,25 +180,71 @@ export default function GooglePhotoPickerModal({
             url: highResUrl,
             title: p.filename || 'Google Photo',
             source: 'photos' as const,
-            album: 'Google Photos',
             date,
             dimensions,
-            isReal: true,
           };
         });
 
         setRealGooglePhotos(items);
-        setActiveViewMode('real');
       }
     } catch (err: any) {
       setAuthError(err.message || 'Failed to fetch files from Google.');
     } finally {
       setIsLoadingRealFiles(false);
     }
-  };
+  }, []);
 
-  // Launch official Native Google Picker UI dialog
-  const handleOpenNativeGooglePicker = () => {
+  // Request Access Token directly from Google Identity Services
+  const handleConnectGoogle = useCallback(() => {
+    setAuthError(null);
+    if (typeof window === 'undefined') return;
+
+    const clientId =
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+      '422350650190-m70n8patc0s9rv9ltqt787n14952kov8.apps.googleusercontent.com';
+
+    const googleAccounts = (window as any).google?.accounts;
+    if (!googleAccounts?.oauth2) {
+      setAuthError('Google Identity Services SDK is initializing. Please wait a moment and try again.');
+      return;
+    }
+
+    setIsAuthorizing(true);
+
+    try {
+      const scopes = activeTab === 'drive'
+        ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file'
+        : 'https://www.googleapis.com/auth/photoslibrary.readonly';
+
+      const tokenClient = googleAccounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: scopes,
+        hint: user?.email,
+        callback: async (tokenResponse: any) => {
+          setIsAuthorizing(false);
+
+          if (tokenResponse.error) {
+            setAuthError(tokenResponse.error_description || tokenResponse.error || 'Google authorization cancelled.');
+            return;
+          }
+
+          if (tokenResponse.access_token) {
+            setAccessToken(tokenResponse.access_token);
+            sessionStorage.setItem('google_cloud_access_token', tokenResponse.access_token);
+            fetchGoogleCloudFiles(tokenResponse.access_token, activeTab);
+          }
+        },
+      });
+
+      tokenClient.requestAccessToken({ prompt: '' });
+    } catch (err: any) {
+      setIsAuthorizing(false);
+      setAuthError(err.message || 'Failed to initialize Google authorization.');
+    }
+  }, [user?.email, activeTab, fetchGoogleCloudFiles]);
+
+  // Open Native Google Picker UI dialog
+  const handleOpenNativeGooglePicker = useCallback(() => {
     if (!accessToken) {
       handleConnectGoogle();
       return;
@@ -417,10 +261,9 @@ export default function GooglePhotoPickerModal({
 
     gapi.load('picker', () => {
       try {
-        const view = new google.picker.DocsView(
-          activeTab === 'photos' ? google.picker.ViewId.PHOTOS : google.picker.ViewId.DOCS_IMAGES
-        );
-        view.setIncludeFolders(true);
+        const view = activeTab === 'photos'
+          ? new google.picker.PhotosView()
+          : new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES).setIncludeFolders(true);
 
         const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
         const builder = new google.picker.PickerBuilder()
@@ -456,22 +299,41 @@ export default function GooglePhotoPickerModal({
         setAuthError(`Could not open Google Picker: ${err.message}`);
       }
     });
-  };
+  }, [accessToken, activeTab, handleConnectGoogle, addPhoto, onImportSuccess, onClose]);
 
-  // Auto-fetch if token is already active when switching tabs
+  // On modal open: synchronize tab, restore session token, and auto-fetch or auto-prompt
   useEffect(() => {
-    if (accessToken) {
+    if (isOpen) {
+      setActiveTab(initialTab);
+      setSelectedIds(new Set());
+      setAuthError(null);
+
+      if (typeof window !== 'undefined') {
+        const storedToken = sessionStorage.getItem('google_cloud_access_token');
+        if (storedToken) {
+          setAccessToken(storedToken);
+          fetchGoogleCloudFiles(storedToken, initialTab);
+        } else {
+          // Immediately prompt Google sign-in for seamless experience
+          const timer = setTimeout(() => {
+            handleConnectGoogle();
+          }, 400);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [isOpen, initialTab, fetchGoogleCloudFiles, handleConnectGoogle]);
+
+  // When switching tabs with active token
+  useEffect(() => {
+    if (isOpen && accessToken) {
       fetchGoogleCloudFiles(accessToken, activeTab);
     }
-  }, [activeTab, accessToken]);
+  }, [isOpen, activeTab, accessToken, fetchGoogleCloudFiles]);
 
-  // Determine current active item pool
   const activePool = useMemo(() => {
-    if (activeViewMode === 'sample') {
-      return SAMPLE_PHOTOS_DATA;
-    }
     return activeTab === 'drive' ? realDrivePhotos : realGooglePhotos;
-  }, [activeViewMode, activeTab, realDrivePhotos, realGooglePhotos]);
+  }, [activeTab, realDrivePhotos, realGooglePhotos]);
 
   const items = useMemo(() => {
     return activePool.filter((item) => {
@@ -546,7 +408,7 @@ export default function GooglePhotoPickerModal({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-serif font-bold text-noir-950">
-                  {activeTab === 'photos' ? 'Google Photos' : 'Google Drive'} Importer
+                  {activeTab === 'photos' ? 'Google Photos' : 'Google Drive'}
                 </h2>
                 {accessToken ? (
                   <span className="text-[10px] bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1 font-mono">
@@ -554,28 +416,26 @@ export default function GooglePhotoPickerModal({
                   </span>
                 ) : (
                   <span className="text-[10px] bg-amber-50 text-amber-800 font-semibold px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
-                    Connect Account
+                    Connecting to Google...
                   </span>
                 )}
               </div>
               <p className="text-xs text-noir-500">
-                Directly import personal high-resolution photographs from your Google Cloud storage.
+                Choose photos from your personal Google storage to import directly into your photobook.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Native Google Picker Button */}
-            {accessToken && (
-              <button
-                type="button"
-                onClick={handleOpenNativeGooglePicker}
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 border border-cream-300 bg-white hover:bg-cream-100 text-noir-900 rounded-sm text-xs font-medium transition-colors shadow-xs"
-              >
-                <ExternalLink size={12} className="text-foil-gold" />
-                <span>Open Native Google Picker</span>
-              </button>
-            )}
+            {/* Open Google Native Picker Dialog */}
+            <button
+              type="button"
+              onClick={handleOpenNativeGooglePicker}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-cream-300 bg-white hover:bg-cream-100 text-noir-900 rounded-sm text-xs font-semibold transition-colors shadow-xs"
+            >
+              <ExternalLink size={12} className="text-foil-gold" />
+              <span>Google Picker Window</span>
+            </button>
 
             <button
               onClick={onClose}
@@ -589,7 +449,6 @@ export default function GooglePhotoPickerModal({
 
         {/* Source Navigation Tabs & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-3 border-b border-cream-200 bg-white shrink-0">
-          {/* Main Provider Tabs */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -630,7 +489,6 @@ export default function GooglePhotoPickerModal({
             </button>
           </div>
 
-          {/* Quick Actions & Search */}
           <div className="flex items-center gap-2">
             {accessToken && (
               <button
@@ -638,7 +496,7 @@ export default function GooglePhotoPickerModal({
                 onClick={() => fetchGoogleCloudFiles(accessToken, activeTab)}
                 disabled={isLoadingRealFiles}
                 className="p-1.5 border border-cream-300 rounded-sm text-noir-600 hover:text-noir-950 hover:bg-cream-100 transition-colors"
-                title="Refresh cloud files"
+                title="Refresh Google files"
               >
                 <RefreshCw size={14} className={isLoadingRealFiles ? 'animate-spin text-foil-gold' : ''} />
               </button>
@@ -657,46 +515,30 @@ export default function GooglePhotoPickerModal({
           </div>
         </div>
 
-        {/* Warning / Notice Banner if API needs to be enabled */}
-        {apiWarning && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-2.5 text-xs text-amber-900 flex items-start justify-between gap-3">
+        {/* Error Notification Banner */}
+        {authError && (
+          <div className="bg-red-50 border-b border-red-200 px-6 py-3 text-xs text-red-800 flex items-start justify-between gap-3">
             <div className="flex items-start gap-2">
-              <AlertCircle size={15} className="text-amber-700 shrink-0 mt-0.5" />
-              <div className="leading-tight">
-                <span className="font-semibold">Notice: </span>
-                {apiWarning}
+              <AlertCircle size={15} className="text-red-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-semibold">Authorization note: </span>
+                {authError}
               </div>
             </div>
             <button
-              onClick={() => setActiveViewMode('sample')}
-              className="text-[11px] font-bold text-amber-950 underline shrink-0"
+              onClick={handleConnectGoogle}
+              className="text-xs font-bold text-red-950 underline shrink-0 hover:text-red-700"
             >
-              Browse Sample Photos
-            </button>
-          </div>
-        )}
-
-        {/* Auth Error Banner */}
-        {authError && (
-          <div className="bg-red-50 border-b border-red-200 px-6 py-2.5 text-xs text-red-800 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={15} className="text-red-600 shrink-0" />
-              <span>{authError}</span>
-            </div>
-            <button
-              onClick={() => setAuthError(null)}
-              className="text-xs font-bold text-red-900 hover:underline"
-            >
-              Dismiss
+              Retry Connection
             </button>
           </div>
         )}
 
         {/* Main Body */}
         <div className="flex-1 overflow-y-auto p-6 bg-cream-50/30">
-          {/* State 1: Not Connected Yet -> Show Beautiful Connect Screen */}
-          {!accessToken && activeViewMode === 'real' ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-lg mx-auto space-y-5">
+          {!accessToken ? (
+            /* Prompt to connect Google */
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 max-w-md mx-auto space-y-4">
               <div className="w-16 h-16 rounded-full bg-white border border-cream-300 shadow-md flex items-center justify-center">
                 {activeTab === 'photos' ? (
                   <GooglePhotosLogo className="w-8 h-8" />
@@ -705,118 +547,75 @@ export default function GooglePhotoPickerModal({
                 )}
               </div>
 
-              <div className="space-y-1.5">
+              <div>
                 <h3 className="font-serif text-2xl font-bold text-noir-950">
                   Connect {activeTab === 'photos' ? 'Google Photos' : 'Google Drive'}
                 </h3>
-                <p className="text-xs text-noir-600 leading-relaxed">
-                  Authorize PerfectPic to access your personal {activeTab === 'photos' ? 'photos & albums' : 'Drive images'} for print. We only request read access to select the photos you choose.
+                <p className="text-xs text-noir-600 mt-1 leading-relaxed">
+                  Sign in to browse and import your high-resolution personal photographs directly from your Google account.
                 </p>
                 {user?.email && (
-                  <p className="text-[11px] text-foil-gold font-medium font-mono pt-1">
-                    Will connect to: {user.email}
+                  <p className="text-[11px] text-foil-gold font-mono font-medium mt-1">
+                    Target account: {user.email}
                   </p>
                 )}
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 w-full justify-center">
-                <button
-                  type="button"
-                  onClick={handleConnectGoogle}
-                  disabled={isAuthorizing}
-                  className="w-full sm:w-auto px-6 py-3 bg-white hover:bg-cream-100 text-noir-900 border border-cream-300 hover:border-noir-950 rounded-sm text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-sm transition-all group disabled:opacity-50"
-                >
-                  {isAuthorizing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
-                      <span>Authorizing with Google...</span>
-                    </>
-                  ) : (
-                    <>
-                      <GoogleLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                      <span>Connect Google Account</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveViewMode('sample')}
-                  className="text-xs text-noir-500 hover:text-noir-900 font-medium underline py-2"
-                >
-                  Or explore sample gallery
-                </button>
-              </div>
-
-              <div className="p-3 bg-cream-100 border border-cream-200 rounded-sm text-[11px] text-noir-600 text-left space-y-1 mt-4">
-                <div className="flex items-center gap-1.5 font-semibold text-noir-900">
-                  <CheckCircle2 size={13} className="text-emerald-600" />
-                  <span>Privacy Protected</span>
-                </div>
-                <p className="text-[10px] text-noir-500">
-                  Only the images you explicitly select are imported into your photobook layout. No external files are downloaded without your consent.
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={handleConnectGoogle}
+                disabled={isAuthorizing}
+                className="px-6 py-3 bg-white hover:bg-cream-100 text-noir-900 border border-cream-300 hover:border-noir-950 rounded-sm text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-sm transition-all group disabled:opacity-50"
+              >
+                {isAuthorizing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-foil-gold" />
+                    <span>Connecting with Google...</span>
+                  </>
+                ) : (
+                  <>
+                    <GoogleLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                    <span>Authorize with Google</span>
+                  </>
+                )}
+              </button>
             </div>
           ) : isLoadingRealFiles ? (
-            /* State 2: Loading Real Files from Google */
+            /* Loading real files */
             <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-3">
               <Loader2 className="w-8 h-8 animate-spin text-foil-gold" />
               <p className="font-serif text-lg text-noir-950">
-                Fetching your {activeTab === 'photos' ? 'Google Photos' : 'Google Drive files'}...
+                Loading your {activeTab === 'photos' ? 'Google Photos' : 'Google Drive files'}...
               </p>
-              <p className="text-xs text-noir-500 max-w-sm">
-                Retrieving your high-resolution images from Google Cloud.
+              <p className="text-xs text-noir-500">
+                Accessing high-resolution personal photographs from Google Cloud.
               </p>
             </div>
           ) : items.length === 0 ? (
-            /* State 3: Empty State (No photos in drive/photos) */
+            /* Empty state (no files found in user's drive/photos) */
             <div className="h-full flex flex-col items-center justify-center text-center p-8 text-noir-500 space-y-3">
               <ImageIcon className="w-12 h-12 text-cream-400" />
               <p className="font-serif text-xl text-noir-800">
                 No images found in your {activeTab === 'photos' ? 'Google Photos' : 'Google Drive'}
               </p>
               <p className="text-xs text-noir-500 max-w-sm">
-                Make sure you have JPEG, PNG, or WebP images uploaded in your Google {activeTab === 'photos' ? 'Photos' : 'Drive'}.
+                Ensure you have JPEG, PNG, or WebP photographs saved in your {activeTab === 'photos' ? 'Google Photos' : 'Google Drive'}.
               </p>
-              <div className="pt-2 flex items-center gap-3">
-                <button
-                  onClick={handleOpenNativeGooglePicker}
-                  className="px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold"
-                >
-                  Open Native Google Picker
-                </button>
-                <button
-                  onClick={() => setActiveViewMode('sample')}
-                  className="text-xs text-noir-700 underline"
-                >
-                  View Sample Photos
-                </button>
-              </div>
+              <button
+                onClick={handleOpenNativeGooglePicker}
+                className="mt-2 px-4 py-2 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold flex items-center gap-1.5"
+              >
+                <ExternalLink size={13} />
+                <span>Open Google Picker Window</span>
+              </button>
             </div>
           ) : (
-            /* State 4: Real Photos Grid */
+            /* Real Google Files Grid */
             <div>
-              {/* Header stats & select all */}
               <div className="flex items-center justify-between pb-3 mb-4 border-b border-cream-200 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-noir-950">
-                    {items.length} {activeTab === 'photos' ? 'photos' : 'files'} available
-                  </span>
-                  {activeViewMode === 'sample' && (
-                    <span className="bg-amber-100 text-amber-900 text-[10px] px-2 py-0.5 rounded font-mono">
-                      Sample Gallery
-                    </span>
-                  )}
-                  {activeViewMode === 'sample' && accessToken && (
-                    <button
-                      onClick={() => setActiveViewMode('real')}
-                      className="text-foil-gold hover:underline font-semibold text-[11px]"
-                    >
-                      ← Switch to My Real Google Files
-                    </button>
-                  )}
-                </div>
+                <span className="font-semibold text-noir-950">
+                  {items.length} {activeTab === 'photos' ? 'photos' : 'files'} found in your Google account
+                </span>
 
                 <div className="flex items-center gap-3">
                   <button
@@ -836,7 +635,6 @@ export default function GooglePhotoPickerModal({
                 </div>
               </div>
 
-              {/* Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
                 {items.map((item) => {
                   const isSelected = selectedIds.has(item.id);
@@ -860,10 +658,8 @@ export default function GooglePhotoPickerModal({
                         loading="lazy"
                       />
 
-                      {/* Gradient overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/30 pointer-events-none" />
 
-                      {/* Checkbox indicator */}
                       <div className="absolute top-2 right-2 z-10">
                         <div
                           className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
@@ -876,7 +672,6 @@ export default function GooglePhotoPickerModal({
                         </div>
                       </div>
 
-                      {/* Provider Badge */}
                       <div className="absolute top-2 left-2 z-10">
                         <span className="bg-black/60 backdrop-blur-xs text-[9px] text-cream-100 px-1.5 py-0.5 rounded-[2px] font-mono flex items-center gap-1">
                           {item.source === 'photos' ? (
@@ -893,7 +688,6 @@ export default function GooglePhotoPickerModal({
                         </span>
                       </div>
 
-                      {/* Bottom info */}
                       <div className="absolute bottom-2 left-2 right-2 text-white pointer-events-none">
                         <p className="text-[11px] font-medium truncate drop-shadow-xs">{item.title}</p>
                         <div className="flex items-center justify-between text-[9px] text-white/75 mt-0.5 font-mono">
