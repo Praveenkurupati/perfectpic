@@ -26,7 +26,7 @@ import { recentOrders } from "@/lib/mock-data";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-export interface StageConfig {
+interface StageConfig {
   id: string;
   label: string;
   step: number;
@@ -38,7 +38,7 @@ export interface StageConfig {
   desc: string;
 }
 
-export const ORDER_STAGES: StageConfig[] = [
+const ORDER_STAGES: StageConfig[] = [
   { 
     id: 'confirmed', 
     label: 'Confirmed', 
