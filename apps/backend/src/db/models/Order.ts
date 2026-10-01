@@ -147,7 +147,15 @@ export interface IOrder extends Document {
     jobSheetId?: string;
     status?: string;
     notes?: string;
+    stageNotes?: Array<{
+      stage: string;
+      note: string;
+      createdAt: Date | string;
+      updatedBy?: string;
+    }>;
     startedAt?: Date | string;
+    printedAt?: Date | string;
+    qcAt?: Date | string;
     completedAt?: Date | string;
     [key: string]: any;
   };

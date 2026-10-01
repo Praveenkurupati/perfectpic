@@ -102,22 +102,45 @@ export class OrderService {
     return order;
   }
 
-  public static async updateOrderStatus(id: string, status: string) {
+  public static async updateOrderStatus(
+    id: string, 
+    status: string,
+    options?: {
+      notes?: string;
+      tracking?: any;
+      carrier?: string;
+      trackingNumber?: string;
+      trackingUrl?: string;
+      updatedBy?: string;
+    }
+  ) {
     if (!status) {
       throw ApiError.badRequest('New status is required.');
     }
-    const updated = await OrderRepository.updateStatus(id, status);
+
+    const trackingPayload = options?.tracking || (options?.trackingNumber ? {
+      carrier: options.carrier || 'BlueDart Express',
+      trackingNumber: options.trackingNumber,
+      trackingUrl: options.trackingUrl || `https://www.bluedart.com/tracking?awb=${options.trackingNumber}`,
+    } : undefined);
+
+    const updated = await OrderRepository.updateStatus(id, status, {
+      notes: options?.notes,
+      tracking: trackingPayload,
+      updatedBy: options?.updatedBy,
+    });
+
     if (!updated) {
       throw ApiError.notFound(`Order with ID '${id}' not found.`);
     }
 
     // Trigger dispatch notification email when transitioned to dispatched
     if (status.toLowerCase() === 'dispatched' && (updated as any).customerEmail) {
-      const trackingNumber = `BD${Math.floor(100000000 + Math.random() * 900000000)}IN`;
+      const trackingNumber = trackingPayload?.trackingNumber || `BD${Math.floor(100000000 + Math.random() * 900000000)}IN`;
       mailService.sendDispatchEmail((updated as any).customerEmail, updated, {
-        carrier: 'BlueDart Express',
+        carrier: trackingPayload?.carrier || 'BlueDart Express',
         trackingNumber,
-        trackingUrl: `https://www.bluedart.com/tracking?awb=${trackingNumber}`,
+        trackingUrl: trackingPayload?.trackingUrl || `https://www.bluedart.com/tracking?awb=${trackingNumber}`,
       }).catch((err) => {
         logger.error('Failed to send dispatch email:', err.message);
       });

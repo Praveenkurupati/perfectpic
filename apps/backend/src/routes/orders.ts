@@ -181,7 +181,16 @@ router.post('/', async (req, res) => {
 // PUT /api/orders/:id/status (or /:id) to update order status
 router.put(['/:id/status', '/:id'], async (req, res) => {
   const idParam = req.params.id;
-  const { status } = req.body;
+  const { status, notes, tracking, carrier, trackingNumber, trackingUrl, updatedBy } = req.body || {};
+  const targetStatus = (status || 'production').toLowerCase();
+  const now = new Date();
+
+  const trackingData = tracking || (trackingNumber ? {
+    carrier: carrier || 'BlueDart Express',
+    trackingNumber,
+    trackingUrl: trackingUrl || `https://www.bluedart.com/tracking?awb=${trackingNumber}`,
+    dispatchedAt: targetStatus === 'dispatched' ? now : undefined,
+  } : undefined);
 
   try {
     if (isDbConnected()) {
@@ -189,11 +198,33 @@ router.put(['/:id/status', '/:id'], async (req, res) => {
       if (mongoose.isValidObjectId(idParam)) {
         filter = { $or: [{ orderNumber: idParam }, { _id: idParam }] };
       }
-      const updated = await Order.findOneAndUpdate(
-        filter,
-        { status: status || 'production' },
-        { new: true }
-      );
+      const updateObj: any = { status: targetStatus };
+      if (trackingData) {
+        updateObj.shippingDetails = trackingData;
+      }
+      if (notes) {
+        updateObj['production.notes'] = notes;
+        updateObj.$push = {
+          'production.stageNotes': {
+            stage: targetStatus,
+            note: notes,
+            createdAt: now,
+            updatedBy: updatedBy || 'Admin',
+          },
+        };
+      }
+      if (targetStatus === 'production') updateObj['production.startedAt'] = now;
+      if (targetStatus === 'printing') updateObj['production.printedAt'] = now;
+      if (targetStatus === 'qc') updateObj['production.qcAt'] = now;
+      if (targetStatus === 'dispatched') {
+        updateObj['shippingDetails.dispatchedAt'] = now;
+        if (!updateObj['shippingDetails.carrier'] && !trackingData?.carrier) {
+          updateObj['shippingDetails.carrier'] = 'BlueDart Express';
+        }
+      }
+      if (targetStatus === 'delivered') updateObj['shippingDetails.deliveredAt'] = now;
+
+      const updated = await Order.findOneAndUpdate(filter, updateObj, { new: true });
       if (updated) {
         return res.json({ message: 'Order status updated in MongoDB', order: updated });
       }
@@ -204,8 +235,23 @@ router.put(['/:id/status', '/:id'], async (req, res) => {
 
   const orderIndex = mockOrders.findIndex(o => o.id === idParam || o.orderNumber === idParam);
   if (orderIndex !== -1) {
-    mockOrders[orderIndex]!.status = status || mockOrders[orderIndex]!.status;
-    return res.json({ message: 'Order status updated', order: mockOrders[orderIndex] });
+    const o = mockOrders[orderIndex]!;
+    o.status = targetStatus;
+    if (trackingData) {
+      (o as any).shippingDetails = { ...((o as any).shippingDetails || {}), ...trackingData };
+    }
+    if (!(o as any).production) (o as any).production = {};
+    if (notes) {
+      (o as any).production.notes = notes;
+      if (!(o as any).production.stageNotes) (o as any).production.stageNotes = [];
+      (o as any).production.stageNotes.push({
+        stage: targetStatus,
+        note: notes,
+        createdAt: now,
+        updatedBy: updatedBy || 'Admin',
+      });
+    }
+    return res.json({ message: 'Order status updated', order: o });
   }
 
   res.status(404).json({ error: 'Order not found' });

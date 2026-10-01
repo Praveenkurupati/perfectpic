@@ -88,10 +88,25 @@ export default function OrdersPage() {
   };
 
   const getStatusColor = (status: string) => {
-    if (status.toLowerCase() === 'delivered') return 'text-green-700 bg-green-50 border-green-200';
-    if (status.toLowerCase() === 'production') return 'text-blue-700 bg-blue-50 border-blue-200';
-    if (status.toLowerCase() === 'dispatched') return 'text-amber-700 bg-amber-50 border-amber-200';
-    return 'text-gray-700 bg-gray-50 border-gray-200';
+    const s = (status || '').toLowerCase();
+    if (s === 'delivered') return 'text-emerald-800 bg-emerald-50 border-emerald-300';
+    if (s === 'dispatched') return 'text-indigo-800 bg-indigo-50 border-indigo-300';
+    if (s === 'qc') return 'text-cyan-800 bg-cyan-50 border-cyan-300';
+    if (s === 'printing') return 'text-amber-800 bg-amber-50 border-amber-300';
+    if (s === 'production') return 'text-purple-800 bg-purple-50 border-purple-300';
+    if (s === 'confirmed') return 'text-blue-800 bg-blue-50 border-blue-300';
+    return 'text-noir-700 bg-cream-100 border-cream-300';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'delivered') return 'Delivered';
+    if (s === 'dispatched') return 'Dispatched (In Transit)';
+    if (s === 'qc') return 'Quality Check (QC Passed)';
+    if (s === 'printing') return 'Printing on Press';
+    if (s === 'production') return 'In Production (Prepress)';
+    if (s === 'confirmed') return 'Order Confirmed';
+    return (status || 'Processing').toUpperCase();
   };
 
   const formatDate = (dateString: string) => {
@@ -234,7 +249,7 @@ export default function OrdersPage() {
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-[11px] px-2.5 py-0.5 rounded-sm border ${getStatusColor(order.status)} font-semibold tracking-wider uppercase`}>
-                            {order.status}
+                            {getStatusLabel(order.status)}
                           </span>
 
                           {/* Archival Packaging Badges */}
@@ -340,6 +355,61 @@ export default function OrdersPage() {
                           {isDelivered ? 'Order Again' : 'Track Order'}
                         </a>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Production & Fulfillment Progress Stepper */}
+                  <div className="pt-3 border-t border-cream-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-noir-600 mb-2 gap-1">
+                      <span className="font-semibold text-noir-900 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        <span>Fulfillment Stage: {getStatusLabel(order.status)}</span>
+                      </span>
+                      {order.shippingDetails?.trackingNumber && (
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                          <span>{order.shippingDetails.carrier || 'BlueDart'}: {order.shippingDetails.trackingNumber}</span>
+                          {order.shippingDetails.trackingUrl && (
+                            <a
+                              href={order.shippingDetails.trackingUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="underline hover:text-indigo-950 font-bold"
+                            >
+                              Track
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stage Milestones */}
+                    <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
+                      {[
+                        { id: 'confirmed', label: 'Confirmed' },
+                        { id: 'production', label: 'Production' },
+                        { id: 'printing', label: 'Printing' },
+                        { id: 'qc', label: 'QC Check' },
+                        { id: 'dispatched', label: 'Dispatched' },
+                        { id: 'delivered', label: 'Delivered' },
+                      ].map((st, sIdx) => {
+                        const stageOrder = ['confirmed', 'production', 'printing', 'qc', 'dispatched', 'delivered'];
+                        const currentIdx = stageOrder.indexOf((order.status || 'confirmed').toLowerCase());
+                        const isPast = currentIdx > sIdx;
+                        const isCurrent = currentIdx === sIdx;
+
+                        return (
+                          <div key={st.id} className="text-center">
+                            <div className={`h-1.5 rounded-full mb-1 transition-all ${
+                              isPast ? 'bg-emerald-600' : isCurrent ? 'bg-noir-950 animate-pulse' : 'bg-cream-200'
+                            }`} />
+                            <span className={`text-[9px] sm:text-[10px] block truncate font-medium ${
+                              isCurrent ? 'text-noir-950 font-bold' : isPast ? 'text-emerald-700' : 'text-noir-400'
+                            }`}>
+                              {st.label}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

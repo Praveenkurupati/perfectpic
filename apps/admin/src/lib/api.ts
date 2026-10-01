@@ -42,7 +42,22 @@ export const adminApi = {
   // Orders
   getOrders: () => fetcher<{ orders: any[] }>('/orders', { headers: authHeaders() }),
   getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),
-  updateOrderStatus: (id: string, status: string) => fetcher<any>(`/orders/${id}/status`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status }) }),
+  updateOrderStatus: (
+    id: string,
+    status: string,
+    additionalData?: {
+      notes?: string;
+      carrier?: string;
+      trackingNumber?: string;
+      trackingUrl?: string;
+      updatedBy?: string;
+    }
+  ) =>
+    fetcher<any>(`/orders/${id}/status`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ status, ...additionalData }),
+    }),
   
   // Products & Templates
   getProducts: (category?: string) => {

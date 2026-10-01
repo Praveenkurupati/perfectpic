@@ -378,11 +378,57 @@ export class OrderRepository {
     return null;
   }
 
-  public static async updateStatus(idParam: string, status: string, trackingData?: any) {
-    const updateObj: any = { status };
-    if (trackingData) {
-      updateObj.shippingDetails = trackingData;
+  public static async updateStatus(
+    idParam: string,
+    status: string,
+    optionsOrTracking?: any
+  ) {
+    const normalizedStatus = status.toLowerCase();
+    const now = new Date();
+    const updateObj: any = { status: normalizedStatus };
+
+    // Extract options or trackingData
+    const notes = optionsOrTracking?.notes;
+    const updatedBy = optionsOrTracking?.updatedBy || 'Admin';
+    const tracking = optionsOrTracking?.tracking || (
+      optionsOrTracking?.trackingNumber ? {
+        carrier: optionsOrTracking?.carrier || 'BlueDart Express',
+        trackingNumber: optionsOrTracking?.trackingNumber,
+        trackingUrl: optionsOrTracking?.trackingUrl,
+      } : (optionsOrTracking && !optionsOrTracking.notes ? optionsOrTracking : undefined)
+    );
+
+    if (tracking) {
+      updateObj.shippingDetails = {
+        ...tracking,
+        dispatchedAt: normalizedStatus === 'dispatched' ? now : undefined,
+      };
     }
+
+    if (notes) {
+      const noteEntry = {
+        stage: normalizedStatus,
+        note: notes,
+        createdAt: now,
+        updatedBy,
+      };
+      updateObj.$push = {
+        'production.stageNotes': noteEntry,
+      };
+      updateObj['production.notes'] = notes;
+    }
+
+    // Set stage-specific timestamps
+    if (normalizedStatus === 'production') updateObj['production.startedAt'] = now;
+    if (normalizedStatus === 'printing') updateObj['production.printedAt'] = now;
+    if (normalizedStatus === 'qc') updateObj['production.qcAt'] = now;
+    if (normalizedStatus === 'dispatched') {
+      updateObj['shippingDetails.dispatchedAt'] = now;
+      if (!updateObj['shippingDetails.carrier'] && !tracking?.carrier) {
+        updateObj['shippingDetails.carrier'] = 'BlueDart Express';
+      }
+    }
+    if (normalizedStatus === 'delivered') updateObj['shippingDetails.deliveredAt'] = now;
 
     if (isDbConnected()) {
       let query: any = { orderNumber: idParam };
@@ -394,11 +440,35 @@ export class OrderRepository {
 
     const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
     if (index !== -1) {
-      mockOrders[index]!.status = status;
-      if (trackingData) {
-        (mockOrders[index] as any).shippingDetails = trackingData;
+      const order = mockOrders[index]!;
+      order.status = normalizedStatus;
+      if (tracking) {
+        (order as any).shippingDetails = { ...((order as any).shippingDetails || {}), ...tracking };
       }
-      return mockOrders[index];
+      if (!(order as any).production) (order as any).production = {};
+      if (notes) {
+        (order as any).production.notes = notes;
+        if (!(order as any).production.stageNotes) (order as any).production.stageNotes = [];
+        (order as any).production.stageNotes.push({
+          stage: normalizedStatus,
+          note: notes,
+          createdAt: now,
+          updatedBy,
+        });
+      }
+      if (normalizedStatus === 'production') (order as any).production.startedAt = now;
+      if (normalizedStatus === 'printing') (order as any).production.printedAt = now;
+      if (normalizedStatus === 'qc') (order as any).production.qcAt = now;
+      if (normalizedStatus === 'dispatched') {
+        if (!(order as any).shippingDetails) (order as any).shippingDetails = {};
+        (order as any).shippingDetails.dispatchedAt = now;
+        if (!(order as any).shippingDetails.carrier) (order as any).shippingDetails.carrier = 'BlueDart Express';
+      }
+      if (normalizedStatus === 'delivered') {
+        if (!(order as any).shippingDetails) (order as any).shippingDetails = {};
+        (order as any).shippingDetails.deliveredAt = now;
+      }
+      return order;
     }
     return null;
   }

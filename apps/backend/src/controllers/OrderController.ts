@@ -89,10 +89,17 @@ export class OrderController {
   public static async updateOrderStatus(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
-      const { status } = req.body;
-      const updated = await OrderService.updateOrderStatus(id, status);
+      const { status, notes, tracking, carrier, trackingNumber, trackingUrl, updatedBy } = req.body;
+      const updated = await OrderService.updateOrderStatus(id, status, {
+        notes,
+        tracking,
+        carrier,
+        trackingNumber,
+        trackingUrl,
+        updatedBy,
+      });
       return res.status(200).json({
-        message: 'Order status updated successfully',
+        message: `Order status updated to '${status}' successfully`,
         order: updated,
       });
     } catch (err) {
