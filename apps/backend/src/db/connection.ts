@@ -112,6 +112,18 @@ async function seedDefaultData() {
     // Seed production promo codes if collection empty
     const { PromoCodeRepository } = await import('../repositories/PromoCodeRepository');
     await PromoCodeRepository.seedDefaultsIfEmpty();
+
+    // Seed production page options if collection empty
+    const { PageOption } = await import('./models/PageOption');
+    const { pageCountOptions } = await import('../data/templates');
+    const pageOptionCount = await PageOption.countDocuments();
+    if (pageOptionCount === 0) {
+      console.log('🌱 Seeding initial page options into MongoDB...');
+      for (const opt of pageCountOptions) {
+        await PageOption.create(opt);
+      }
+      console.log(`✅ ${pageCountOptions.length} page options seeded into MongoDB!`);
+    }
   } catch (seedErr) {
     console.error('Error seeding MongoDB collections:', seedErr);
   }

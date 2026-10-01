@@ -123,8 +123,12 @@ export const getMinPhotosRequired = (pages: number): number => {
   const p = Number(pages) || 32;
   if (p <= 12) return Math.max(6, p - 2);
   if (p <= 24) return Math.max(16, p - 4);
-  if (p === 32) return 28; // Explicit requirement: 32 pages -> at least 28 photos
-  return Math.max(8, Math.round(p * 0.875));
+  if (p === 32) return 28;
+  if (p === 50) return 42;
+  if (p === 60) return 50;
+  if (p === 72) return 60;
+  if (p === 120) return 100;
+  return Math.max(8, Math.round(p * 0.85));
 };
 
 // Generate default spreads matching page count

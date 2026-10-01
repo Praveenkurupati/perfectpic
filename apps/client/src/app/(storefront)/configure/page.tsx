@@ -34,11 +34,13 @@ function ConfigureContent() {
       { id: "10x10", name: '10" × 10" Grand Square', size: '10" × 10"', price: 2499, description: 'Expansive gallery scale for panoramic spreads and grand memories.' }
     ],
     pageOptions: [
-      { count: 12, name: '12 Pages', priceAdjustment: -700, photos: 12, description: '12 photo slots. Compact keepsake. Exactly 1 photo per page.' },
-      { count: 24, name: '24 Pages', priceAdjustment: -300, photos: 24, description: '24 photo slots. Weekend getaway. Exactly 1 photo per page.' },
-      { count: 32, name: '32 Pages (Standard)', priceAdjustment: 0, photos: 32, default: true, description: '32 photo slots (Standard Edition). 1 photo per page with archival gallery margins.' },
-      { count: 60, name: '60 Pages', priceAdjustment: 1000, photos: 60, description: '60 photo slots. Extended travel journey. Exactly 1 photo per page.' },
-      { count: 120, name: '120 Pages', priceAdjustment: 2800, photos: 120, description: '120 photo slots. Collector\'s master volume. Exactly 1 photo per page.' }
+      { count: 32, name: '32 Pages', photos: 32, badge: 'Popular', priceAdjustment: 0, default: true, description: '32 photo slots (1 photo per page). Our most popular standard edition.' },
+      { count: 50, name: '50 Pages', photos: 50, badge: 'Extended', priceAdjustment: 600, default: false, description: '50 photo slots (1 photo per page). Extended journey with generous story room.' },
+      { count: 60, name: '60 Pages', photos: 60, badge: "Collector's", priceAdjustment: 1000, default: false, description: '60 photo slots (1 photo per page). Curated archival album.' },
+      { count: 72, name: '72 Pages', photos: 72, badge: "Collector's", priceAdjustment: 1400, default: false, description: '72 photo slots (1 photo per page). Deluxe milestone celebration chronicle.' },
+      { count: 12, name: '12 Pages', photos: 12, badge: '', priceAdjustment: -700, default: false, description: '12 photo slots (1 photo per page). Compact pocket keepsake.' },
+      { count: 24, name: '24 Pages', photos: 24, badge: '', priceAdjustment: -300, default: false, description: '24 photo slots (1 photo per page). Weekend getaway edition.' },
+      { count: 120, name: '120 Pages', photos: 120, badge: "Collector's Master", priceAdjustment: 2800, default: false, description: '120 photo slots (1 photo per page). Comprehensive annual encyclopedia.' }
     ],
     covers: [
       { id: "cov-1", name: "Hardcover Laminar", desc: "Silky matte anti-scratch lamination with rigid luxury board", price: 0 },
@@ -67,7 +69,7 @@ function ConfigureContent() {
   };
 
   // Helper to normalize API data
-  const normalizeSizes = (raw: any[]) => raw?.map((s: any) => ({
+  const normalizeSizes = (raw?: any[]) => raw?.map((s: any) => ({
     id: s.dimensions || s.id || s.name,
     name: s.name,
     size: s.dimensions ? `${s.dimensions.replace('x', '" × ')}"` : s.size || s.name,
@@ -75,26 +77,26 @@ function ConfigureContent() {
     description: s.description || ''
   })) || defaultConfig.sizes;
 
-  const normalizeCovers = (raw: any[]) => raw?.map((c: any) => ({
+  const normalizeCovers = (raw?: any[]) => raw?.map((c: any) => ({
     id: c.id,
     name: c.name,
     desc: c.description || c.desc || (c.included ? 'Included by default' : ''),
     price: c.priceAdjustment ?? c.price ?? 0,
   })) || defaultConfig.covers;
 
-  const normalizeThemes = (raw: any[]) => raw?.map((t: any) => ({
+  const normalizeThemes = (raw?: any[]) => raw?.map((t: any) => ({
     id: t.id,
     name: t.name,
     desc: t.desc || '',
   })) || defaultConfig.themes;
 
-  const normalizeColors = (raw: any[]) => raw?.map((c: any) => ({
+  const normalizeColors = (raw?: any[]) => raw?.map((c: any) => ({
     id: c.id,
     name: c.name,
     hex: c.hex || '#FAF8F5',
   })) || defaultConfig.colors;
 
-  const normalizePackaging = (raw: any[]) => raw?.map((p: any) => ({
+  const normalizePackaging = (raw?: any[]) => raw?.map((p: any) => ({
     id: p.id,
     name: p.name,
     desc: p.description || p.desc || '',
@@ -104,14 +106,22 @@ function ConfigureContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const configRes = await api.getProductConfig();
+        const [configRes, pageOptionsRes] = await Promise.all([
+          api.getProductConfig().catch(() => null),
+          api.getPageOptions().catch(() => null),
+        ]);
+
+        const dynamicPageOptions = (pageOptionsRes && pageOptionsRes.pageOptions && pageOptionsRes.pageOptions.length > 0)
+          ? pageOptionsRes.pageOptions
+          : (configRes?.pageCountOptions || defaultConfig.pageOptions);
+
         setConfigData({
-          sizes: normalizeSizes(configRes.sizes),
-          pageOptions: configRes.pageCountOptions || defaultConfig.pageOptions,
-          covers: normalizeCovers(configRes.covers),
-          themes: normalizeThemes(configRes.themes),
-          colors: normalizeColors(configRes.colors),
-          packaging: normalizePackaging(configRes.packaging),
+          sizes: normalizeSizes(configRes?.sizes),
+          pageOptions: dynamicPageOptions,
+          covers: normalizeCovers(configRes?.covers),
+          themes: normalizeThemes(configRes?.themes),
+          colors: normalizeColors(configRes?.colors),
+          packaging: normalizePackaging(configRes?.packaging),
         });
 
         if (templateSlug) {
@@ -156,11 +166,20 @@ function ConfigureContent() {
   const packagings = configData.packaging;
 
   const currentSizeObj = sizes.find((s: any) => s.id === size) || sizes[0];
-  const currentPageOption = pageOptions.find((p: any) => p.count === pageCount) || pageOptions[2];
+  const currentPageOption = pageOptions.find((p: any) => p.count === pageCount) || pageOptions[0];
   const currentCoverObj = covers.find((c: any) => c.id === cover) || covers[0];
   const currentThemeObj = themes.find((t: any) => t.id === theme) || themes[0];
   const currentColorObj = colors.find((c: any) => c.id === color) || colors[0];
   const currentPackagingObj = packagings.find((p: any) => p.id === packaging) || packagings[0];
+
+  // Primary capacity editions requested: 32 (Popular), 50 (Extended), 60 (Collector's), 72 (Collector's)
+  const primaryCounts = [32, 50, 60, 72];
+  const primaryPageOptions = pageOptions
+    .filter((opt: any) => primaryCounts.includes(opt.count))
+    .sort((a: any, b: any) => primaryCounts.indexOf(a.count) - primaryCounts.indexOf(b.count));
+  const otherPageOptions = pageOptions
+    .filter((opt: any) => !primaryCounts.includes(opt.count))
+    .sort((a: any, b: any) => (a.displayOrder || 0) - (b.displayOrder || 0) || a.count - b.count);
 
   const basePrice = currentSizeObj?.price || 1999;
   const pageAdjustment = currentPageOption?.priceAdjustment || 0;
@@ -303,63 +322,175 @@ function ConfigureContent() {
             </div>
           </section>
 
-          {/* Step 2: Page Count & Capacity (12, 24, 32 default, 60, 120) */}
+          {/* Step 2: Select Pages (1 photo per page) */}
           <section className={step === 2 ? "block" : "hidden"}>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <div>
-                <h2 className="font-serif text-2xl text-noir-950">Step 2: Choose Page Count & Photo Capacity</h2>
+                <h2 className="font-serif text-2xl md:text-3xl text-noir-950">
+                  Step 2: Select Pages (1 photo per page)
+                </h2>
                 <p className="text-xs text-noir-600 mt-1">
-                  Archival layout standard: Exactly <strong>1 photo per page</strong> surrounded by generous gallery margins.
+                  Archival fine-art standard: Exactly <strong>1 photo per page</strong> surrounded by generous gallery margins.
                 </p>
               </div>
-              <span className="text-xs text-foil-gold font-semibold uppercase tracking-wider font-mono">1 Photo / Page</span>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-cream-200/80 border border-cream-300 rounded-full text-xs font-mono text-noir-950 font-bold self-start sm:self-auto shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{pageCount} Photos / {pageCount} Pages</span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-              {pageOptions.map((opt: any) => (
-                <button
-                  key={opt.count}
-                  onClick={() => setPageCount(opt.count)}
-                  className={cn(
-                    "p-5 border rounded-sm text-left transition-all relative flex flex-col justify-between",
-                    pageCount === opt.count
-                      ? "border-noir-950 bg-cream-100 shadow-luxury-md ring-1 ring-noir-950"
-                      : "border-cream-300 hover:border-noir-900 bg-white"
-                  )}
-                >
-                  <div>
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-serif text-2xl font-bold text-noir-950">{opt.count}</span>
-                        <span className="text-xs uppercase tracking-wider text-noir-500 font-mono">Pages</span>
+            {/* Primary Capacity Editions (32 Popular, 50 Extended, 60 Collector's, 72 Collector's) */}
+            <div className="mb-8">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-noir-500 font-mono block mb-3">
+                Featured Capacity Editions
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {primaryPageOptions.map((opt: any) => {
+                  const isSelected = pageCount === opt.count;
+                  return (
+                    <button
+                      key={opt.count}
+                      type="button"
+                      onClick={() => setPageCount(opt.count)}
+                      className={cn(
+                        "p-5 border rounded-sm text-left transition-all relative flex flex-col justify-between group",
+                        isSelected
+                          ? "border-noir-950 bg-cream-100/90 shadow-luxury-md ring-2 ring-noir-950"
+                          : "border-cream-300 hover:border-noir-900 bg-white hover:shadow-xs"
+                      )}
+                    >
+                      <div>
+                        {/* Top: Count & Badge */}
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="font-serif text-3xl font-bold text-noir-950 tracking-tight">
+                              {opt.count}
+                            </span>
+                            <span className="text-xs uppercase tracking-wider text-noir-500 font-mono">
+                              pages
+                            </span>
+                          </div>
+
+                          {opt.badge && (
+                            <span className={cn(
+                              "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full font-mono shadow-2xs",
+                              opt.badge.toLowerCase().includes('popular') && "bg-amber-100 text-amber-950 border border-amber-300",
+                              opt.badge.toLowerCase().includes('extended') && "bg-blue-100 text-blue-950 border border-blue-300",
+                              opt.badge.toLowerCase().includes('collector') && "bg-purple-100 text-purple-950 border border-purple-300",
+                              !opt.badge.toLowerCase().includes('popular') && 
+                              !opt.badge.toLowerCase().includes('extended') && 
+                              !opt.badge.toLowerCase().includes('collector') && "bg-cream-200 text-noir-800 border border-cream-300"
+                            )}>
+                              {opt.badge}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Middle: Photos rule */}
+                        <div className="mt-2.5 mb-1.5">
+                          <p className="text-xs font-bold text-noir-900">
+                            {opt.photos || opt.count} Photos / {opt.count} Pages
+                          </p>
+                          <span className="text-[10px] text-foil-gold font-semibold uppercase tracking-wider font-mono">
+                            1 photo per page
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-noir-600 mt-2 leading-relaxed">
+                          {opt.description}
+                        </p>
                       </div>
-                      {opt.default && (
-                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">
-                          Default
+
+                      {/* Bottom line: Adjustment & Indicator */}
+                      <div className="mt-5 pt-3 border-t border-cream-200 flex justify-between items-center text-xs">
+                        <span className="font-bold text-noir-950 font-mono text-[11px]">
+                          {opt.priceAdjustment === 0
+                            ? 'Standard (Included)'
+                            : opt.priceAdjustment > 0
+                            ? `+₹${opt.priceAdjustment.toLocaleString('en-IN')}`
+                            : `-₹${Math.abs(opt.priceAdjustment).toLocaleString('en-IN')}`}
                         </span>
-                      )}
-                      {pageCount === opt.count && !opt.default && (
-                        <span className="w-5 h-5 bg-noir-950 text-cream-50 rounded-full flex items-center justify-center">
-                          <Check size={12} />
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-semibold text-noir-900">{opt.photos} Photo Slots (1 / page)</p>
-                    <p className="text-xs text-noir-600 mt-1 leading-relaxed">{opt.description}</p>
-                  </div>
-                  <div className="mt-5 pt-3 border-t border-cream-200 flex justify-between items-baseline">
-                    <span className="text-xs text-noir-500">Adjustment</span>
-                    <span className="text-xs font-bold text-noir-950 font-mono">
-                      {opt.priceAdjustment > 0
-                        ? `+₹${opt.priceAdjustment.toLocaleString('en-IN')}`
-                        : opt.priceAdjustment < 0
-                        ? `-₹${Math.abs(opt.priceAdjustment).toLocaleString('en-IN')}`
-                        : 'Standard (Included)'}
-                    </span>
-                  </div>
-                </button>
-              ))}
+
+                        <div className={cn(
+                          "w-5 h-5 rounded-full flex items-center justify-center transition-all",
+                          isSelected ? "bg-noir-950 text-cream-50" : "border border-cream-300 group-hover:border-noir-400"
+                        )}>
+                          {isSelected && <Check size={12} className="stroke-[3]" />}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Other Sizes (12, 24, 120 pages) */}
+            {otherPageOptions.length > 0 && (
+              <div className="pt-2">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-noir-500 font-mono block mb-3">
+                  Other Sizes ({otherPageOptions.map((o: any) => `${o.count} pages`).join(', ')})
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {otherPageOptions.map((opt: any) => {
+                    const isSelected = pageCount === opt.count;
+                    return (
+                      <button
+                        key={opt.count}
+                        type="button"
+                        onClick={() => setPageCount(opt.count)}
+                        className={cn(
+                          "p-4 border rounded-sm text-left transition-all relative flex flex-col justify-between group",
+                          isSelected
+                            ? "border-noir-950 bg-cream-100/90 shadow-luxury-md ring-2 ring-noir-950"
+                            : "border-cream-300 hover:border-noir-900 bg-white hover:shadow-xs"
+                        )}
+                      >
+                        <div>
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-serif text-2xl font-bold text-noir-950">
+                                {opt.count}
+                              </span>
+                              <span className="text-xs uppercase tracking-wider text-noir-500 font-mono">
+                                pages
+                              </span>
+                            </div>
+                            {opt.badge && (
+                              <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cream-200 text-noir-800 font-mono">
+                                {opt.badge}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-noir-900">
+                            {opt.photos || opt.count} Photos / {opt.count} Pages
+                          </p>
+                          <span className="text-[10px] text-noir-500 font-mono">1 photo per page</span>
+                          <p className="text-[11px] text-noir-600 mt-1 line-clamp-2">
+                            {opt.description}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 pt-2.5 border-t border-cream-200 flex justify-between items-center text-xs">
+                          <span className="font-bold text-noir-950 font-mono text-[11px]">
+                            {opt.priceAdjustment === 0
+                              ? 'Standard (Included)'
+                              : opt.priceAdjustment > 0
+                              ? `+₹${opt.priceAdjustment.toLocaleString('en-IN')}`
+                              : `-₹${Math.abs(opt.priceAdjustment).toLocaleString('en-IN')}`}
+                          </span>
+                          <div className={cn(
+                            "w-4 h-4 rounded-full flex items-center justify-center transition-all",
+                            isSelected ? "bg-noir-950 text-cream-50" : "border border-cream-300"
+                          )}>
+                            {isSelected && <Check size={10} className="stroke-[3]" />}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 flex justify-between">
               <button onClick={() => setStep(1)} className="px-6 py-3 border border-cream-300 text-sm font-medium rounded-sm hover:bg-cream-100">

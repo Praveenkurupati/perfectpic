@@ -41,9 +41,13 @@ export class ProductController {
     return res.status(200).json(result);
   }
 
-  public static async getConfig(req: Request, res: Response) {
-    const result = ProductService.getConfig();
-    return res.status(200).json(result);
+  public static async getConfig(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ProductService.getConfig();
+      return res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
   }
 
   public static async createProduct(req: Request, res: Response, next: NextFunction) {

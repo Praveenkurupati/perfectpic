@@ -14,6 +14,7 @@ import {
 import { Product } from '../db/models/Product';
 import { isDbConnected } from '../db/connection';
 import { cacheGet, cacheSet, cacheDelByPrefix } from '../cache/redis';
+import { PageOptionRepository } from '../repositories/PageOptionRepository';
 
 const router = Router();
 
@@ -129,13 +130,14 @@ router.get('/config', async (req, res) => {
   const cached = await cacheGet<any>(cacheKey);
   if (cached) return res.json(cached);
 
+  const livePageOptions = await PageOptionRepository.findAll(true);
   const responseData = {
     sizes: productSizes,
     covers: coverTypes,
     themes: bookThemes,
     colors: bookColors,
     packaging: packagingOptions,
-    pageCountOptions: pageCountOptions
+    pageCountOptions: livePageOptions && livePageOptions.length > 0 ? livePageOptions : pageCountOptions
   };
   await cacheSet(cacheKey, responseData, 3600);
   res.json(responseData);

@@ -66,6 +66,37 @@ export const adminApi = {
   }),
   getProductConfig: () => fetcher<any>('/products/config'),
   
+  // Page Options (1 photo per page rules, capacity tiers, badges, pricing)
+  getPageOptions: () => fetcher<{ pageOptions: any[]; total: number }>('/page-options'),
+  getAllPageOptions: () =>
+    fetcher<{ pageOptions: any[]; total: number }>('/page-options/all', {
+      headers: authHeaders(),
+    }),
+  getPageOption: (id: string) =>
+    fetcher<any>(`/page-options/${id}`, { headers: authHeaders() }),
+  createPageOption: (data: any) =>
+    fetcher<{ message: string; pageOption: any }>('/page-options', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updatePageOption: (id: string, data: any) =>
+    fetcher<{ message: string; pageOption: any }>(`/page-options/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  deletePageOption: (id: string) =>
+    fetcher<{ message: string }>(`/page-options/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  resetPageOptions: () =>
+    fetcher<{ message: string; pageOptions: any[] }>('/page-options/reset', {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  
   // Projects
   getProjects: () => fetcher<{ projects: any[] }>('/projects', { headers: authHeaders() }),
 

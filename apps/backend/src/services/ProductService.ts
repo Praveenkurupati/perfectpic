@@ -23,8 +23,8 @@ export class ProductService {
     return ProductRepository.getCategories();
   }
 
-  public static getConfig() {
-    return ProductRepository.getConfig();
+  public static async getConfig() {
+    return await ProductRepository.getConfig();
   }
 
   public static async createProduct(body: any) {

@@ -6,6 +6,46 @@ export default function SettingsPage() {
         <p className="text-sm text-noir-500 mt-1">Manage global settings, pricing, and rules.</p>
       </div>
 
+      {/* Book Page Capacity & 1 Photo Per Page Rules */}
+      <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 overflow-hidden">
+        <div className="p-6 border-b border-cream-200 bg-cream-50/50 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-noir-950">Book Page Tiers & 1 Photo/Page Rules</h2>
+            <p className="text-sm text-noir-500 mt-1">
+              Configure page counts (32, 50, 60, 72, 12, 24, 120), badges (Popular, Extended, Collector&apos;s), and pricing adjustments.
+            </p>
+          </div>
+          <a
+            href="/pages"
+            className="px-4 py-2 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors inline-flex items-center gap-1.5"
+          >
+            Manage Page Tiers &rarr;
+          </a>
+        </div>
+        <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 bg-cream-50 border border-cream-200 rounded-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded font-mono">Popular</span>
+            <p className="font-serif text-lg font-bold text-noir-950 mt-1.5">32 Pages</p>
+            <p className="text-[11px] text-noir-500">32 Photos • Standard</p>
+          </div>
+          <div className="p-3 bg-cream-50 border border-cream-200 rounded-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-900 bg-blue-100 px-1.5 py-0.5 rounded font-mono">Extended</span>
+            <p className="font-serif text-lg font-bold text-noir-950 mt-1.5">50 Pages</p>
+            <p className="text-[11px] text-noir-500">50 Photos • +₹600</p>
+          </div>
+          <div className="p-3 bg-cream-50 border border-cream-200 rounded-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 bg-purple-100 px-1.5 py-0.5 rounded font-mono">Collector&apos;s</span>
+            <p className="font-serif text-lg font-bold text-noir-950 mt-1.5">60 Pages</p>
+            <p className="text-[11px] text-noir-500">60 Photos • +₹1,000</p>
+          </div>
+          <div className="p-3 bg-cream-50 border border-cream-200 rounded-sm">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-purple-900 bg-purple-100 px-1.5 py-0.5 rounded font-mono">Collector&apos;s</span>
+            <p className="font-serif text-lg font-bold text-noir-950 mt-1.5">72 Pages</p>
+            <p className="text-[11px] text-noir-500">72 Photos • +₹1,400</p>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 overflow-hidden">
         <div className="p-6 border-b border-cream-200 bg-cream-50/50">
           <h2 className="text-lg font-semibold text-noir-950">Promo Codes</h2>

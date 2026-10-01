@@ -15,6 +15,7 @@ import {
 import { isDbConnected } from '../db/connection';
 import { cacheGet, cacheSet, cacheDelByPrefix } from '../cache/redis';
 import { logger } from '../utils/logger';
+import { PageOptionRepository } from './PageOptionRepository';
 
 export class ProductRepository {
   public static async findAll(filter: { category?: string; search?: string; tag?: string }) {
@@ -188,14 +189,15 @@ export class ProductRepository {
     return { categories };
   }
 
-  public static getConfig() {
+  public static async getConfig() {
+    const livePageOptions = await PageOptionRepository.findAll(true);
     return {
       sizes: productSizes,
       covers: coverTypes,
       themes: bookThemes,
       colors: bookColors,
       packaging: packagingOptions,
-      pageCountOptions: pageCountOptions,
+      pageCountOptions: livePageOptions && livePageOptions.length > 0 ? livePageOptions : pageCountOptions,
     };
   }
 

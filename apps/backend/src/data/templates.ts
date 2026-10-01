@@ -46,12 +46,113 @@ export const categories = [
   { id: 'cat-4', name: 'Wedding Series', slug: 'wedding', description: 'Preserve the vows and portraits of your celebration.', emoji: '💍', count: 2 }
 ];
 
-export const pageCountOptions = [
-  { count: 12, name: '12 Pages', priceAdjustment: -700, photos: 12, description: '12 photo slots. Compact keepsake.' },
-  { count: 24, name: '24 Pages', priceAdjustment: -300, photos: 24, description: '24 photo slots. Weekend getaway.' },
-  { count: 32, name: '32 Pages', priceAdjustment: 0, photos: 32, default: true, description: '32 photo slots (Standard Edition). 1 photo per page.' },
-  { count: 60, name: '60 Pages', priceAdjustment: 1000, photos: 60, description: '60 photo slots. Extended travel journey.' },
-  { count: 120, name: '120 Pages', priceAdjustment: 2800, photos: 120, description: '120 photo slots. Collector\'s master volume.' }
+export interface PageOptionItem {
+  id?: string;
+  pageOptionId: string;
+  count: number;
+  name: string;
+  photos: number;
+  badge?: string;
+  priceAdjustment: number;
+  description: string;
+  isDefault?: boolean;
+  default?: boolean;
+  isActive?: boolean;
+  displayOrder: number;
+}
+
+export const pageCountOptions: PageOptionItem[] = [
+  {
+    pageOptionId: 'pages-32',
+    count: 32,
+    name: '32 Pages',
+    photos: 32,
+    badge: 'Popular',
+    priceAdjustment: 0,
+    isDefault: true,
+    default: true,
+    isActive: true,
+    displayOrder: 1,
+    description: '32 photo slots (1 photo per page). Our most popular standard edition.'
+  },
+  {
+    pageOptionId: 'pages-50',
+    count: 50,
+    name: '50 Pages',
+    photos: 50,
+    badge: 'Extended',
+    priceAdjustment: 600,
+    isDefault: false,
+    default: false,
+    isActive: true,
+    displayOrder: 2,
+    description: '50 photo slots (1 photo per page). Extended journey with generous story room.'
+  },
+  {
+    pageOptionId: 'pages-60',
+    count: 60,
+    name: '60 Pages',
+    photos: 60,
+    badge: "Collector's",
+    priceAdjustment: 1000,
+    isDefault: false,
+    default: false,
+    isActive: true,
+    displayOrder: 3,
+    description: '60 photo slots (1 photo per page). Curated heirloom album for unforgettable expeditions.'
+  },
+  {
+    pageOptionId: 'pages-72',
+    count: 72,
+    name: '72 Pages',
+    photos: 72,
+    badge: "Collector's",
+    priceAdjustment: 1400,
+    isDefault: false,
+    default: false,
+    isActive: true,
+    displayOrder: 4,
+    description: '72 photo slots (1 photo per page). Deluxe milestone celebration chronicle.'
+  },
+  {
+    pageOptionId: 'pages-12',
+    count: 12,
+    name: '12 Pages',
+    photos: 12,
+    badge: '',
+    priceAdjustment: -700,
+    isDefault: false,
+    default: false,
+    isActive: true,
+    displayOrder: 5,
+    description: '12 photo slots (1 photo per page). Compact pocket keepsake.'
+  },
+  {
+    pageOptionId: 'pages-24',
+    count: 24,
+    name: '24 Pages',
+    photos: 24,
+    badge: '',
+    priceAdjustment: -300,
+    isDefault: false,
+    default: false,
+    isActive: true,
+    displayOrder: 6,
+    description: '24 photo slots (1 photo per page). Weekend getaway edition.'
+  },
+  {
+    pageOptionId: 'pages-120',
+    count: 120,
+    name: '120 Pages',
+    photos: 120,
+    badge: "Collector's Master",
+    priceAdjustment: 2800,
+    isDefault: false,
+    default: false,
+    isActive: true,
+    displayOrder: 7,
+    description: '120 photo slots (1 photo per page). Comprehensive annual encyclopedia.'
+  }
 ];
 
 export const productSizes = [

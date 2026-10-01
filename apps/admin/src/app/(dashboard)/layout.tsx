@@ -18,7 +18,8 @@ import {
   ExternalLink,
   Activity,
   Tag,
-  Award
+  Award,
+  Layers
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -28,6 +29,7 @@ const navItems = [
   { name: "Executive Overview", href: "/", icon: LayoutDashboard },
   { name: "User Behaviour", href: "/analytics/behaviour", icon: Activity },
   { name: "Template Books", href: "/templates", icon: BookOpen },
+  { name: "Page Options", href: "/pages", icon: Layers },
   { name: "Orders", href: "/orders", icon: ShoppingCart },
   { name: "Promo Codes", href: "/promos", icon: Tag },
   { name: "Influencers", href: "/influencers", icon: Award },

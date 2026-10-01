@@ -55,6 +55,7 @@ export const api = {
       pageCountOptions?: any[];
       pageOptions?: number[];
     }>('/products/config'),
+  getPageOptions: () => fetcher<{ pageOptions: any[]; total: number }>('/page-options'),
 
   // Authentication & OTP
   login: (data: { email?: string; phone?: string; identifier?: string; password?: string }) =>
