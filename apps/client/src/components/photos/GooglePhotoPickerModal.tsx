@@ -257,12 +257,10 @@ export default function GooglePhotoPickerModal({
     setIsAuthorizing(true);
 
     try {
-      // Scopes for Google Drive & Google Photos (using only valid Google scopes)
-      const scopes = [
-        'https://www.googleapis.com/auth/drive.readonly',
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/photoslibrary.readonly',
-      ].join(' ');
+      // Request only the scope needed for the active tab (Drive vs Photos)
+      const scopes = activeTab === 'drive'
+        ? 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file'
+        : 'https://www.googleapis.com/auth/photoslibrary.readonly';
 
       const tokenClient = googleAccounts.oauth2.initTokenClient({
         client_id: clientId,
