@@ -281,19 +281,19 @@ function StudioContent() {
       </header>
 
       {/* Main Studio Workspace */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex overflow-hidden relative">
         {/* Left Sidebar: Theme & Layout Controls (Desktop) */}
-        <aside className="hidden lg:flex w-[280px] bg-white border-r border-cream-300 flex-col shrink-0 z-10 overflow-y-auto">
+        <aside className="hidden lg:flex w-[280px] h-full min-h-0 bg-white border-r border-cream-300 flex-col shrink-0 z-10 overflow-y-auto">
           <EditorToolbar />
         </aside>
 
         {/* Center Canvas: Layflat Book Spread */}
-        <main className="flex-1 bg-cream-100/70 relative flex flex-col items-center justify-center p-2 sm:p-6 md:p-10 overflow-auto">
+        <main className="flex-1 min-h-0 bg-cream-100/70 relative flex flex-col items-center justify-center p-2 sm:p-6 md:p-10 overflow-auto">
           <BookCanvas />
         </main>
 
         {/* Right Sidebar: Photo Tray (Desktop) */}
-        <aside className="hidden lg:flex w-[280px] bg-white border-l border-cream-300 flex-col shrink-0 z-10 overflow-hidden">
+        <aside className="hidden lg:flex w-[280px] h-full min-h-0 bg-white border-l border-cream-300 flex-col shrink-0 z-10 overflow-hidden">
           <PhotoTray />
         </aside>
       </div>
@@ -384,10 +384,18 @@ function StudioContent() {
             </div>
 
             {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               {mobileDrawer === 'photos' && <PhotoTray />}
-              {mobileDrawer === 'toolbar' && <EditorToolbar />}
-              {mobileDrawer === 'filmstrip' && <SpreadFilmstrip />}
+              {mobileDrawer === 'toolbar' && (
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <EditorToolbar />
+                </div>
+              )}
+              {mobileDrawer === 'filmstrip' && (
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <SpreadFilmstrip />
+                </div>
+              )}
             </div>
           </div>
         </div>

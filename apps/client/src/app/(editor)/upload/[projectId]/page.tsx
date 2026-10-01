@@ -26,44 +26,7 @@ import { normalizeImageUrl } from '@/lib/urls';
 import { trackEvent } from '@/lib/analytics';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 
-const sampleDemoPhotos = [
-  'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1588416936097-41850ab3d86d?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1512100356356-de1b84283e18?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1523906834658-6e24ef2386f9?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1511497584788-87676104235f?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?w=800&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?w=800&auto=format&fit=crop',
-];
+
 
 function UploadContent() {
   const router = useRouter();
@@ -89,6 +52,24 @@ function UploadContent() {
   const [pickerModalOpen, setPickerModalOpen] = useState(false);
   const [pickerInitialTab, setPickerInitialTab] = useState<'photos' | 'drive'>('photos');
   const [cloudImportToast, setCloudImportToast] = useState<string | null>(null);
+  const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
+  const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
+
+  // Warn user on browser refresh, tab close, or reload if photos have been uploaded
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (photos.length > 0) {
+        e.preventDefault();
+        e.returnValue = 'You have uploaded photos. If you leave or refresh this page, your photos will be lost and you will need to re-upload them.';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [photos.length]);
 
   // Initialize or restore project state scoped to this specific project ID
   useEffect(() => {
@@ -113,7 +94,7 @@ function UploadContent() {
     }
   }, [currentPageCount, setPageCount]);
 
-  // Load template photos if templateSlug is provided
+  // Load template info if templateSlug is provided (do not prefill photos)
   useEffect(() => {
     if (templateSlug) {
       setLoadingTemplate(true);
@@ -122,16 +103,7 @@ function UploadContent() {
           if (res) {
             setTemplate(res);
             setTemplateName(res.displayName || res.title);
-            if (res.templatePhotos && res.templatePhotos.length > 0) {
-              const initialPhotos = res.templatePhotos.map((url: string, index: number) => ({
-                id: `tpl-${templateSlug}-${index}`,
-                url,
-                usedCount: 0,
-                flagged: false,
-                name: `Template Photo ${index + 1}`
-              }));
-              setPhotos(initialPhotos);
-            }
+            // Notice: We intentionally do not prefill template photos. User must upload starting from photo #1.
           }
         })
         .catch((err) => {
@@ -141,7 +113,7 @@ function UploadContent() {
           setLoadingTemplate(false);
         });
     }
-  }, [templateSlug, setPhotos, setTemplate]);
+  }, [templateSlug, setTemplate]);
 
   const processFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter(isImageFile);
@@ -224,30 +196,13 @@ function UploadContent() {
     }
   };
 
-  // Quick fill remaining slots with high-res travel photos to satisfy validation
-  const handleAutoFillDemoPhotos = () => {
-    const needed = Math.max(0, minRequired - photos.length);
-    if (needed <= 0) return;
-
-    const available = sampleDemoPhotos.filter((url) => !photos.some((p) => p.url === url));
-    const pool = available.length >= needed ? available : sampleDemoPhotos;
-    const toAdd = pool.slice(0, needed);
-
-    toAdd.forEach((url, idx) => {
-      addPhoto({
-        id: `demo-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
-        url,
-        usedCount: 0,
-        flagged: false,
-        name: `Travel Highlight ${photos.length + idx + 1}`,
-      });
-    });
-
-    setValidationAlert(null);
-    trackEvent('photo_upload', `Auto-filled Demo Photos to meet ${minRequired} min requirement`, {
-      pageCount: currentPageCount,
-      minRequired,
-    });
+  const handleNavigationAttempt = (targetUrl: string) => {
+    if (photos.length > 0) {
+      setPendingNavigationUrl(targetUrl);
+      setShowLeaveConfirmModal(true);
+    } else {
+      router.push(targetUrl);
+    }
   };
 
   const handleContinue = () => {
@@ -275,13 +230,14 @@ function UploadContent() {
         
         {/* Navigation Breadcrumb / Back button */}
         <div className="flex items-center justify-between">
-          <Link
-            href={`/configure${templateSlug ? `?template=${templateSlug}` : ''}`}
+          <button
+            type="button"
+            onClick={() => handleNavigationAttempt(`/configure${templateSlug ? `?template=${templateSlug}` : ''}`)}
             className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-noir-600 hover:text-noir-950 transition-colors"
           >
             <ArrowLeft size={16} />
             <span>Back to Configuration</span>
-          </Link>
+          </button>
           <div className="text-xs text-noir-500 font-medium">
             <span className="font-semibold text-noir-950">Step 2:</span> Photo Selection & Dynamic Validation
           </div>
@@ -402,21 +358,6 @@ function UploadContent() {
                   style={{ width: `${progressPercent}%` }} 
                 />
               </div>
-            </div>
-
-            {/* Quick Helper Button for Instant Testing / Filling */}
-            <div className="pt-2 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleAutoFillDemoPhotos}
-                className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-sm text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
-              >
-                <Wand2 size={13} />
-                <span>Auto-Fill {remainingCount} Demo Travel Photos to Reach {minRequired}</span>
-              </button>
-              <span className="text-[11px] text-amber-800 italic">
-                (Instantly satisfy the {minRequired}-photo requirement for quick testing or preview)
-              </span>
             </div>
           </div>
         ) : (
@@ -642,14 +583,19 @@ function UploadContent() {
                       Upload at least {minRequired} photos above to unlock layout design for your {currentPageCount}-page photobook.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAutoFillDemoPhotos}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-cream-200 hover:bg-cream-300 text-noir-900 rounded-sm text-xs font-semibold transition-colors"
-                  >
-                    <Wand2 size={13} />
-                    <span>Auto-Fill with {minRequired} Sample Travel Photos</span>
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-semibold transition-colors cursor-pointer shadow-xs">
+                      <UploadCloud size={14} />
+                      <span>Choose Photos from Device</span>
+                      <input 
+                        type="file" 
+                        multiple 
+                        accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" 
+                        onChange={handleFileUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
@@ -809,18 +755,6 @@ function UploadContent() {
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {!isRequirementMet && (
-            <button
-              type="button"
-              onClick={handleAutoFillDemoPhotos}
-              className="hidden md:flex px-4 py-3 border border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-900 rounded-sm text-xs font-semibold items-center gap-1.5 transition-colors"
-              title={`Add ${remainingCount} demo photos to reach ${minRequired}`}
-            >
-              <Wand2 size={14} />
-              <span>Fill Remaining ({remainingCount})</span>
-            </button>
-          )}
-
           <button 
             type="button"
             onClick={handleContinue}
@@ -850,6 +784,56 @@ function UploadContent() {
           </button>
         </div>
       </div>
+
+      {/* Leave Page / Refresh Confirmation Modal */}
+      {showLeaveConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-lg shadow-2xl border border-cream-300 max-w-md w-full p-6 text-noir-900 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                <AlertCircle size={22} />
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-lg text-noir-950">
+                  Leave Upload Page?
+                </h3>
+                <p className="text-xs text-noir-500">
+                  You have {photos.length} uploaded photo{photos.length === 1 ? '' : 's'} in this session.
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-900 leading-relaxed">
+              If you leave this page or refresh your browser, your uploaded photos will be lost and you will have to re-upload them again.
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveConfirmModal(false);
+                  setPendingNavigationUrl(null);
+                }}
+                className="px-4 py-2 text-xs font-semibold text-noir-700 hover:text-noir-950 bg-cream-100 hover:bg-cream-200 rounded-sm transition-colors"
+              >
+                Stay & Keep Photos
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveConfirmModal(false);
+                  if (pendingNavigationUrl) {
+                    router.push(pendingNavigationUrl);
+                  }
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-sm transition-colors shadow-xs"
+              >
+                Leave & Discard Photos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Google Photos & Google Drive Picker Modal */}
       <GooglePhotoPickerModal
