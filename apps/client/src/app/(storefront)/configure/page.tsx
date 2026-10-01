@@ -124,6 +124,14 @@ function ConfigureContent() {
           packaging: normalizePackaging(configRes?.packaging),
         });
 
+        // Set default page option if not explicitly provided in URL search params
+        if (!pagesParam) {
+          const defaultOpt = dynamicPageOptions.find((p: any) => p.default || p.isDefault);
+          if (defaultOpt) {
+            setPageCount(defaultOpt.count);
+          }
+        }
+
         if (templateSlug) {
           const tplRes = await api.getProduct(templateSlug);
           setTemplateData(tplRes);
@@ -174,11 +182,12 @@ function ConfigureContent() {
 
   // Primary capacity editions requested: 32 (Popular), 50 (Extended), 60 (Collector's), 72 (Collector's)
   const primaryCounts = [32, 50, 60, 72];
-  const primaryPageOptions = pageOptions
+  const matchedPrimary = pageOptions
     .filter((opt: any) => primaryCounts.includes(opt.count))
     .sort((a: any, b: any) => primaryCounts.indexOf(a.count) - primaryCounts.indexOf(b.count));
+  const primaryPageOptions = matchedPrimary.length > 0 ? matchedPrimary : pageOptions.slice(0, 4);
   const otherPageOptions = pageOptions
-    .filter((opt: any) => !primaryCounts.includes(opt.count))
+    .filter((opt: any) => !primaryPageOptions.some((p: any) => p.count === opt.count))
     .sort((a: any, b: any) => (a.displayOrder || 0) - (b.displayOrder || 0) || a.count - b.count);
 
   const basePrice = currentSizeObj?.price || 1999;

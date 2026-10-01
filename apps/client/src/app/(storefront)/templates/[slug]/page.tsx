@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   Star,
   Truck,
@@ -31,10 +31,13 @@ import {
 } from "@/features/catalog/data/catalogFallback";
 import BookCard from "@/features/catalog/components/BookCard";
 
-export default function BookDetailPage() {
+function BookDetailContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const slugParam = (params?.slug as string) || "travel-series-paris";
+  const pagesParam = searchParams.get("pages");
+  const sizeParam = searchParams.get("size");
 
   const fallback: FallbackBook = useMemo(
     () => (getFallbackProduct(slugParam) || fallbackCatalog[0]) as FallbackBook,
@@ -45,12 +48,25 @@ export default function BookDetailPage() {
   const [activeView, setActiveView] = useState<
     "cover" | "spread1" | "spread2" | "spine" | "back"
   >("cover");
-  const [selectedPages, setSelectedPages] = useState<number>(32);
-  const [selectedSize, setSelectedSize] = useState<string>("8.25x8.25");
+  const [selectedPages, setSelectedPages] = useState<number>(
+    pagesParam ? parseInt(pagesParam, 10) || 32 : 32
+  );
+  const [selectedSize, setSelectedSize] = useState<string>(sizeParam || "8.25x8.25");
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>(
     "how-it-works"
   );
   const [relatedBooks, setRelatedBooks] = useState<FallbackBook[]>([]);
+
+  // Page tiers specification: 32 Popular, 50 Extended, 60 Collector's, 72 Collector's, 12, 24, 120
+  const [pageOptions, setPageOptions] = useState<any[]>([
+    { count: 32, name: '32 Pages', photos: 32, badge: 'Popular', priceAdjustment: 0, default: true, description: '32 photo slots (1 photo per page). Our most popular standard edition.' },
+    { count: 50, name: '50 Pages', photos: 50, badge: 'Extended', priceAdjustment: 600, default: false, description: '50 photo slots (1 photo per page). Extended journey with generous story room.' },
+    { count: 60, name: '60 Pages', photos: 60, badge: "Collector's", priceAdjustment: 1000, default: false, description: '60 photo slots (1 photo per page). Curated archival album.' },
+    { count: 72, name: '72 Pages', photos: 72, badge: "Collector's", priceAdjustment: 1400, default: false, description: '72 photo slots (1 photo per page). Deluxe milestone celebration chronicle.' },
+    { count: 12, name: '12 Pages', photos: 12, badge: '', priceAdjustment: -700, default: false, description: '12 photo slots (1 photo per page). Compact pocket keepsake.' },
+    { count: 24, name: '24 Pages', photos: 24, badge: '', priceAdjustment: -300, default: false, description: '24 photo slots (1 photo per page). Weekend getaway edition.' },
+    { count: 120, name: '120 Pages', photos: 120, badge: "Collector's Master", priceAdjustment: 2800, default: false, description: '120 photo slots (1 photo per page). Comprehensive annual encyclopedia.' }
+  ]);
 
   // Calculate dynamic delivery date (e.g. 18 days from current day -> exactly matches '15 October' around end of September)
   const deliveryDateFormatted = useMemo(() => {
@@ -111,48 +127,57 @@ export default function BookDetailPage() {
     setRelatedBooks(related);
   }, [slugParam]);
 
+  // Fetch live page options configured by Admin
+  useEffect(() => {
+    Promise.all([
+      api.getPageOptions().catch(() => null),
+      api.getProductConfig().catch(() => null),
+    ])
+      .then(([pageOptRes, configRes]) => {
+        const dynamicOptions =
+          pageOptRes?.pageOptions && pageOptRes.pageOptions.length > 0
+            ? pageOptRes.pageOptions
+            : configRes?.pageCountOptions && configRes.pageCountOptions.length > 0
+            ? configRes.pageCountOptions
+            : null;
+
+        if (dynamicOptions && dynamicOptions.length > 0) {
+          setPageOptions(dynamicOptions);
+          if (!pagesParam) {
+            const defaultOpt = dynamicOptions.find((o: any) => o.default || o.isDefault);
+            if (defaultOpt) {
+              setSelectedPages(defaultOpt.count);
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not load dynamic page options, using defaults", err);
+      });
+  }, [pagesParam]);
+
   // Dynamic price calculation
   const calculatedPrice = useMemo(() => {
     if (!book) return 1999;
     const base = book.fromPrice || 1999;
     const sizeAdjustment = selectedSize === "10x10" ? 500 : 0;
 
-    // Page count adjustments
-    let pageAdjustment = 0;
-    switch (selectedPages) {
-      case 12:
-        pageAdjustment = -700;
-        break;
-      case 24:
-        pageAdjustment = -300;
-        break;
-      case 32:
-        pageAdjustment = 0;
-        break;
-      case 50:
-        pageAdjustment = 0;
-        break; // standard base
-      case 60:
-        pageAdjustment = 600;
-        break;
-      case 100:
-        pageAdjustment = 1400;
-        break;
-      case 120:
-        pageAdjustment = 2000;
-        break;
-      case 150:
-        pageAdjustment = 2600;
-        break;
-      case 200:
-        pageAdjustment = 3500;
-        break;
-      default:
-        pageAdjustment = 0;
-    }
+    // Live page count adjustment from pageOptions
+    const activePageOpt = pageOptions.find((p: any) => p.count === selectedPages);
+    const pageAdjustment = activePageOpt ? (activePageOpt.priceAdjustment ?? 0) : 0;
 
     return Math.max(999, base + sizeAdjustment + pageAdjustment);
-  }, [book, selectedPages, selectedSize]);
+  }, [book, selectedPages, selectedSize, pageOptions]);
+
+  // Primary capacity editions requested: 32 (Popular), 50 (Extended), 60 (Collector's), 72 (Collector's)
+  const primaryCounts = [32, 50, 60, 72];
+  const matchedPrimary = pageOptions
+    .filter((opt: any) => primaryCounts.includes(opt.count))
+    .sort((a: any, b: any) => primaryCounts.indexOf(a.count) - primaryCounts.indexOf(b.count));
+  const primaryPageOptions = matchedPrimary.length > 0 ? matchedPrimary : pageOptions.slice(0, 4);
+  const otherPageOptions = pageOptions
+    .filter((opt: any) => !primaryPageOptions.some((p: any) => p.count === opt.count))
+    .sort((a: any, b: any) => (a.displayOrder || 0) - (b.displayOrder || 0) || a.count - b.count);
 
   // Track Meta ViewContent for product catalog ads
   useEffect(() => {
@@ -619,7 +644,7 @@ export default function BookDetailPage() {
               </div>
             </div> */}
 
-            {/* PAGE SELECTION CHIPS (User Requested Spec: 50, 100, 150, 200 pages + standard options) */}
+            {/* PAGE SELECTION CHIPS (User Requested Spec: 32 Popular, 50 Extended, 60 Collector's, 72 Collector's + other sizes: 12, 24, 120) */}
             <div>
               <div className="flex justify-between items-center mb-2.5">
                 <label className="text-xs font-bold text-neutral-900 uppercase tracking-wider">
@@ -633,61 +658,79 @@ export default function BookDetailPage() {
                 </span>
               </div>
 
-              {/* Primary 4 Chips requested by user: 50, 100, 150, 200 */}
+              {/* Primary 4 Chips: 32 Popular, 50 Extended, 60 Collector's, 72 Collector's */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                {[
-                  { count: 32, label: "32", note: "Popular" },
-                  { count: 50, label: "50", note: "Extended" },
-                  { count: 60, label: "60", note: "Collector's" },
-                  { count: 72, label: "72", note: "Collector's" },
-                ].map((tier) => (
-                  <button
-                    key={tier.count}
-                    onClick={() => setSelectedPages(tier.count)}
-                    className={`p-3 rounded-xl border text-center transition-all ${
-                      selectedPages === tier.count
-                        ? "border-neutral-950 bg-neutral-950 text-white shadow-md scale-[1.02]"
-                        : "border-neutral-200 bg-white hover:border-neutral-400 text-neutral-900"
-                    }`}
-                  >
-                    <span className="text-xl font-bold font-serif block leading-none">
-                      {tier.label}
-                    </span>
-                    <span className="text-[11px] block mt-1 lowercase font-medium">
-                      pages
-                    </span>
-                    <span
-                      className={`text-[10px] block mt-1 uppercase tracking-wider ${
-                        selectedPages === tier.count
-                          ? "text-amber-300"
-                          : "text-neutral-400"
+                {primaryPageOptions.map((tier: any) => {
+                  const isSelected = selectedPages === tier.count;
+                  return (
+                    <button
+                      key={tier.count}
+                      type="button"
+                      onClick={() => setSelectedPages(tier.count)}
+                      className={`p-3 rounded-xl border text-center transition-all ${
+                        isSelected
+                          ? "border-neutral-950 bg-neutral-950 text-white shadow-md scale-[1.02]"
+                          : "border-neutral-200 bg-white hover:border-neutral-400 text-neutral-900"
                       }`}
                     >
-                      {tier.note}
-                    </span>
-                  </button>
-                ))}
+                      <span className="text-xl font-bold font-serif block leading-none">
+                        {tier.count}
+                      </span>
+                      <span className="text-[11px] block mt-1 lowercase font-medium">
+                        pages
+                      </span>
+                      <span
+                        className={`text-[10px] block mt-1 uppercase tracking-wider font-semibold ${
+                          isSelected
+                            ? "text-amber-300"
+                            : tier.badge
+                            ? "text-amber-600"
+                            : "text-neutral-400"
+                        }`}
+                      >
+                        {tier.badge || "Standard"}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Secondary Options Pills (12, 24, 32, 60, 120 pages) */}
-              <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1">
-                <span className="text-[11px] text-neutral-400 lowercase shrink-0">
-                  other sizes:
-                </span>
-                {[12, 24, 120].map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setSelectedPages(p)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 ${
-                      selectedPages === p
-                        ? "bg-neutral-800 text-white border-neutral-800"
-                        : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
-                    }`}
-                  >
-                    {p} pages
-                  </button>
-                ))}
-              </div>
+              {/* Secondary Options Pills (12, 24, 120 pages + admin added custom tiers) */}
+              {otherPageOptions.length > 0 && (
+                <div className="flex items-center gap-2 mt-3 overflow-x-auto pb-1">
+                  <span className="text-[11px] text-neutral-400 lowercase shrink-0">
+                    other sizes:
+                  </span>
+                  {otherPageOptions.map((p: any) => {
+                    const isSelected = selectedPages === p.count;
+                    return (
+                      <button
+                        key={p.count}
+                        type="button"
+                        onClick={() => setSelectedPages(p.count)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0 flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-neutral-800 text-white border-neutral-800"
+                            : "bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400"
+                        }`}
+                      >
+                        <span>{p.count} pages</span>
+                        {p.badge && (
+                          <span
+                            className={`text-[9px] uppercase px-1 py-0.2 rounded font-mono ${
+                              isSelected
+                                ? "bg-white/20 text-white"
+                                : "bg-neutral-100 text-neutral-500"
+                            }`}
+                          >
+                            {p.badge}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* BOOK FORMAT & DIMENSIONS SELECTOR */}
@@ -1081,5 +1124,24 @@ export default function BookDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BookDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#faf8f5] flex items-center justify-center">
+          <div className="flex flex-col items-center">
+            <div className="w-10 h-10 border-4 border-neutral-900 border-t-transparent rounded-full animate-spin"></div>
+            <p className="mt-4 text-xs font-serif text-neutral-600 uppercase tracking-widest">
+              Loading Book Studio...
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <BookDetailContent />
+    </Suspense>
   );
 }
