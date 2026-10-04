@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://perfectpic.in";
+
   return {
     rules: {
       userAgent: "*",
@@ -13,6 +15,7 @@ export default function robots(): MetadataRoute.Robots {
         "/faq",
         "/book/*",
         "/logo.svg",
+        "/favicon.svg",
         "/og-image.png",
       ],
       disallow: [
@@ -34,7 +37,7 @@ export default function robots(): MetadataRoute.Robots {
         "/api/*",
       ],
     },
-    sitemap: "https://perfectpic.in/sitemap.xml",
-    host: "https://perfectpic.in",
+    sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   };
 }

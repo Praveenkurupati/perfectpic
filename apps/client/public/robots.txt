@@ -1,0 +1,31 @@
+User-agent: *
+Allow: /
+Allow: /templates
+Allow: /templates/*
+Allow: /configure
+Allow: /pricing
+Allow: /faq
+Allow: /book/*
+Allow: /logo.svg
+Allow: /favicon.svg
+Allow: /og-image.png
+
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /studio
+Disallow: /studio/*
+Disallow: /checkout
+Disallow: /checkout/*
+Disallow: /orders
+Disallow: /orders/*
+Disallow: /projects
+Disallow: /projects/*
+Disallow: /addresses
+Disallow: /addresses/*
+Disallow: /settings
+Disallow: /settings/*
+Disallow: /api
+Disallow: /api/*
+
+Sitemap: https://perfectpic.in/sitemap.xml
+Host: https://perfectpic.in
