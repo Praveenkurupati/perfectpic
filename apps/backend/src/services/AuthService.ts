@@ -4,6 +4,7 @@ import { UserRepository } from '../repositories/UserRepository';
 import { signToken } from '../utils/jwt';
 import { ApiError } from '../utils/apiError';
 import { logger } from '../utils/logger';
+import { env } from '../config/env';
 
 export class AuthService {
   public static async login(credentials: {
@@ -90,8 +91,8 @@ export class AuthService {
       };
     }
 
-    // Dev fallback
-    if (input.includes('admin') && (password === 'password123' || password === 'Admin123!Secure' || password === 'Admin123!')) {
+    // Offline development fallback (strictly disabled in production)
+    if (!env.isProd && input.includes('admin') && (password === 'password123' || password === 'Admin123!Secure' || password === 'Admin123!')) {
       const token = signToken({ id: 'admin_1', email: input, role: 'admin' });
       return {
         token,

@@ -33,6 +33,7 @@ export class UploadController {
   /**
    * Proxies an image from S3 or external URL and serves it with permissive CORS headers
    * so browser canvases and PDF generators never experience tainted canvas or CORS errors.
+   * Hardened against SSRF and Path Traversal attacks.
    */
   public static async proxyImage(req: Request, res: Response, next: NextFunction) {
     try {
@@ -42,10 +43,16 @@ export class UploadController {
         throw ApiError.badRequest('Query parameter "url" is required.');
       }
 
-      // 1. If it's a local uploads file
+      // 1. If it's a local uploads file (guarded against path traversal)
       if (imageUrl.includes('/uploads/')) {
         const relativePart = imageUrl.substring(imageUrl.indexOf('/uploads/') + '/uploads/'.length);
-        const localPath = path.join(process.cwd(), 'uploads', relativePart);
+        const baseUploads = path.resolve(process.cwd(), 'uploads');
+        const localPath = path.resolve(baseUploads, relativePart);
+
+        if (!localPath.startsWith(baseUploads)) {
+          throw ApiError.forbidden('Access denied: Invalid path traversal attempt.');
+        }
+
         if (fs.existsSync(localPath)) {
           const ext = path.extname(localPath).toLowerCase();
           const mime = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
@@ -82,8 +89,28 @@ export class UploadController {
         }
       }
 
-      // 3. External HTTP(S) URL (e.g. Unsplash or public CDN)
+      // 3. External HTTP(S) URL (SSRF protected)
       if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        let parsed: URL;
+        try {
+          parsed = new URL(imageUrl);
+        } catch {
+          throw ApiError.badRequest('Invalid image URL format.');
+        }
+
+        const hostname = parsed.hostname.toLowerCase();
+
+        // SSRF Defense: Block cloud metadata services and internal RFC1918 networks
+        if (
+          hostname === '169.254.169.254' ||
+          hostname === '0.0.0.0' ||
+          hostname.endsWith('.internal') ||
+          hostname.endsWith('.local') ||
+          (env.isProd && (hostname === 'localhost' || hostname === '127.0.0.1' || /^10\./.test(hostname) || /^192\.168\./.test(hostname) || /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)))
+        ) {
+          throw ApiError.forbidden('Access to private network resources is prohibited.');
+        }
+
         const response = await fetch(imageUrl, {
           headers: {
             'User-Agent': 'PerfectPic-PDF-Renderer/1.0',
@@ -129,8 +156,14 @@ export class UploadController {
       const filename = `${prefix}-${cleanBase}-${uniqueSuffix}${ext}`;
       const s3Key = `${folder}/${filename}`;
 
-      // 1. Direct AWS S3 Upload (preferred for production)
-      if (isS3Configured() && req.file.buffer) {
+      // Enforce AWS S3 in production to keep container disks lightweight
+      const hasS3 = isS3Configured();
+      if (!hasS3 && env.isProd) {
+        throw ApiError.internal('AWS S3 storage is not configured. Please ensure AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and S3_BUCKET are configured in your server environment.');
+      }
+
+      // 1. Direct AWS S3 Upload (preferred and enforced for production)
+      if (hasS3 && req.file.buffer) {
         try {
           const s3Result = await uploadBufferToS3(
             req.file.buffer,
@@ -159,11 +192,14 @@ export class UploadController {
             bucket: s3Result.bucket,
           });
         } catch (s3Error: any) {
-          console.error('⚠️ S3 Upload error, falling back to local storage:', s3Error?.message);
+          console.error('❌ AWS S3 Upload Error:', s3Error?.message);
+          if (env.isProd) {
+            throw ApiError.internal(`Failed to upload media to AWS S3: ${s3Error?.message}`);
+          }
         }
       }
 
-      // 2. Local disk storage fallback (for offline development)
+      // 2. Local disk storage fallback (ONLY for offline local development)
       const uploadsDir = path.join(process.cwd(), 'uploads');
       const targetDir = path.join(uploadsDir, folder);
       try {
@@ -210,14 +246,22 @@ export class UploadController {
     try {
       const rawId = req.params.photoId;
       const photoId = Array.isArray(rawId) ? rawId[0] : rawId;
-      if (photoId && typeof photoId === 'string') {
-        if (photoId.startsWith('photos/') || photoId.startsWith('uploads/')) {
-          await deleteFromS3(photoId);
-        } else {
-          const localPath = path.join(process.cwd(), 'uploads', photoId);
-          if (fs.existsSync(localPath)) {
-            fs.unlinkSync(localPath);
-          }
+      if (!photoId || typeof photoId !== 'string') {
+        throw ApiError.badRequest('Photo ID parameter is required.');
+      }
+
+      // Path traversal security check
+      if (photoId.includes('..')) {
+        throw ApiError.badRequest('Invalid photo path.');
+      }
+
+      if (photoId.startsWith('photos/') || photoId.startsWith('photobooks/') || photoId.startsWith('uploads/')) {
+        await deleteFromS3(photoId);
+      } else {
+        const baseUploads = path.resolve(process.cwd(), 'uploads');
+        const localPath = path.resolve(baseUploads, path.basename(photoId));
+        if (localPath.startsWith(baseUploads) && fs.existsSync(localPath)) {
+          fs.unlinkSync(localPath);
         }
       }
       return res.status(200).json({

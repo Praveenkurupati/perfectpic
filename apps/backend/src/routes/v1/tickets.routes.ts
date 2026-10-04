@@ -1,19 +1,19 @@
-// apps/backend/src/routes/v1/tickets.routes.ts
 import { Router } from 'express';
 import { TicketController } from '../../controllers/TicketController';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-// List support tickets with filter (?status=Open)
-router.get('/', TicketController.getTickets);
+// List support tickets with filter (?status=Open) - Admin only
+router.get('/', authenticate, adminOnly, TicketController.getTickets);
 
-// Single ticket by ID
-router.get('/:id', TicketController.getTicketById);
+// Single ticket by ID - Authenticated user or admin
+router.get('/:id', authenticate, TicketController.getTicketById);
 
-// Submit new support ticket
+// Submit new support ticket - Public / Customer
 router.post('/', TicketController.createTicket);
 
-// Update ticket status (e.g. In Progress, Resolved)
-router.put('/:id/status', TicketController.updateStatus);
+// Update ticket status (e.g. In Progress, Resolved) - Admin only
+router.put('/:id/status', authenticate, adminOnly, TicketController.updateStatus);
 
 export default router;

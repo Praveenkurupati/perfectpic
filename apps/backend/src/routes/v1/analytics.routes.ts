@@ -1,7 +1,6 @@
-// apps/backend/src/routes/v1/analytics.routes.ts
 import { Router } from 'express';
 import { AnalyticsController } from '../../controllers/AnalyticsController';
-import { optionalAuth } from '../../middlewares/auth.middleware';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -11,16 +10,16 @@ router.post('/events', AnalyticsController.ingestEvents);
 // Meta Conversions API (CAPI) direct relay endpoint
 router.post('/meta-capi', AnalyticsController.relayMetaCapi);
 
-// Behavior Analytics: Comprehensive non-login vs login analytics with filters
-router.get('/behaviour', optionalAuth, AnalyticsController.getBehaviourAnalytics);
+// Behavior Analytics: Comprehensive non-login vs login analytics with filters (Admin only)
+router.get('/behaviour', authenticate, adminOnly, AnalyticsController.getBehaviourAnalytics);
 
-// Live Feed: Real-time user journey feed
-router.get('/live-feed', optionalAuth, AnalyticsController.getLiveJourneys);
+// Live Feed: Real-time user journey feed (Admin only)
+router.get('/live-feed', authenticate, adminOnly, AnalyticsController.getLiveJourneys);
 
-// Legacy Executive Dashboard stats
-router.get('/dashboard', optionalAuth, AnalyticsController.getDashboardStats);
+// Executive Dashboard stats (Admin only)
+router.get('/dashboard', authenticate, adminOnly, AnalyticsController.getDashboardStats);
 
-// Legacy Revenue Trend
-router.get('/revenue', optionalAuth, AnalyticsController.getRevenueData);
+// Revenue Trend (Admin only)
+router.get('/revenue', authenticate, adminOnly, AnalyticsController.getRevenueData);
 
 export default router;

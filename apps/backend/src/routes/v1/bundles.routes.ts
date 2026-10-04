@@ -1,6 +1,6 @@
-// apps/backend/src/routes/v1/bundles.routes.ts
 import { Router } from 'express';
 import { BundleController } from '../../controllers/BundleController';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -8,21 +8,21 @@ const router = Router();
 router.get('/', BundleController.getActiveBundles);
 
 // Admin: Get all bundle tiers (active + inactive)
-router.get('/all', BundleController.getAllBundles);
+router.get('/all', authenticate, adminOnly, BundleController.getAllBundles);
 
-// Admin: Reset to default bundle tiers (3 Books: ₹300, 6 Books: ₹1800, 12 Books: ₹4500)
-router.post('/reset', BundleController.resetDefaults);
+// Admin: Reset to default bundle tiers
+router.post('/reset', authenticate, adminOnly, BundleController.resetDefaults);
 
 // Single bundle tier by id/minQuantity
 router.get('/:id', BundleController.getBundleById);
 
 // Admin: Create new bundle tier
-router.post('/', BundleController.createBundle);
+router.post('/', authenticate, adminOnly, BundleController.createBundle);
 
 // Admin: Update bundle tier
-router.put('/:id', BundleController.updateBundle);
+router.put('/:id', authenticate, adminOnly, BundleController.updateBundle);
 
 // Admin: Delete bundle tier
-router.delete('/:id', BundleController.deleteBundle);
+router.delete('/:id', authenticate, adminOnly, BundleController.deleteBundle);
 
 export default router;

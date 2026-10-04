@@ -124,6 +124,23 @@ async function seedDefaultData() {
       }
       console.log(`✅ ${pageCountOptions.length} page options seeded into MongoDB!`);
     }
+
+    // Ensure dedicated Administrator account exists
+    const { User } = await import('./models/User');
+    const adminUser = await User.findOne({ role: 'admin' });
+    if (!adminUser) {
+      const bcrypt = (await import('bcryptjs')).default;
+      const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!Secure';
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      await User.create({
+        name: 'PerfectPic Administrator',
+        email: (process.env.ADMIN_EMAIL || 'admin@perfectpic.in').toLowerCase().trim(),
+        phone: '+919999999999',
+        password: hashedPassword,
+        role: 'admin',
+      });
+      console.log('✅ Administrator account initialized in MongoDB!');
+    }
   } catch (seedErr) {
     console.error('Error seeding MongoDB collections:', seedErr);
   }

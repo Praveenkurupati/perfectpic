@@ -1,7 +1,6 @@
-// apps/backend/src/routes/v1/auth.routes.ts
 import { Router } from 'express';
 import { AuthController } from '../../controllers/AuthController';
-import { authenticate } from '../../middlewares/auth.middleware';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -31,8 +30,8 @@ router.post('/oauth/login', AuthController.oauthLogin);
 // Current User Profile
 router.get('/me', authenticate, AuthController.getMe);
 
-// List Users
-router.get('/users', AuthController.getUsers);
+// List Users (Admin only)
+router.get('/users', authenticate, adminOnly, AuthController.getUsers);
 
 // Logout
 router.post('/logout', authenticate, AuthController.logout);

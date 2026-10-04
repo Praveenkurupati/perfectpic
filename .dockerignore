@@ -1,20 +1,56 @@
+# Dependencies
 node_modules
+**/node_modules
+
+# Build outputs
 .next
+**/.next
 out
+**/out
 dist
+**/dist
 build
+**/build
+
+# Source Control
 .git
 .gitignore
+
+# Turbo & Cache
 .turbo
-.DS_Store
+**/.turbo
+.cache
+**/.cache
+
+# Uploads & Media (Uploaded files must never be part of Docker build context)
+uploads
+**/uploads
+**/uploads/**
+apps/*/uploads
+apps/**/uploads
+*.tar
+*.tar.gz
+*.zip
+
+# Logs
 *.log
+logs
+**/logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Environment files with secrets
 .env*.local
+.env
+apps/*/.env
+
+# Temporary & Editor
 scratch
 docker
 coverage
 .vscode
 .idea
+.DS_Store
+Thumbs.db

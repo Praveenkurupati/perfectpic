@@ -16,7 +16,7 @@ FROM base AS installer
 WORKDIR /app
 COPY --from=pruner /app/out/json/ .
 COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store pnpm install --frozen-lockfile
 
 # Stage 3: Build application
 FROM base AS builder
@@ -27,7 +27,7 @@ COPY turbo.json turbo.json
 
 ENV NODE_ENV=production
 
-RUN pnpm --filter=@repo/backend build
+RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo pnpm --filter=@repo/backend build
 
 # Stage 4: Minimal Production Runner
 FROM node:20-alpine AS runner

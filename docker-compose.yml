@@ -61,6 +61,11 @@ services:
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_SECURE=${SMTP_SECURE:-true}
       - SMTP_FROM=${SMTP_FROM:-"PerfectPic Security" <noreply@perfectpic.in>}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-${AWS_ACCESS_KEY:-}}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-${AWS_SECRET_KEY:-}}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - S3_BUCKET=${S3_BUCKET:-${AWS_BUCKET:-perfectpic-assets-2026}}
+      - AWS_BUCKET=${AWS_BUCKET:-perfectpic-assets-2026}
     volumes:
       - uploads_data:/app/uploads
     depends_on:

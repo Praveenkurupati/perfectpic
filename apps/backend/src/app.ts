@@ -27,6 +27,9 @@ export function createApp(): Application {
     'http://localhost:3001',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
+    'https://perfectpic.in',
+    'https://www.perfectpic.in',
+    'https://admin.perfectpic.in',
     env.FRONTEND_URL,
     env.ADMIN_URL,
   ].filter(Boolean);
@@ -34,10 +37,26 @@ export function createApp(): Application {
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || env.CORS_ORIGIN === '*') {
+        // Allow requests with no origin (mobile native apps, curl, Postman, server-to-server)
+        if (!origin) return callback(null, true);
+
+        if (env.CORS_ORIGIN === '*' || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        return callback(null, true);
+
+        // Allow any perfectpic.in subdomains
+        try {
+          const parsed = new URL(origin);
+          if (parsed.hostname === 'perfectpic.in' || parsed.hostname.endsWith('.perfectpic.in')) {
+            return callback(null, true);
+          }
+        } catch {}
+
+        if (env.isDev) {
+          return callback(null, true);
+        }
+
+        return callback(new Error(`Origin ${origin} is not allowed by CORS policy.`));
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

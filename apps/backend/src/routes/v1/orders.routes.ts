@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { OrderController } from '../../controllers/OrderController';
-import { optionalAuth } from '../../middlewares/auth.middleware';
+import { optionalAuth, authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -8,7 +8,7 @@ const router = Router();
 router.get('/', optionalAuth, OrderController.getOrders);
 
 // Dashboard aggregate metrics for admin
-router.get('/stats', OrderController.getDashboardStats);
+router.get('/stats', authenticate, adminOnly, OrderController.getDashboardStats);
 
 // Single order by ID or order number
 router.get('/:id', OrderController.getOrderById);
@@ -24,9 +24,9 @@ router.post('/:id/review', OrderController.submitOrderReview);
 router.post('/', OrderController.createOrder);
 
 // Admin: Update order fulfillment status
-router.put('/:id/status', OrderController.updateOrderStatus);
+router.put('/:id/status', authenticate, adminOnly, OrderController.updateOrderStatus);
 
-// Update order PDF URL (e.g., when S3 PDF is generated)
-router.put('/:id/pdf', OrderController.updateOrderPdf);
+// Admin / System: Update order PDF URL (e.g., when S3 PDF is generated)
+router.put('/:id/pdf', authenticate, adminOnly, OrderController.updateOrderPdf);
 
 export default router;

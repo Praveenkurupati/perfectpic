@@ -2,6 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { OrderService } from '../services/OrderService';
 import { PdfService } from '../services/PdfService';
+import { ApiError } from '../utils/apiError';
 
 export class OrderController {
   public static async getOrders(req: Request, res: Response, next: NextFunction) {
@@ -13,6 +14,11 @@ export class OrderController {
       // If customer is authenticated and not admin, restrict view strictly to their own orders
       if (user && user.role !== 'admin' && user.email) {
         emailFilter = user.email;
+      } else if (!user) {
+        // Unauthenticated guests must provide their specific email to look up their orders
+        if (!emailFilter) {
+          throw ApiError.unauthorized('Authentication required to view orders.');
+        }
       }
 
       const result = await OrderService.getOrders({

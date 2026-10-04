@@ -36,9 +36,12 @@ pnpm-debug.log*
 # Prisma
 packages/database/prisma/*.db
 
-# Uploads
+# Uploads & Media (All user media belongs in AWS S3)
 uploads/
+**/uploads/
+**/uploads/**
 tmp/
+**/tmp/**
 
 # Coverage
 coverage/

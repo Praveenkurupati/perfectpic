@@ -1,6 +1,6 @@
-// apps/backend/src/routes/v1/products.routes.ts
 import { Router } from 'express';
 import { ProductController } from '../../controllers/ProductController';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -20,12 +20,12 @@ router.get('/featured', ProductController.getFeatured);
 router.get('/:slug', ProductController.getProductBySlug);
 
 // Admin: Add new template book
-router.post('/', ProductController.createProduct);
+router.post('/', authenticate, adminOnly, ProductController.createProduct);
 
 // Admin: Update existing template book
-router.put('/:id', ProductController.updateProduct);
+router.put('/:id', authenticate, adminOnly, ProductController.updateProduct);
 
 // Admin: Delete template book
-router.delete('/:id', ProductController.deleteProduct);
+router.delete('/:id', authenticate, adminOnly, ProductController.deleteProduct);
 
 export default router;
