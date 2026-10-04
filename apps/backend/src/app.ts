@@ -13,11 +13,15 @@ import apiRouter from './routes';
 export function createApp(): Application {
   const app = express();
 
-  // Security headers
+  // Security headers: Clickjacking defense, MIME sniffing prevention, hide X-Powered-By
   app.use(
     helmet({
       contentSecurityPolicy: false,
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      frameguard: { action: 'sameorigin' },
+      noSniff: true,
+      hidePoweredBy: true,
+      xssFilter: true,
     })
   );
 

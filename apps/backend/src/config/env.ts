@@ -9,8 +9,14 @@ export const env = {
   MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/perfectpic',
   REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
   
-  // JWT
-  JWT_SECRET: process.env.JWT_SECRET || 'perfectpic_jwt_super_secret_production_key_2026',
+  // JWT Configuration (warns if default secret is detected in production)
+  JWT_SECRET: (() => {
+    const secret = process.env.JWT_SECRET || 'perfectpic_jwt_super_secret_production_key_2026';
+    if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'perfectpic_jwt_super_secret_production_key_2026')) {
+      console.warn('⚠️ SECURITY ALERT: JWT_SECRET is unset or using default static key in production. Please set a unique 256-bit secret in your server environment.');
+    }
+    return secret;
+  })(),
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
   
   // CORS

@@ -13,8 +13,9 @@ export class AuthService {
     phone?: string;
     password?: string;
   }) {
-    const input = (credentials.email || credentials.identifier || credentials.phone || '').trim();
-    const password = credentials.password || '';
+    const rawTarget = credentials.email || credentials.identifier || credentials.phone || '';
+    const input = typeof rawTarget === 'string' ? rawTarget.trim() : '';
+    const password = typeof credentials.password === 'string' ? credentials.password : '';
 
     if (!input) {
       throw ApiError.badRequest('Email, username, or phone number is required.');
@@ -55,8 +56,9 @@ export class AuthService {
   }
 
   public static async adminLogin(credentials: { email?: string; identifier?: string; password?: string }) {
-    const input = (credentials.email || credentials.identifier || '').trim().toLowerCase();
-    const password = credentials.password || '';
+    const rawTarget = credentials.email || credentials.identifier || '';
+    const input = typeof rawTarget === 'string' ? rawTarget.trim().toLowerCase() : '';
+    const password = typeof credentials.password === 'string' ? credentials.password : '';
 
     if (!input || !password) {
       throw ApiError.badRequest('Admin email and password are required.');

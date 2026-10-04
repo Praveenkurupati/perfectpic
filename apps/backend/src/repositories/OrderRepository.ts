@@ -255,7 +255,8 @@ export class OrderRepository {
 
   public static async create(orderData: any) {
     const orderNumber = orderData.orderNumber || 'PP-' + Math.floor(1000 + Math.random() * 9000);
-    const total = orderData.total || orderData.amount || 1999;
+    const parsedTotal = Number(orderData.total ?? orderData.amount);
+    const total = isNaN(parsedTotal) || parsedTotal < 99 ? 1999 : parsedTotal;
 
     // Auto-derive specifications if not provided
     const specifications = orderData.specifications || {

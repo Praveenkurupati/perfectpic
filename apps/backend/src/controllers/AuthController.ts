@@ -206,16 +206,26 @@ export class AuthController {
     return 'http://localhost:3000';
   }
 
+  private static sanitizeRedirectUrl(rawUrl: string): string {
+    if (!rawUrl || typeof rawUrl !== 'string') return '/';
+    const trimmed = rawUrl.trim();
+    // Allow relative internal paths only (prevent //evil.com or javascript: URIs)
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('\\')) {
+      return trimmed;
+    }
+    return '/';
+  }
+
   public static async googleCallback(req: Request, res: Response, next: NextFunction) {
     try {
       const code = (req.query.code as string) || '';
       const state = (req.query.state as string) || '/';
-      const redirectUrl = decodeURIComponent(state);
+      const redirectUrl = AuthController.sanitizeRedirectUrl(decodeURIComponent(state));
       const callbackUrl = AuthController.getCallbackUrl(req, 'google');
 
       const result = await OAuthService.handleGoogleCallback(code, redirectUrl, callbackUrl);
       const frontendUrl = AuthController.getFrontendUrl(req);
-      const frontendRedirect = `${frontendUrl}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
+      const frontendRedirect = `${frontendUrl}/login?oauth_token=${encodeURIComponent(result.token)}&redirect=${encodeURIComponent(redirectUrl)}`;
       return res.redirect(frontendRedirect);
     } catch (err) {
       next(err);
@@ -224,7 +234,8 @@ export class AuthController {
 
   public static async appleInit(req: Request, res: Response, next: NextFunction) {
     try {
-      const redirect = (req.query.redirect as string) || '/';
+      const rawRedirect = (req.query.redirect as string) || '/';
+      const redirect = AuthController.sanitizeRedirectUrl(rawRedirect);
       const callbackUrl = AuthController.getCallbackUrl(req, 'apple');
       const authUrl = OAuthService.getAppleAuthUrl(redirect, callbackUrl);
       return res.redirect(authUrl);
@@ -236,7 +247,7 @@ export class AuthController {
   public static async appleCallback(req: Request, res: Response, next: NextFunction) {
     try {
       const state = (req.body.state as string) || '/';
-      const redirectUrl = decodeURIComponent(state);
+      const redirectUrl = AuthController.sanitizeRedirectUrl(decodeURIComponent(state));
       const email = req.body.email || 'apple.user@perfectpic.in';
       const name = req.body.user ? `${req.body.user.name?.firstName || ''} ${req.body.user.name?.lastName || ''}`.trim() : 'Apple Customer';
 
@@ -248,7 +259,7 @@ export class AuthController {
       });
 
       const frontendUrl = AuthController.getFrontendUrl(req);
-      const frontendRedirect = `${frontendUrl}/login?oauth_token=${result.token}&redirect=${encodeURIComponent(redirectUrl)}`;
+      const frontendRedirect = `${frontendUrl}/login?oauth_token=${encodeURIComponent(result.token)}&redirect=${encodeURIComponent(redirectUrl)}`;
       return res.redirect(frontendRedirect);
     } catch (err) {
       next(err);

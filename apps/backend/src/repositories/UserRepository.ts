@@ -16,7 +16,7 @@ export class UserRepository {
   }
 
   public static async findByEmail(email: string): Promise<IUserDocument | null> {
-    if (!isDbConnected()) return null;
+    if (!isDbConnected() || typeof email !== 'string') return null;
     try {
       return await User.findOne({ email: email.toLowerCase().trim() });
     } catch (err: any) {
@@ -26,7 +26,7 @@ export class UserRepository {
   }
 
   public static async findByPhone(phone: string): Promise<IUserDocument | null> {
-    if (!isDbConnected()) return null;
+    if (!isDbConnected() || typeof phone !== 'string') return null;
     try {
       return await User.findOne({ phone: phone.trim() });
     } catch (err: any) {
@@ -36,8 +36,9 @@ export class UserRepository {
   }
 
   public static async findByIdentifier(rawIdentifier: string): Promise<IUserDocument | null> {
-    if (!isDbConnected()) return null;
-    const input = (rawIdentifier || '').trim().toLowerCase();
+    if (!isDbConnected() || typeof rawIdentifier !== 'string') return null;
+    const input = rawIdentifier.trim().toLowerCase();
+    if (!input) return null;
 
     try {
       const conditions: any[] = [

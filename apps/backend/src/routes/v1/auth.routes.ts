@@ -1,23 +1,24 @@
 import { Router } from 'express';
 import { AuthController } from '../../controllers/AuthController';
 import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
+import { authRateLimiter } from '../../middlewares/rateLimiter';
 
 const router = Router();
 
-// Universal login (Email, Username, or Phone + Password)
-router.post('/login', AuthController.login);
+// Universal login (Email, Username, or Phone + Password) with brute-force rate limiter
+router.post('/login', authRateLimiter, AuthController.login);
 
-// Dedicated Admin Portal Login
-router.post('/admin/login', AuthController.adminLogin);
+// Dedicated Admin Portal Login with brute-force rate limiter
+router.post('/admin/login', authRateLimiter, AuthController.adminLogin);
 
 // Customer Registration
-router.post('/signup', AuthController.signup);
+router.post('/signup', authRateLimiter, AuthController.signup);
 
 // Send OTP (supports email, phone, or identifier)
-router.post('/send-otp', AuthController.sendOtp);
+router.post('/send-otp', authRateLimiter, AuthController.sendOtp);
 
 // Verify OTP
-router.post('/verify-otp', AuthController.verifyOtp);
+router.post('/verify-otp', authRateLimiter, AuthController.verifyOtp);
 
 // OAuth 2.0 (Google & Apple)
 router.get('/oauth/config', AuthController.getOAuthConfig);

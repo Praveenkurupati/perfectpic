@@ -10,12 +10,34 @@ export class UploadController {
   public static async presign(req: Request, res: Response, next: NextFunction) {
     try {
       const { filename, contentType } = req.body;
-      if (!filename || !contentType) {
-        throw ApiError.badRequest('Filename and contentType are required.');
+      if (!filename || !contentType || typeof filename !== 'string' || typeof contentType !== 'string') {
+        throw ApiError.badRequest('Valid filename and contentType strings are required.');
       }
 
-      const key = `uploads/${req.user?.id || 'guest'}/${Date.now()}-${filename}`;
-      const url = await generatePresignedUrl(key, contentType);
+      // Approved raster photo and PDF MIME types (prohibits SVG/HTML/JS)
+      const ALLOWED_MIME_TYPES = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'image/heic',
+        'image/heif',
+        'image/avif',
+        'image/tiff',
+        'image/gif',
+        'application/pdf',
+      ];
+
+      const cleanMime = contentType.toLowerCase().trim();
+      if (!ALLOWED_MIME_TYPES.includes(cleanMime)) {
+        throw ApiError.badRequest(`Unsupported or prohibited file MIME type '${cleanMime}'.`);
+      }
+
+      // Sanitize filename against path traversal
+      const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const userId = req.user?.id ? req.user.id.replace(/[^a-zA-Z0-9_-]/g, '') : 'guest';
+      const key = `uploads/${userId}/${Date.now()}-${safeFilename}`;
+      const url = await generatePresignedUrl(key, cleanMime);
 
       return res.status(200).json({ url, key });
     } catch (err) {
