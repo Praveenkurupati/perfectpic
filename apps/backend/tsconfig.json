@@ -7,6 +7,8 @@
     "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./.tsbuildinfo",
     "declaration": false,
     "declarationMap": false,
     "noEmit": false
