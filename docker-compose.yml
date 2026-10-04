@@ -1,0 +1,136 @@
+services:
+  # Next.js Storefront & Canvas Editor
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
+    container_name: perfectpic-client
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - perfectpic-network
+
+  # Next.js Production & Order Admin Portal
+  admin:
+    build:
+      context: .
+      dockerfile: docker/admin.Dockerfile
+    container_name: perfectpic-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOSTNAME=0.0.0.0
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - perfectpic-network
+
+  # Express TypeScript High-Concurrency API Server
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: perfectpic-backend
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - PORT=4000
+      - MONGODB_URI=mongodb://mongodb:27017/perfectpic
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=perfectpic-production-super-secure-jwt-key-2026
+      - CORS_ORIGIN=*
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - perfectpic-network
+
+  # Primary Document Store
+  mongodb:
+    image: mongo:7.0
+    container_name: perfectpic-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - perfectpic-network
+
+  # High-Speed Distributed Cache & Session Store
+  redis:
+    image: redis:7.2-alpine
+    container_name: perfectpic-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - perfectpic-network
+
+  # Reverse Proxy, SSL Termination, & Ingress Rate Limiter
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: perfectpic-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - client
+      - admin
+      - backend
+    networks:
+      - perfectpic-network
+
+volumes:
+  mongo_data:
+    name: perfectpic_mongo_data
+  redis_data:
+    name: perfectpic_redis_data
+
+networks:
+  perfectpic-network:
+    name: perfectpic_network
+    driver: bridge

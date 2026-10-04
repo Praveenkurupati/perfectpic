@@ -1,8 +1,9 @@
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  basePath: '/admin',
-  transpilePackages: ['@repo/ui', '@repo/types'],
+  output: "standalone",
+  basePath: "/admin",
+  transpilePackages: ["@repo/ui", "@repo/types"],
 };
 
 export default nextConfig;
