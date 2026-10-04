@@ -12,43 +12,57 @@ export interface ISendMailOptions {
 
 class MailService {
   private transporter: any = null;
-  private isConfigured = false;
+  public isConfigured = false;
 
   constructor() {
     this.initTransporter();
   }
 
-  private initTransporter() {
+  public initTransporter() {
     if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
       try {
         this.transporter = nodemailer.createTransport({
           host: env.SMTP_HOST,
-          port: env.SMTP_PORT,
-          secure: env.SMTP_PORT === 465,
+          port: Number(env.SMTP_PORT) || 465,
+          secure: Number(env.SMTP_PORT) === 465 || env.SMTP_SECURE,
           auth: {
             user: env.SMTP_USER,
             pass: env.SMTP_PASS,
           },
         });
         this.isConfigured = true;
-        logger.info('📧 MailService initialized with SMTP configuration', { host: env.SMTP_HOST, port: env.SMTP_PORT });
+        logger.info('📧 MailService initialized with Zoho SMTP configuration', {
+          host: env.SMTP_HOST,
+          port: env.SMTP_PORT,
+          user: env.SMTP_USER,
+          secure: Number(env.SMTP_PORT) === 465 || env.SMTP_SECURE,
+        });
       } catch (err: any) {
         logger.warn(`⚠️ MailService SMTP configuration error: ${err.message}. Using simulated email logger.`);
         this.isConfigured = false;
       }
     } else {
-      logger.info('💡 MailService running in development mode (No SMTP set). OTPs and notifications will be logged to console.');
+      logger.info('💡 MailService running in development simulation mode. Set SMTP_PASS in .env to send real emails via Zoho SMTP.');
       this.isConfigured = false;
     }
   }
 
+  private ensureTransporter() {
+    if (!this.transporter && env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
+      this.initTransporter();
+    }
+    return this.transporter;
+  }
+
   public async sendMail(options: ISendMailOptions): Promise<boolean> {
     const { to, subject, html, text } = options;
+    const transporter = this.ensureTransporter();
 
-    if (this.isConfigured && this.transporter) {
+    if (this.isConfigured && transporter) {
       try {
-        const info = await this.transporter.sendMail({
-          from: env.SMTP_FROM,
+        const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
+        const info = await transporter.sendMail({
+          from: fromAddress,
           to,
           subject,
           html,
@@ -58,7 +72,7 @@ class MailService {
         return true;
       } catch (error: any) {
         logger.error(`❌ Failed to send email to ${to}: ${error.message}`, { error });
-        // Don't crash, fallback to logging
+        return false;
       }
     }
 
@@ -67,46 +81,52 @@ class MailService {
     return true;
   }
 
-  public async sendOtpEmail(toEmail: string, otp: string, userName = 'Valued Customer'): Promise<boolean> {
-    const subject = `Your PerfectPic Verification Code: ${otp}`;
+  public async sendOtpEmail(recipientEmail: string, otpCode: string, userName = 'Valued Customer'): Promise<boolean> {
+    const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
+    const subject = 'Your Login OTP - PerfectPic';
+    const text = `Your OTP is ${otpCode}. Please do not share this with anyone. It will expire shortly.`;
     const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Your PerfectPic OTP Code</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #faf8f5; margin: 0; padding: 24px; color: #1a1a1a; }
-    .container { max-width: 540px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e5e5e5; padding: 36px 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-    .brand { font-size: 22px; font-weight: 800; letter-spacing: 0.25em; text-transform: uppercase; color: #0a0a0a; text-align: center; margin-bottom: 24px; }
-    .title { font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 12px; color: #111; }
-    .subtitle { font-size: 14px; text-align: center; color: #666; margin-bottom: 28px; line-height: 1.5; }
-    .otp-box { background: #faf8f5; border: 2px dashed #0a0a0a; border-radius: 8px; padding: 18px 24px; text-align: center; margin: 24px 0; }
-    .otp-code { font-size: 36px; font-weight: 800; letter-spacing: 0.25em; color: #0a0a0a; font-family: 'Courier New', Courier, monospace; }
-    .expiry { font-size: 12px; color: #888; text-align: center; margin-top: 8px; }
-    .footer { font-size: 12px; color: #999; text-align: center; margin-top: 32px; border-top: 1px solid #f0f0f0; padding-top: 20px; line-height: 1.6; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="brand">PERFECTPIC</div>
-    <div class="title">Verify Your Account</div>
-    <div class="subtitle">Hello ${userName}, use the one-time verification code below to securely access your PerfectPic photobooks.</div>
-    <div class="otp-box">
-      <div class="otp-code">${otp}</div>
-      <div class="expiry">Valid for 10 minutes · Do not share this code with anyone</div>
-    </div>
-    <div class="footer">
-      If you did not request this verification code, you can safely ignore this email.<br>
-      © 2026 PerfectPic (perfectpic.in) · Archival Photobooks That Last Generations
-    </div>
-  </div>
-</body>
-</html>
+      <div style="font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; max-width: 520px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px;">
+        <div style="font-size: 20px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #111; text-align: center; margin-bottom: 20px;">PERFECTPIC</div>
+        <h2 style="color: #2c3e50; font-size: 20px; margin-bottom: 12px; text-align: center;">Authentication Code</h2>
+        <p style="font-size: 14px; color: #555; text-align: center; margin-bottom: 20px;">Your One-Time Password (OTP) for PerfectPic is:</p>
+        <div style="background: #faf8f5; border: 2px dashed #2c3e50; border-radius: 6px; padding: 18px; text-align: center; margin: 20px 0;">
+          <h1 style="color: #2c3e50; letter-spacing: 6px; margin: 0; font-size: 36px; font-family: 'Courier New', Courier, monospace;">${otpCode}</h1>
+        </div>
+        <p style="font-size: 13px; color: #666; text-align: center;">Please do not share this code with anyone. It will expire shortly.</p>
+        <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; line-height: 1.6;">
+          If you did not request this verification code, you can safely ignore this email.<br>
+          © 2026 PerfectPic (perfectpic.in) · Archival Photobooks
+        </div>
+      </div>
     `;
 
-    logger.info(`🔑 OTP Generated for ${toEmail}: [ ${otp} ] (Valid for 10 mins)`);
-    return this.sendMail({ to: toEmail, subject, html });
+    const transporter = this.ensureTransporter();
+    if (this.isConfigured && transporter) {
+      try {
+        const mailOptions = {
+          from: fromAddress,
+          to: recipientEmail,
+          subject,
+          text,
+          html,
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('OTP Email sent successfully! Message ID:', info.messageId);
+        logger.info(`✉️ OTP Email sent successfully! Message ID: ${info.messageId} to ${recipientEmail}`);
+        return true;
+      } catch (error: any) {
+        console.error('Error occurred while sending OTP:', error);
+        logger.error(`❌ Error occurred while sending OTP to ${recipientEmail}: ${error.message}`);
+        return false;
+      }
+    }
+
+    // Dev Simulation Fallback
+    logger.info(`🔑 OTP Generated for ${recipientEmail}: [ ${otpCode} ] (Valid for 10 mins)`);
+    console.log(`[SIMULATED EMAIL] To: ${recipientEmail} | OTP: [${otpCode}]`);
+    return true;
   }
 
   public async sendOrderConfirmationEmail(toEmail: string, orderDetails: any): Promise<boolean> {

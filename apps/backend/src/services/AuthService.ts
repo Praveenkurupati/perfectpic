@@ -25,21 +25,6 @@ export class AuthService {
     const user = await UserRepository.findByIdentifier(input);
 
     if (!user) {
-      // Dev mock fallback if user is mock admin
-      if (input.toLowerCase().includes('admin') && (password === 'password123' || password === 'Admin123!Secure' || password === 'Admin123!')) {
-        const token = signToken({ id: 'admin_1', email: input, role: 'admin' });
-        return {
-          token,
-          user: { id: 'admin_1', name: 'Admin PerfectPic', email: input, role: 'admin' },
-        };
-      }
-      if ((input.startsWith('user') || input.includes('test')) && (password === 'password123' || password === 'User123!')) {
-        const token = signToken({ id: 'usr_mock_1', email: input, role: 'user' });
-        return {
-          token,
-          user: { id: 'usr_mock_1', name: input.split('@')[0], email: input, role: 'user' },
-        };
-      }
       throw ApiError.unauthorized('Invalid credentials. Account not found.');
     }
 
@@ -169,12 +154,7 @@ export class AuthService {
         avatar: user.avatar,
       };
     }
-    return {
-      id: userId,
-      name: 'User 1',
-      email: 'user1@perfectpic.in',
-      role: 'user',
-    };
+    throw ApiError.unauthorized('User session invalid or user not found.');
   }
 }
 

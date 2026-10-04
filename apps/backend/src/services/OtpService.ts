@@ -41,7 +41,10 @@ export class OtpService {
 
     // 1. Send via Email if it is an email
     if (isEmail) {
-      await mailService.sendOtpEmail(identifier, otp, params.name || 'Valued Customer');
+      const sent = await mailService.sendOtpEmail(identifier, otp, params.name || 'Valued Customer');
+      if (!sent && mailService.isConfigured) {
+        throw new Error('Failed to send verification email. Please verify your email address and try again.');
+      }
     }
 
     // 2. Send via SMS & WhatsApp if it is a phone number
@@ -53,12 +56,9 @@ export class OtpService {
 
     logger.info(`✅ OTP dispatched successfully to [${identifier}]`);
 
-    // In non-production, return devOtp for fast testing
-    const isDev = process.env.NODE_ENV !== 'production';
     return {
       success: true,
       identifier,
-      ...(isDev ? { devOtp: otp } : {}),
     };
   }
 

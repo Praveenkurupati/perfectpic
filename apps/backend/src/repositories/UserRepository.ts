@@ -47,11 +47,6 @@ export class UserRepository {
 
       if (!input.includes('@')) {
         conditions.push({ email: `${input}@perfectpic.in` });
-      } else {
-        const usernamePart = input.split('@')[0];
-        if (usernamePart) {
-          conditions.push({ email: `${usernamePart}@perfectpic.in` });
-        }
       }
 
       return await User.findOne({ $or: conditions });

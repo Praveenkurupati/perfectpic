@@ -16,12 +16,13 @@ export const env = {
   // CORS
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
   
-  // Mail / SMTP
-  SMTP_HOST: process.env.SMTP_HOST || '',
-  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
-  SMTP_USER: process.env.SMTP_USER || '',
+  // Mail / SMTP (Zoho SMTP default: smtppro.zoho.in:465)
+  SMTP_HOST: process.env.SMTP_HOST || 'smtppro.zoho.in',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '465', 10),
+  SMTP_USER: process.env.SMTP_USER || 'noreply@perfectpic.in',
   SMTP_PASS: process.env.SMTP_PASS || '',
-  SMTP_FROM: process.env.SMTP_FROM || 'PerfectPic Security <no-reply@perfectpic.in>',
+  SMTP_SECURE: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : true,
+  SMTP_FROM: process.env.SMTP_FROM || (process.env.SMTP_USER ? `"PerfectPic Security" <${process.env.SMTP_USER}>` : 'PerfectPic Security <noreply@perfectpic.in>'),
   
   // Razorpay
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',

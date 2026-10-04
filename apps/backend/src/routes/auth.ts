@@ -222,9 +222,9 @@ router.get("/me", authenticate, async (req, res) => {
 
   res.json({
     user: {
-      id: req.user?.id || "user-1",
-      email: (req.user as any)?.email || "user1@perfectpic.in",
-      name: (req.user as any)?.name || "User 1",
+      id: req.user?.id || "guest",
+      email: (req.user as any)?.email || "customer@perfectpic.in",
+      name: (req.user as any)?.name || "Customer",
       role: req.user?.role || "user"
     }
   });

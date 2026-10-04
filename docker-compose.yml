@@ -55,6 +55,12 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=perfectpic-production-super-secure-jwt-key-2026
       - CORS_ORIGIN=*
+      - SMTP_HOST=${SMTP_HOST:-smtppro.zoho.in}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER:-noreply@perfectpic.in}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_SECURE=${SMTP_SECURE:-true}
+      - SMTP_FROM=${SMTP_FROM:-"PerfectPic Security" <noreply@perfectpic.in>}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
