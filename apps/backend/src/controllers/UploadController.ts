@@ -166,13 +166,17 @@ export class UploadController {
       // 2. Local disk storage fallback (for offline development)
       const uploadsDir = path.join(process.cwd(), 'uploads');
       const targetDir = path.join(uploadsDir, folder);
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
-      }
+      try {
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
 
-      const localPath = path.join(targetDir, filename);
-      if (req.file.buffer) {
-        fs.writeFileSync(localPath, req.file.buffer);
+        const localPath = path.join(targetDir, filename);
+        if (req.file.buffer) {
+          fs.writeFileSync(localPath, req.file.buffer);
+        }
+      } catch (fileErr: any) {
+        console.error('⚠️ Failed to write local upload file:', fileErr?.message);
       }
 
       const host = req.get('host') || 'localhost:4000';

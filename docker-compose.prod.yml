@@ -36,6 +36,8 @@ services:
   backend:
     restart: always
     ports: !override []
+    volumes:
+      - uploads_data:/app/uploads
     deploy:
       resources:
         limits:
@@ -102,3 +104,7 @@ services:
       options:
         max-size: "50m"
         max-file: "10"
+
+volumes:
+  uploads_data:
+    name: perfectpic_uploads_data

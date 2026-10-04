@@ -42,8 +42,11 @@ ENV HOSTNAME="0.0.0.0"
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Pre-create Next.js cache directory and set ownership
+RUN mkdir -p apps/client/.next/cache && chown -R nextjs:nodejs /app
+
 # Copy static assets and standalone server bundle
-COPY --from=builder /app/apps/client/public ./apps/client/public
+COPY --from=builder --chown=nextjs:nodejs /app/apps/client/public ./apps/client/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/client/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/client/.next/static ./apps/client/.next/static
 

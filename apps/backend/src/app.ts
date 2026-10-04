@@ -7,6 +7,7 @@ import fs from 'fs';
 import { env } from './config/env';
 import { requestLogger } from './middlewares/requestLogger';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
+import { logger } from './utils/logger';
 import apiRouter from './routes';
 
 export function createApp(): Application {
@@ -53,8 +54,12 @@ export function createApp(): Application {
 
   // Static uploads directory serving with permissive cross-origin headers
   const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+  } catch (err: any) {
+    logger.warn(`Could not create uploads directory at ${uploadsDir}: ${err?.message}`);
   }
   app.use(
     '/uploads',

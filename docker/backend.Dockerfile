@@ -39,6 +39,9 @@ ENV PORT=4000
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 expressjs
 
+# Pre-create writable directories for uploads and logs, set ownership
+RUN mkdir -p /app/uploads /app/logs && chown -R expressjs:nodejs /app
+
 # Copy runtime node_modules and built dist bundle
 COPY --from=builder --chown=expressjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
