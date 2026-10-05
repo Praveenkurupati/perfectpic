@@ -26,6 +26,7 @@ COPY --from=pruner /app/out/full/ .
 COPY turbo.json turbo.json
 
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 
 RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo pnpm --filter=@repo/backend build
 
@@ -55,4 +56,4 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:4000/api/health || exit 1
 
-CMD ["node", "apps/backend/dist/index.js"]
+CMD ["node", "apps/backend/dist/server.js"]

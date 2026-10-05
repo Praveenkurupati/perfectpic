@@ -1,0 +1,16 @@
+# docker-compose.ec2.yml - Overrides and optimizations for AWS EC2 deployment
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+
+  admin:
+    build:
+      context: .
+      dockerfile: docker/admin.Dockerfile
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile

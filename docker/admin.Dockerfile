@@ -27,6 +27,7 @@ COPY turbo.json turbo.json
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 
 RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
     --mount=type=cache,id=next-cache-admin,target=/app/apps/admin/.next/cache \
