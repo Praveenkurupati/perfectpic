@@ -81,15 +81,29 @@ class MailService {
     return true;
   }
 
-  public async sendOtpEmail(recipientEmail: string, otpCode: string, userName = 'Valued Customer'): Promise<boolean> {
+  public async sendOtpEmail(
+    recipientEmail: string,
+    otpCode: string,
+    userName = 'Valued Customer',
+    purpose: 'login' | 'signup' | 'verification' = 'login'
+  ): Promise<boolean> {
     const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
-    const subject = 'Your Login OTP - PerfectPic';
-    const text = `Your OTP is ${otpCode}. Please do not share this with anyone. It will expire shortly.`;
+    const isSignup = purpose === 'signup';
+    const subject = isSignup
+      ? 'Verify Your Email - PerfectPic Registration'
+      : 'Your Login OTP - PerfectPic';
+    const title = isSignup ? 'Welcome to PerfectPic' : 'Authentication Code';
+    const description = isSignup
+      ? 'Thank you for joining PerfectPic. Your One-Time Password (OTP) to verify your email and activate your account is:'
+      : 'Your One-Time Password (OTP) for PerfectPic is:';
+    const text = isSignup
+      ? `Welcome to PerfectPic! Your registration OTP is ${otpCode}. Please enter this code to verify your account.`
+      : `Your OTP is ${otpCode}. Please do not share this with anyone. It will expire shortly.`;
     const html = `
       <div style="font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; max-width: 520px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px;">
         <div style="font-size: 20px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #111; text-align: center; margin-bottom: 20px;">PERFECTPIC</div>
-        <h2 style="color: #2c3e50; font-size: 20px; margin-bottom: 12px; text-align: center;">Authentication Code</h2>
-        <p style="font-size: 14px; color: #555; text-align: center; margin-bottom: 20px;">Your One-Time Password (OTP) for PerfectPic is:</p>
+        <h2 style="color: #2c3e50; font-size: 20px; margin-bottom: 12px; text-align: center;">${title}</h2>
+        <p style="font-size: 14px; color: #555; text-align: center; margin-bottom: 20px;">${description}</p>
         <div style="background: #faf8f5; border: 2px dashed #2c3e50; border-radius: 6px; padding: 18px; text-align: center; margin: 20px 0;">
           <h1 style="color: #2c3e50; letter-spacing: 6px; margin: 0; font-size: 36px; font-family: 'Courier New', Courier, monospace;">${otpCode}</h1>
         </div>

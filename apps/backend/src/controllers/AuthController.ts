@@ -1,5 +1,6 @@
 // apps/backend/src/controllers/AuthController.ts
 import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import { AuthService } from '../services/AuthService';
 import { OtpService } from '../services/OtpService';
 import { OAuthService } from '../services/OAuthService';
@@ -39,11 +40,53 @@ export class AuthController {
 
   public static async signup(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await AuthService.signup(req.body);
-      return res.status(201).json({
-        token: result.token,
-        user: result.user,
-        message: 'Registration successful',
+      const { name, email, phone, password, otp } = req.body;
+      const normalizedEmail = (email || '').trim().toLowerCase();
+
+      if (!name || !normalizedEmail) {
+        throw ApiError.badRequest('Full name and email address are required.');
+      }
+
+      // Check if user already exists
+      const existing = await UserRepository.findByEmail(normalizedEmail);
+      if (existing) {
+        throw ApiError.conflict('An account with this email address already exists. Please sign in instead.');
+      }
+
+      // 1. If OTP is provided, verify and complete registration
+      if (otp) {
+        const isValid = await OtpService.verifyOtp(normalizedEmail, otp.trim());
+        if (!isValid) {
+          throw ApiError.badRequest('Invalid or expired verification code.');
+        }
+
+        const result = await AuthService.signup({
+          name: name.trim(),
+          email: normalizedEmail,
+          phone: phone ? phone.trim() : '',
+          password: password ? password.trim() : 'otp_verified_user',
+        });
+
+        return res.status(201).json({
+          token: result.token,
+          user: result.user,
+          message: 'Account verified and created successfully!',
+        });
+      }
+
+      // 2. If OTP is not provided, send OTP to email to verify before account creation
+      const result = await OtpService.requestOtp({
+        email: normalizedEmail,
+        identifier: normalizedEmail,
+        name: name.trim(),
+        purpose: 'signup',
+      });
+
+      return res.status(200).json({
+        otpRequired: true,
+        message: `A verification code has been sent to ${normalizedEmail}. Please enter the OTP to complete registration.`,
+        identifier: normalizedEmail,
+        devOtp: result.devOtp,
       });
     } catch (err) {
       next(err);
@@ -52,16 +95,33 @@ export class AuthController {
 
   public static async sendOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { phone, email, identifier, name } = req.body;
-      const target = email || phone || identifier;
+      const { phone, email, identifier, name, purpose } = req.body;
+      const rawTarget = email || phone || identifier;
+      const target = (rawTarget || '').trim().toLowerCase();
 
       if (!target) {
         throw ApiError.badRequest('Please provide an email address or phone number.');
       }
 
-      const result = await OtpService.requestOtp({ email, phone, identifier: target, name });
+      // If purpose is signup, verify the email is not already registered
+      if (purpose === 'signup' && target.includes('@')) {
+        const existing = await UserRepository.findByEmail(target);
+        if (existing) {
+          throw ApiError.conflict('An account with this email address already exists. Please log in instead.');
+        }
+      }
+
+      const result = await OtpService.requestOtp({
+        email: target.includes('@') ? target : email,
+        phone: !target.includes('@') ? target : phone,
+        identifier: target,
+        name,
+        purpose: purpose || (target.includes('@') ? 'login' : 'verification'),
+      });
+
       return res.status(200).json({
-        message: 'OTP sent successfully',
+        success: true,
+        message: `A verification code has been sent to ${target}. Please check your inbox.`,
         identifier: result.identifier,
         devOtp: result.devOtp,
       });
@@ -72,8 +132,8 @@ export class AuthController {
 
   public static async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { phone, email, identifier, otp } = req.body;
-      const target = (email || phone || identifier || '').trim();
+      const { phone, email, identifier, otp, name, password } = req.body;
+      const target = (email || phone || identifier || '').trim().toLowerCase();
 
       if (!target || !otp) {
         throw ApiError.badRequest('Identifier and verification OTP are required.');
@@ -90,13 +150,17 @@ export class AuthController {
 
       if (!user) {
         // Auto-provision user account on successful first OTP verification
+        const displayName = name ? name.trim() : (isEmail ? target.split('@')[0] : 'Customer');
         user = await UserRepository.create({
-          name: isEmail ? target.split('@')[0] : 'Customer',
+          name: displayName,
           email: isEmail ? target : `${target}@perfectpic.in`,
-          phone: !isEmail ? target : '',
-          password: 'otp_authenticated_user',
+          phone: !isEmail ? target : (phone ? phone.trim() : ''),
+          password: password ? await bcrypt.hash(password, 10) : 'otp_authenticated_user',
           role: 'user',
         });
+      } else if (name && (!user.name || user.name === 'Customer')) {
+        user.name = name.trim();
+        await user.save().catch(() => {});
       }
 
       if (!user) {

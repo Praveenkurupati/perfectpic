@@ -25,6 +25,7 @@ export class OtpService {
     phone?: string;
     identifier?: string;
     name?: string;
+    purpose?: 'login' | 'signup' | 'verification';
   }): Promise<{ success: boolean; identifier: string; devOtp?: string }> {
     const rawTarget = params.email || params.phone || params.identifier || '';
     const identifier = rawTarget.trim().toLowerCase();
@@ -72,7 +73,7 @@ export class OtpService {
 
     // 1. Send via Email if it is an email
     if (isEmail) {
-      const sent = await mailService.sendOtpEmail(identifier, otp, params.name || 'Valued Customer');
+      const sent = await mailService.sendOtpEmail(identifier, otp, params.name || 'Valued Customer', params.purpose || 'login');
       if (!sent && mailService.isConfigured) {
         throw new Error('Failed to send verification email. Please verify your email address and try again.');
       }

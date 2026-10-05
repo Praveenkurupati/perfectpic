@@ -64,21 +64,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  signup: (data: { name: string; email?: string; phone?: string; password?: string }) =>
-    fetcher<{ token: string; user: any; message: string }>('/auth/signup', {
+  signup: (data: { name: string; email: string; phone?: string; password?: string; otp?: string }) =>
+    fetcher<{ token?: string; user?: any; otpRequired?: boolean; message: string }>('/auth/signup', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  sendOtp: (param: string | { email?: string; phone?: string; identifier?: string }) => {
+  sendOtp: (param: string | { email?: string; phone?: string; identifier?: string; name?: string; purpose?: 'login' | 'signup' }) => {
     const body = typeof param === 'string' 
       ? (param.includes('@') ? { email: param } : { phone: param }) 
       : param;
-    return fetcher<{ message: string; devOtp?: string }>('/auth/send-otp', {
+    return fetcher<{ message: string; devOtp?: string; success?: boolean }>('/auth/send-otp', {
       method: 'POST',
       body: JSON.stringify(body),
     });
   },
-  verifyOtp: (param: { email?: string; phone?: string; identifier?: string; otp: string } | string, maybeOtp?: string) => {
+  verifyOtp: (param: { email?: string; phone?: string; identifier?: string; otp: string; name?: string; password?: string } | string, maybeOtp?: string) => {
     let body: any;
     if (typeof param === 'string') {
       body = param.includes('@') ? { email: param, otp: maybeOtp } : { phone: param, otp: maybeOtp };
