@@ -91,7 +91,7 @@ function LoginForm() {
       setOtpSent(true);
       if (res.devOtp) {
         setSuccessMsg(res.message ? `${res.message} (Test OTP: ${res.devOtp})` : `Verification code: ${res.devOtp}`);
-        setOtp(res.devOtp);
+        setOtpCode(res.devOtp);
       } else {
         setSuccessMsg(res.message || `A verification code has been sent to ${emailToSend}. Please check your inbox.`);
       }
@@ -130,7 +130,7 @@ function LoginForm() {
       setSignupOtpSent(true);
       if (res.devOtp) {
         setSuccessMsg(res.message ? `${res.message} (Test OTP: ${res.devOtp})` : `Verification code: ${res.devOtp}`);
-        setSignupOtp(res.devOtp);
+        setSignupOtpCode(res.devOtp);
       } else {
         setSuccessMsg(res.message || `A verification code has been sent to ${targetEmail}. Please check your inbox.`);
       }
