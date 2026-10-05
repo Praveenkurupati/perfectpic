@@ -20,7 +20,13 @@ class MailService {
   }
 
   public initTransporter() {
-    if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
+    const isPlaceholderPass =
+      !env.SMTP_PASS ||
+      env.SMTP_PASS.trim() === 'password' ||
+      env.SMTP_PASS.trim() === 'your_zoho_smtp_password' ||
+      env.SMTP_PASS.trim().length === 0;
+
+    if (env.SMTP_HOST && env.SMTP_USER && !isPlaceholderPass) {
       try {
         this.transporter = nodemailer.createTransport({
           host: env.SMTP_HOST,
@@ -32,7 +38,7 @@ class MailService {
           },
         });
         this.isConfigured = true;
-        logger.info('📧 MailService initialized with Zoho SMTP configuration', {
+        logger.info('📧 MailService initialized with SMTP configuration', {
           host: env.SMTP_HOST,
           port: env.SMTP_PORT,
           user: env.SMTP_USER,
@@ -43,8 +49,27 @@ class MailService {
         this.isConfigured = false;
       }
     } else {
-      logger.info('💡 MailService running in development simulation mode. Set SMTP_PASS in .env to send real emails via Zoho SMTP.');
+      if (isPlaceholderPass && env.SMTP_USER) {
+        logger.warn(`⚠️ [MailService] SMTP_PASS is using a placeholder ("${env.SMTP_PASS || 'empty'}"). Real email dispatch disabled until a valid Zoho/Gmail App Password is provided in .env. Running in simulated fallback mode.`);
+      } else {
+        logger.info('💡 MailService running in development simulation mode. Set SMTP_PASS in .env to send real emails via Zoho SMTP.');
+      }
       this.isConfigured = false;
+    }
+  }
+
+  public async verifyConnection(): Promise<{ success: boolean; message: string; error?: any }> {
+    if (!this.transporter || !this.isConfigured) {
+      return {
+        success: false,
+        message: 'SMTP is not configured with active credentials (SMTP_PASS is either missing or set to placeholder).',
+      };
+    }
+    try {
+      await this.transporter.verify();
+      return { success: true, message: 'SMTP connection verified successfully!' };
+    } catch (err: any) {
+      return { success: false, message: `SMTP verification failed: ${err.message}`, error: err };
     }
   }
 
@@ -148,9 +173,15 @@ class MailService {
       }
     }
 
-    // Dev Simulation Fallback
+    // Dev / Staging Simulation Fallback
     logger.info(`🔑 OTP Generated for ${recipientEmail}: [ ${otpCode} ] (Valid for 10 mins)`);
-    console.log(`[SIMULATED EMAIL] To: ${recipientEmail} | OTP: [${otpCode}]`);
+    console.log(`\n======================================================`);
+    console.log(`📬 [SIMULATED EMAIL DISPATCH]`);
+    console.log(`To: ${recipientEmail}`);
+    console.log(`Subject: "${subject}"`);
+    console.log(`OTP Code: [ ${otpCode} ]`);
+    console.log(`Note: To dispatch real emails to inboxes, set valid SMTP_PASS in .env`);
+    console.log(`======================================================\n`);
     return true;
   }
 

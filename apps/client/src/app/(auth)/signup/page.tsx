@@ -62,7 +62,12 @@ function SignupForm() {
         purpose: "signup",
       });
       setOtpSent(true);
-      setSuccessMsg(res.message || `A 6-digit verification code has been sent to ${targetEmail}. Please check your inbox.`);
+      if (res.devOtp) {
+        setSuccessMsg(res.message ? `${res.message} (Test OTP: ${res.devOtp})` : `Verification code: ${res.devOtp}`);
+        setOtpCode(res.devOtp);
+      } else {
+        setSuccessMsg(res.message || `A 6-digit verification code has been sent to ${targetEmail}. Please check your inbox.`);
+      }
       setCountdown(60);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to send verification code. Please check your email and try again.");

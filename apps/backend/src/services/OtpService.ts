@@ -8,6 +8,7 @@ import { OtpPurpose, OtpChannel } from '../db/models/Otp';
 import { cacheGet, cacheSet, cacheDel } from '../cache/redis';
 import { logger } from '../utils/logger';
 import { OTP_CONFIG } from '../config/constants';
+import { env } from '../config/env';
 
 export interface IRequestOtpOptions {
   email?: string;
@@ -125,6 +126,7 @@ export class OtpService {
       success: true,
       identifier,
       purpose,
+      devOtp: (!mailService.isConfigured || env.isDev) ? otp : undefined,
     };
   }
 

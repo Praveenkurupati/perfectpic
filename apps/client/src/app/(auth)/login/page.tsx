@@ -89,7 +89,12 @@ function LoginForm() {
         purpose: "login",
       });
       setOtpSent(true);
-      setSuccessMsg(res.message || `A verification code has been sent to ${emailToSend}. Please check your inbox.`);
+      if (res.devOtp) {
+        setSuccessMsg(res.message ? `${res.message} (Test OTP: ${res.devOtp})` : `Verification code: ${res.devOtp}`);
+        setOtp(res.devOtp);
+      } else {
+        setSuccessMsg(res.message || `A verification code has been sent to ${emailToSend}. Please check your inbox.`);
+      }
       setCountdown(60);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to send verification code. Please check your email and try again.");
@@ -123,7 +128,12 @@ function LoginForm() {
         purpose: "signup",
       });
       setSignupOtpSent(true);
-      setSuccessMsg(res.message || `A verification code has been sent to ${targetEmail}. Please check your inbox.`);
+      if (res.devOtp) {
+        setSuccessMsg(res.message ? `${res.message} (Test OTP: ${res.devOtp})` : `Verification code: ${res.devOtp}`);
+        setSignupOtp(res.devOtp);
+      } else {
+        setSuccessMsg(res.message || `A verification code has been sent to ${targetEmail}. Please check your inbox.`);
+      }
       setSignupCountdown(60);
     } catch (err: any) {
       setErrorMsg(err.message || "Failed to send verification code. Please check your email and try again.");
