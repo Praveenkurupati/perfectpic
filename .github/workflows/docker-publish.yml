@@ -1,0 +1,117 @@
+name: Build & Publish Docker Containers (CI/CD)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: docker-build-and-push
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build & Push Images to GHCR
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Lowercase Repository Name
+        id: repo_name
+        run: |
+          echo "IMAGE_PREFIX=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 1. Build and Push Backend Image
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/backend.Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/perfectpic-backend:latest
+            ${{ env.IMAGE_PREFIX }}/perfectpic-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      # 2. Build and Push Admin Image
+      - name: Build and Push Admin
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/admin.Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/perfectpic-admin:latest
+            ${{ env.IMAGE_PREFIX }}/perfectpic-admin:${{ github.sha }}
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
+
+      # 3. Build and Push Client Image
+      - name: Build and Push Client
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/client.Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/perfectpic-client:latest
+            ${{ env.IMAGE_PREFIX }}/perfectpic-client:${{ github.sha }}
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
+
+  deploy-ec2:
+    name: Deploy Containers to AWS EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: "${{ vars.ENABLE_AUTO_DEPLOY == 'true' || secrets.EC2_HOST != '' }}"
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          script_stop: true
+          command_timeout: 10m
+          script: |
+            set -e
+            APP_DIR="${{ secrets.EC2_APP_DIR || '/var/www/perfectpic' }}"
+            cd "$APP_DIR"
+
+            echo "📥 Fetching latest compose and config updates..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "🔑 Authenticating Docker to GitHub Container Registry..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin || true
+
+            echo "🚀 Pulling pre-built containers from GHCR..."
+            sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+
+            echo "⚡ Starting updated production containers..."
+            sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "🧹 Cleaning unused old images to conserve disk space..."
+            sudo docker image prune -f
+
+            echo "✅ Deployment finished successfully in seconds!"
