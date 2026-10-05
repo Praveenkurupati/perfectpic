@@ -62,7 +62,7 @@ services:
       - SMTP_USER=${SMTP_USER:-noreply@perfectpic.in}
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_SECURE=${SMTP_SECURE:-true}
-      - SMTP_FROM=${SMTP_FROM:-"PerfectPic Security" <noreply@perfectpic.in>}
+      - SMTP_FROM=${SMTP_FROM:-}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-${AWS_ACCESS_KEY:-}}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-${AWS_SECRET_KEY:-}}
       - AWS_REGION=${AWS_REGION:-ap-south-1}

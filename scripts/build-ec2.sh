@@ -13,7 +13,19 @@ if [ -n "$SWAP_TOTAL" ] && [ "$SWAP_TOTAL" -lt 2000 ]; then
   sudo ./scripts/setup-swap.sh
 fi
 
-# 2. Ensure environment files exist so Docker Compose doesn't fail
+# 2. Ensure environment files exist and sanitize any malformed quotes
+for ENV_FILE in .env apps/backend/.env; do
+  if [ -f "$ENV_FILE" ]; then
+    node -e "
+      const fs = require('fs');
+      const file = '$ENV_FILE';
+      let c = fs.readFileSync(file, 'utf8');
+      c = c.replace(/SMTP_FROM=\"([^\"]+)\"\s*<([^>]+)>/g, 'SMTP_FROM=\"\$1 <\$2>\"');
+      fs.writeFileSync(file, c);
+    " 2>/dev/null || true
+  fi
+done
+
 if [ ! -f .env ]; then
   if [ -f apps/backend/.env ]; then
     echo "📋 Copying apps/backend/.env to root .env for Docker Compose..."
