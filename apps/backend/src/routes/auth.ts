@@ -6,10 +6,9 @@ import { signToken } from "../lib/jwt";
 import { User } from "../db/models/User";
 import { isDbConnected } from "../db/connection";
 
-const router = Router();
+import { OtpService } from "../services/OtpService";
 
-// In-memory OTP store
-const otpStore = new Map<string, string>();
+const router = Router();
 
 // POST /api/auth/login - Universal Login (Email, Username, or Phone + Password)
 router.post("/login", async (req, res) => {
@@ -245,46 +244,72 @@ router.get("/users", async (req, res) => {
 
 // OTP routes for backward compatibility
 router.post("/send-otp", async (req, res) => {
-  const { phone } = req.body;
-  if (!phone) {
-    return res.status(400).json({ error: "Phone number is required" });
+  const { phone, email, identifier, name, purpose } = req.body;
+  const target = email || phone || identifier;
+  if (!target) {
+    return res.status(400).json({ error: "Email or phone number is required" });
   }
-  
-  const otp = generateOTP();
-  otpStore.set(phone, otp);
-  console.log(`[MOCK SMS] OTP for ${phone} is ${otp}`);
-  
-  res.json({ message: "OTP sent successfully", devOtp: otp });
+
+  try {
+    const result = await OtpService.requestOtp({
+      email: target.includes("@") ? target : email,
+      phone: !target.includes("@") ? target : phone,
+      identifier: target,
+      name,
+      purpose: purpose || (target.includes("@") ? "login" : "verification"),
+      ipAddress: req.ip || "",
+      userAgent: req.get("user-agent") || "",
+    });
+
+    res.json({ message: "OTP sent successfully", identifier: result.identifier, devOtp: result.devOtp });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Failed to send OTP" });
+  }
 });
 
 router.post("/verify-otp", async (req, res) => {
-  const { phone, otp } = req.body;
-  const storedOtp = otpStore.get(phone);
+  const { phone, email, identifier, otp, purpose } = req.body;
+  const target = (email || phone || identifier || "").trim();
 
-  if (!storedOtp || storedOtp !== otp) {
-    return res.status(400).json({ error: "Invalid or expired OTP" });
-  }
-  
-  otpStore.delete(phone);
-  
-  let user: any = null;
-  if (isDbConnected()) {
-    user = await User.findOne({ phone });
+  if (!target || !otp) {
+    return res.status(400).json({ error: "Identifier and OTP are required" });
   }
 
-  const userId = user ? user._id.toString() : "user_" + Math.random().toString(36).substring(7);
-  const token = signToken({ id: userId, phone, role: user?.role || "user" });
-  
-  res.json({ 
-    token, 
-    user: { 
-      id: userId, 
-      phone, 
-      name: user?.name || "Customer", 
-      email: user?.email || `${phone}@perfectpic.in`,
-      role: user?.role || "user"
-    } 
-  });
+  try {
+    const isValid = await OtpService.verifyOtp(target, otp.trim(), purpose || "login");
+    if (!isValid) {
+      return res.status(400).json({ error: "Invalid or expired OTP" });
+    }
+
+    let user: any = null;
+    if (isDbConnected()) {
+      user = await User.findOne({
+        $or: [{ email: target.toLowerCase() }, { phone: target }],
+      });
+    }
+
+    const userId = user ? user._id.toString() : "user_" + Math.random().toString(36).substring(7);
+    const token = signToken({
+      id: userId,
+      email: user?.email || target,
+      phone: user?.phone || (target.includes("@") ? "" : target),
+      role: user?.role || "user",
+    });
+
+    res.json({
+      token,
+      user: {
+        id: userId,
+        phone: user?.phone || (target.includes("@") ? "" : target),
+        name: user?.name || "Customer",
+        email: user?.email || (target.includes("@") ? target : `${target}@perfectpic.in`),
+        role: user?.role || "user",
+      },
+      message: "Verification successful",
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Invalid or expired verification code" });
+  }
 });
 
 router.post("/logout", authenticate, async (req, res) => {

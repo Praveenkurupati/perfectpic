@@ -53,9 +53,9 @@ export class AuthController {
         throw ApiError.conflict('An account with this email address already exists. Please sign in instead.');
       }
 
-      // 1. If OTP is provided, verify and complete registration
+      // 1. If OTP is provided, verify against 'signup' purpose and complete registration
       if (otp) {
-        const isValid = await OtpService.verifyOtp(normalizedEmail, otp.trim());
+        const isValid = await OtpService.verifyOtp(normalizedEmail, otp.trim(), 'signup');
         if (!isValid) {
           throw ApiError.badRequest('Invalid or expired verification code.');
         }
@@ -80,6 +80,11 @@ export class AuthController {
         identifier: normalizedEmail,
         name: name.trim(),
         purpose: 'signup',
+        ipAddress: req.ip || '',
+        userAgent: req.get('user-agent') || '',
+        metadata: {
+          phone: phone || '',
+        },
       });
 
       return res.status(200).json({
@@ -111,18 +116,23 @@ export class AuthController {
         }
       }
 
+      const otpPurpose = purpose || (target.includes('@') ? 'login' : 'verification');
+
       const result = await OtpService.requestOtp({
         email: target.includes('@') ? target : email,
         phone: !target.includes('@') ? target : phone,
         identifier: target,
         name,
-        purpose: purpose || (target.includes('@') ? 'login' : 'verification'),
+        purpose: otpPurpose,
+        ipAddress: req.ip || '',
+        userAgent: req.get('user-agent') || '',
       });
 
       return res.status(200).json({
         success: true,
         message: `A verification code has been sent to ${target}. Please check your inbox.`,
         identifier: result.identifier,
+        purpose: result.purpose,
         devOtp: result.devOtp,
       });
     } catch (err) {
@@ -132,14 +142,21 @@ export class AuthController {
 
   public static async verifyOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { phone, email, identifier, otp, name, password } = req.body;
+      const { phone, email, identifier, otp, name, password, purpose } = req.body;
       const target = (email || phone || identifier || '').trim().toLowerCase();
 
       if (!target || !otp) {
         throw ApiError.badRequest('Identifier and verification OTP are required.');
       }
 
-      const isValid = await OtpService.verifyOtp(target, otp.trim());
+      const otpPurpose = purpose || 'login';
+      let isValid = await OtpService.verifyOtp(target, otp.trim(), otpPurpose);
+
+      // Fallback: If verifying without purpose specified, check signup purpose as well
+      if (!isValid && !purpose) {
+        isValid = await OtpService.verifyOtp(target, otp.trim(), 'signup');
+      }
+
       if (!isValid) {
         throw ApiError.badRequest('Invalid or expired verification code.');
       }

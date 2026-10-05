@@ -2,6 +2,7 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
+import { OtpPurpose } from '../db/models/Otp';
 
 export interface ISendMailOptions {
   to: string;
@@ -85,20 +86,30 @@ class MailService {
     recipientEmail: string,
     otpCode: string,
     userName = 'Valued Customer',
-    purpose: 'login' | 'signup' | 'verification' = 'login'
+    purpose: OtpPurpose | string = 'login'
   ): Promise<boolean> {
     const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
-    const isSignup = purpose === 'signup';
-    const subject = isSignup
-      ? 'Verify Your Email - PerfectPic Registration'
-      : 'Your Login OTP - PerfectPic';
-    const title = isSignup ? 'Welcome to PerfectPic' : 'Authentication Code';
-    const description = isSignup
-      ? 'Thank you for joining PerfectPic. Your One-Time Password (OTP) to verify your email and activate your account is:'
-      : 'Your One-Time Password (OTP) for PerfectPic is:';
-    const text = isSignup
-      ? `Welcome to PerfectPic! Your registration OTP is ${otpCode}. Please enter this code to verify your account.`
-      : `Your OTP is ${otpCode}. Please do not share this with anyone. It will expire shortly.`;
+    let subject = 'Your Login OTP - PerfectPic';
+    let title = 'Authentication Code';
+    let description = 'Your One-Time Password (OTP) for PerfectPic is:';
+    let text = `Your OTP is ${otpCode}. Please do not share this with anyone. It will expire shortly.`;
+
+    if (purpose === 'signup') {
+      subject = 'Verify Your Email - PerfectPic Registration';
+      title = 'Welcome to PerfectPic';
+      description = 'Thank you for joining PerfectPic. Your One-Time Password (OTP) to verify your email and activate your account is:';
+      text = `Welcome to PerfectPic! Your registration OTP is ${otpCode}. Please enter this code to verify your account.`;
+    } else if (purpose === 'password_reset') {
+      subject = 'Password Reset Code - PerfectPic';
+      title = 'Reset Your Password';
+      description = 'We received a request to reset your PerfectPic account password. Your verification code is:';
+      text = `Your PerfectPic password reset code is ${otpCode}.`;
+    } else if (purpose === 'order_verification') {
+      subject = 'Order Verification Code - PerfectPic';
+      title = 'Verify Your Order';
+      description = 'Please confirm your photobook order with this One-Time Password (OTP):';
+      text = `Your PerfectPic order verification code is ${otpCode}.`;
+    }
     const html = `
       <div style="font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; max-width: 520px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px;">
         <div style="font-size: 20px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; color: #111; text-align: center; margin-bottom: 20px;">PERFECTPIC</div>
