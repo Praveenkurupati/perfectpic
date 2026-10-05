@@ -24,10 +24,13 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Lowercase Repository Name
-        id: repo_name
+      - name: Compute Lowercase Registry Names
+        id: repo_names
         run: |
-          echo "IMAGE_PREFIX=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_PREFIX=ghcr.io/${OWNER_LOWER}" >> $GITHUB_ENV
+          echo "REPO_PREFIX=ghcr.io/${REPO_LOWER}" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -47,8 +50,10 @@ jobs:
           file: docker/backend.Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/perfectpic-backend:latest
-            ${{ env.IMAGE_PREFIX }}/perfectpic-backend:${{ github.sha }}
+            ${{ env.OWNER_PREFIX }}/perfectpic-backend:latest
+            ${{ env.OWNER_PREFIX }}/perfectpic-backend:${{ github.sha }}
+            ${{ env.REPO_PREFIX }}/perfectpic-backend:latest
+            ${{ env.REPO_PREFIX }}/perfectpic-backend:${{ github.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -60,8 +65,10 @@ jobs:
           file: docker/admin.Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/perfectpic-admin:latest
-            ${{ env.IMAGE_PREFIX }}/perfectpic-admin:${{ github.sha }}
+            ${{ env.OWNER_PREFIX }}/perfectpic-admin:latest
+            ${{ env.OWNER_PREFIX }}/perfectpic-admin:${{ github.sha }}
+            ${{ env.REPO_PREFIX }}/perfectpic-admin:latest
+            ${{ env.REPO_PREFIX }}/perfectpic-admin:${{ github.sha }}
           cache-from: type=gha,scope=admin
           cache-to: type=gha,mode=max,scope=admin
 
@@ -73,8 +80,10 @@ jobs:
           file: docker/client.Dockerfile
           push: true
           tags: |
-            ${{ env.IMAGE_PREFIX }}/perfectpic-client:latest
-            ${{ env.IMAGE_PREFIX }}/perfectpic-client:${{ github.sha }}
+            ${{ env.OWNER_PREFIX }}/perfectpic-client:latest
+            ${{ env.OWNER_PREFIX }}/perfectpic-client:${{ github.sha }}
+            ${{ env.REPO_PREFIX }}/perfectpic-client:latest
+            ${{ env.REPO_PREFIX }}/perfectpic-client:${{ github.sha }}
           cache-from: type=gha,scope=client
           cache-to: type=gha,mode=max,scope=client
 
