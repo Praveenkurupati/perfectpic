@@ -1,5 +1,22 @@
-// apps/backend/src/config/env.ts
-import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+
+// Robust multi-path resolution for monorepos, docker containers, and direct script executions
+const candidateEnvPaths = [
+  path.resolve(process.cwd(), 'apps/backend/.env'),
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(__dirname, '../../../.env'),
+];
+
+for (const envPath of candidateEnvPaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    break;
+  }
+}
+dotenv.config();
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',

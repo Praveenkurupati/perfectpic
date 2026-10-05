@@ -48,6 +48,7 @@ COPY --from=builder --chown=expressjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/package.json ./apps/backend/package.json
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/dist ./apps/backend/dist
+COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/src/templates ./apps/backend/src/templates
 
 USER expressjs
 

@@ -1,0 +1,56 @@
+<div style="text-align: left;">
+  <!-- Greeting -->
+  <p style="font-size: 15px; color: #444444; margin: 0 0 16px 0;">
+    Hello {{#if name}}<strong>{{name}}</strong>{{else}}Valued Collector{{/if}},
+  </p>
+
+  <!-- Title & Description based on Purpose -->
+  <h1 style="font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; color: #111111; margin: 0 0 12px 0; line-height: 1.3;">
+    {{#if (eq purpose "signup")}}
+      Verify Your Email Address
+    {{else if (eq purpose "password_reset")}}
+      Reset Your Account Password
+    {{else if (eq purpose "order_verification")}}
+      Verify Your Photobook Order
+    {{else}}
+      Your Verification Code
+    {{/if}}
+  </h1>
+
+  <p style="font-size: 14px; color: #555555; margin: 0 0 24px 0; line-height: 1.6;">
+    {{#if (eq purpose "signup")}}
+      Thank you for choosing PerfectPic. Please use the verification code below to activate your account and begin your archival photobook journey:
+    {{else if (eq purpose "password_reset")}}
+      We received a request to reset your password. Enter the code below to securely set up a new password:
+    {{else if (eq purpose "order_verification")}}
+      Please enter this verification code to confirm and lock in your custom photobook order:
+    {{else}}
+      Use the one-time verification code below to securely authenticate your session:
+    {{/if}}
+  </p>
+
+  <!-- OTP Code Display Card -->
+  <div style="background-color: #faf8f5; border: 1px solid #e8e2d5; border-left: 4px solid #b89355; border-radius: 4px; padding: 22px 20px; text-align: center; margin: 28px 0;">
+    <div style="font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #8c734b; margin-bottom: 8px;">
+      One-Time Password (OTP)
+    </div>
+    <div class="otp-code" style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 38px; font-weight: 700; letter-spacing: 8px; color: #111111; padding: 4px 0;">
+      {{otpCode}}
+    </div>
+    <div style="font-size: 12px; color: #777777; margin-top: 8px;">
+      Valid for the next <strong>{{#if expiryMinutes}}{{expiryMinutes}}{{else}}10{{/if}} minutes</strong>. Never share this code with anyone.
+    </div>
+  </div>
+
+  <!-- Security Advice -->
+  <div style="background-color: #ffffff; border: 1px solid #f0eee6; border-radius: 4px; padding: 14px 16px; margin: 24px 0 16px 0;">
+    <p style="font-size: 12px; color: #666666; margin: 0; line-height: 1.5;">
+      🔒 <strong>Security Notice:</strong> PerfectPic staff will never ask you for your verification code or password over email, phone, or message. If you did not make this request, you can safely disregard this email.
+    </p>
+  </div>
+
+  <p style="font-size: 14px; color: #444444; margin: 24px 0 0 0;">
+    Warm regards,<br>
+    <strong>The PerfectPic Team</strong>
+  </p>
+</div>

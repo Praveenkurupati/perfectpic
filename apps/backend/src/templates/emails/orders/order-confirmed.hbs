@@ -1,0 +1,60 @@
+<div style="text-align: left;">
+  <!-- Greeting -->
+  <p style="font-size: 15px; color: #444444; margin: 0 0 16px 0;">
+    Dear {{#if customerName}}<strong>{{customerName}}</strong>{{else}}Valued Collector{{/if}},
+  </p>
+
+  <h1 style="font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; color: #111111; margin: 0 0 12px 0;">
+    Your Keepsake is in Production
+  </h1>
+
+  <p style="font-size: 14px; color: #555555; margin: 0 0 24px 0; line-height: 1.6;">
+    Thank you for your order! Your heirloom archival photobook has entered our precision bindery queue. Below are your order details:
+  </p>
+
+  <!-- Order Summary Card -->
+  <div style="background-color: #faf8f5; border: 1px solid #e8e2d5; border-radius: 4px; padding: 20px; margin: 24px 0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+      <tr>
+        <td style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 6px;">Order Number</td>
+        <td align="right" style="font-size: 14px; font-weight: 700; color: #111111; padding-bottom: 6px;">#{{orderNumber}}</td>
+      </tr>
+      <tr>
+        <td style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 6px;">Project</td>
+        <td align="right" style="font-size: 14px; font-weight: 600; color: #111111; padding-bottom: 6px;">{{title}}</td>
+      </tr>
+      <tr>
+        <td style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px; padding-bottom: 6px;">Items</td>
+        <td align="right" style="font-size: 14px; color: #444444; padding-bottom: 6px;">{{itemsCount}} photobook(s)</td>
+      </tr>
+      <tr>
+        <td style="font-size: 12px; color: #888888; text-transform: uppercase; letter-spacing: 1px; padding-top: 10px; border-top: 1px dashed #dcd6c8;">Total Paid</td>
+        <td align="right" style="font-size: 18px; font-weight: 700; color: #b89355; padding-top: 10px; border-top: 1px dashed #dcd6c8;">{{currency total}}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Delivery Address -->
+  {{#if address}}
+  <div style="margin: 20px 0;">
+    <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888888; margin-bottom: 6px;">
+      Shipping Destination
+    </div>
+    <div style="font-size: 13px; color: #444444; line-height: 1.5; background: #ffffff; border: 1px solid #f0eee6; padding: 12px 14px; border-radius: 4px;">
+      {{address}}
+    </div>
+  </div>
+  {{/if}}
+
+  <!-- CTA Button -->
+  <div style="text-align: center; margin: 32px 0 20px 0;">
+    <a href="{{frontendUrl}}/orders" target="_blank" style="background-color: #111111; color: #ffffff; font-size: 13px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; padding: 14px 28px; border-radius: 2px; display: inline-block;">
+      View Order Status →
+    </a>
+  </div>
+
+  <p style="font-size: 14px; color: #444444; margin: 24px 0 0 0;">
+    Warm regards,<br>
+    <strong>The PerfectPic Master Bindery Team</strong>
+  </p>
+</div>
