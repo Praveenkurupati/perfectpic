@@ -2,9 +2,11 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IProject extends Document {
   id?: string;
+  userId?: mongoose.Types.ObjectId | string;
+  guestSessionId?: string;
   title: string;
   template?: string;
-  status: string; // draft, completed, processing
+  status: string; // Draft, Completed, Processing
   coverUrl?: string;
   coverImage?: string;
   pageCount?: number;
@@ -21,6 +23,8 @@ export interface IProject extends Document {
 
 const ProjectSchema: Schema = new Schema(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    guestSessionId: { type: String, index: true },
     title: { type: String, required: true },
     template: { type: String, default: 'custom' },
     status: { type: String, default: 'Draft', index: true },
@@ -48,6 +52,9 @@ const ProjectSchema: Schema = new Schema(
     }
   }
 );
+
+ProjectSchema.index({ userId: 1, updatedAt: -1 });
+ProjectSchema.index({ guestSessionId: 1, updatedAt: -1 });
 
 export const Project: mongoose.Model<IProject> = 
   (mongoose.models.Project as mongoose.Model<IProject>) || mongoose.model<IProject>('Project', ProjectSchema);

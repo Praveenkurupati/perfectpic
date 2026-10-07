@@ -15,6 +15,8 @@ export interface ICreateOtpParams {
   metadata?: Record<string, any>;
 }
 
+const mockOtps: any[] = [];
+
 export class OtpRepository {
   /**
    * Creates and stores an encrypted OTP document in MongoDB.
@@ -75,8 +77,9 @@ export class OtpRepository {
     }
 
     // In-memory fallback if database is offline during bootstrap
-    return {
+    const inMem = {
       id: 'mock_otp_' + Date.now(),
+      _id: 'mock_otp_' + Date.now(),
       identifier: normalizedIdentifier,
       otpHash,
       purpose,
@@ -87,6 +90,8 @@ export class OtpRepository {
       expiresAt,
       compareOtp: async (candidate: string) => bcrypt.compare(candidate, otpHash),
     };
+    mockOtps.unshift(inMem);
+    return inMem;
   }
 
   /**
@@ -96,9 +101,19 @@ export class OtpRepository {
     identifier: string,
     purpose: OtpPurpose
   ): Promise<IOtpDocument | null> {
-    if (!isDbConnected()) return null;
-
     const normalizedIdentifier = identifier.toLowerCase().trim();
+
+    if (!isDbConnected()) {
+      return (
+        mockOtps.find(
+          (o) =>
+            o.identifier === normalizedIdentifier &&
+            o.purpose === purpose &&
+            !o.isVerified &&
+            o.expiresAt > new Date()
+        ) || null
+      );
+    }
     try {
       return await Otp.findOne({
         identifier: normalizedIdentifier,
@@ -135,7 +150,14 @@ export class OtpRepository {
    * Atomically mark OTP as verified and record timestamp
    */
   public static async markVerified(otpId: string): Promise<boolean> {
-    if (!isDbConnected()) return true;
+    if (!isDbConnected()) {
+      const found = mockOtps.find((o) => o.id === otpId || o._id === otpId);
+      if (found) {
+        found.isVerified = true;
+        found.verifiedAt = new Date();
+      }
+      return true;
+    }
 
     try {
       const updated = await Otp.findByIdAndUpdate(otpId, {

@@ -106,7 +106,11 @@ export class OtpService {
         purpose
       );
       if (!sent && mailService.isConfigured) {
-        throw new Error('Failed to send verification email. Please check your email address and try again.');
+        if (env.isProd) {
+          throw new Error('Failed to send verification email. Please check your email address and try again.');
+        } else {
+          logger.warn(`⚠️ [OtpService] Real SMTP delivery failed in non-production mode (${env.NODE_ENV}). Falling back to local verification code: ${otp}`);
+        }
       }
     }
 
@@ -157,10 +161,12 @@ export class OtpService {
       return false;
     }
 
+    const docId = String(otpDoc._id || otpDoc.id || '');
+
     // 2. Check if maximum attempts have been reached
     if (otpDoc.attempts >= otpDoc.maxAttempts) {
       logger.warn(`🚨 Max OTP attempts exceeded for [${identifier}]. Invalidating document.`);
-      await OtpRepository.markVerified(otpDoc._id.toString());
+      await OtpRepository.markVerified(docId);
       throw new Error('Too many failed verification attempts. This code has been invalidated for security. Please request a new code.');
     }
 
@@ -169,11 +175,11 @@ export class OtpService {
 
     if (!isMatch) {
       // Atomically increment failed attempts
-      const nextAttempts = await OtpRepository.incrementAttempts(otpDoc._id.toString());
+      const nextAttempts = await OtpRepository.incrementAttempts(docId);
       const remainingAttempts = Math.max(0, otpDoc.maxAttempts - nextAttempts);
 
       if (remainingAttempts === 0) {
-        await OtpRepository.markVerified(otpDoc._id.toString());
+        await OtpRepository.markVerified(docId);
         throw new Error('Too many failed verification attempts. This code has been invalidated for security. Please request a new code.');
       }
 
@@ -182,7 +188,7 @@ export class OtpService {
     }
 
     // 4. Mark OTP document as verified in database
-    await OtpRepository.markVerified(otpDoc._id.toString());
+    await OtpRepository.markVerified(docId);
 
     // 5. Clear Redis cooldown key to allow immediate follow-up actions if needed
     const cooldownKey = `otp_cooldown:${identifier}:${purpose}`;

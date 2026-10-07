@@ -86,7 +86,7 @@ function dispatchRequest(
 
 async function runTests() {
   console.log('\n🧪 ====================================================');
-  console.log('🧪 Starting Enterprise Backend In-Memory API Tests');
+  console.log('🧪 Starting Enterprise Backend API Verification Tests');
   console.log('🧪 ====================================================\n');
 
   // 1. Health check
@@ -149,44 +149,108 @@ async function runTests() {
     status: otpRes.status,
     expectedStatus: 200,
     passed: otpRes.status === 200,
-    details: `OTP dispatched to email. Code: ${devOtp || 'generated'}`,
+    details: `OTP dispatched. DevCode: ${devOtp || 'generated'}`,
   });
 
   // 6. Verify OTP and Token Issuance
+  let userToken = '';
   if (devOtp) {
     console.log(`Testing: POST /api/v1/auth/verify-otp (with code: ${devOtp})`);
     const verifyRes = await dispatchRequest('POST', '/api/v1/auth/verify-otp', {
       email: 'praveen@perfectpic.in',
       otp: devOtp,
     });
+    userToken = verifyRes.body?.token || '';
     results.push({
       endpoint: '/api/v1/auth/verify-otp',
       method: 'POST',
       status: verifyRes.status,
       expectedStatus: 200,
-      passed: verifyRes.status === 200 && !!verifyRes.body?.token,
+      passed: verifyRes.status === 200 && !!userToken,
       details: `JWT Token issued for: ${verifyRes.body?.user?.name || verifyRes.body?.user?.email}`,
     });
   }
 
-  // 7. Admin Login
+  // 7. Multitenancy: User creates scoped project
+  const userHeaders: Record<string, string> = userToken ? { authorization: `Bearer ${userToken}` } : {};
+  console.log('Testing: POST /api/v1/projects (Tenant Scoped Project Creation)');
+  const createProjRes = await dispatchRequest(
+    'POST',
+    '/api/v1/projects',
+    {
+      title: 'Himalayan Expedition Photobook',
+      template: 'annapurna-base-camp',
+      pageCount: 32,
+      bookSize: '8.25x8.25',
+    },
+    userHeaders
+  );
+  const createdProjId = createProjRes.body?.id || createProjRes.body?.project?._id || createProjRes.body?.project?.id;
+  results.push({
+    endpoint: '/api/v1/projects (Create)',
+    method: 'POST',
+    status: createProjRes.status,
+    expectedStatus: 201,
+    passed: createProjRes.status === 201 && !!createdProjId,
+    details: `Created Project ID: ${createdProjId}`,
+  });
+
+  // 8. Multitenancy: User lists their projects
+  console.log('Testing: GET /api/v1/projects (Owner Listing)');
+  const listOwnedRes = await dispatchRequest('GET', '/api/v1/projects', undefined, userHeaders);
+  results.push({
+    endpoint: '/api/v1/projects (Owner)',
+    method: 'GET',
+    status: listOwnedRes.status,
+    expectedStatus: 200,
+    passed: listOwnedRes.status === 200 && Array.isArray(listOwnedRes.body?.projects) && listOwnedRes.body?.projects.length > 0,
+    details: `Found ${listOwnedRes.body?.projects?.length || 0} user project(s)`,
+  });
+
+  // 9. Multitenancy: Anonymous client lists projects (IDOR Leakage Defense)
+  console.log('Testing: GET /api/v1/projects (Anonymous - IDOR Defense)');
+  const listAnonRes = await dispatchRequest('GET', '/api/v1/projects');
+  results.push({
+    endpoint: '/api/v1/projects (Anon)',
+    method: 'GET',
+    status: listAnonRes.status,
+    expectedStatus: 200,
+    passed: listAnonRes.status === 200 && listAnonRes.body?.projects?.length === 0,
+    details: `Isolated: ${listAnonRes.body?.projects?.length || 0} projects leaked to anonymous callers`,
+  });
+
+  // 10. Multitenancy: Attacker attempts to fetch another user's project ID (IDOR Defense)
+  console.log('Testing: GET /api/v1/projects/:id (Attacker without auth)');
+  const idorRes = await dispatchRequest('GET', `/api/v1/projects/${createdProjId}`);
+  results.push({
+    endpoint: '/api/v1/projects/:id (IDOR)',
+    method: 'GET',
+    status: idorRes.status,
+    expectedStatus: 404,
+    passed: idorRes.status === 404,
+    details: `Access denied to unauthenticated actor (Status: ${idorRes.status})`,
+  });
+
+  // 11. Admin Login
   console.log('Testing: POST /api/v1/auth/admin/login');
   const adminLogin = await dispatchRequest('POST', '/api/v1/auth/admin/login', {
     email: 'admin@perfectpic.in',
     password: 'Admin123!Secure',
   });
+  const adminToken = adminLogin.body?.token;
+  const adminHeaders: Record<string, string> = adminToken ? { authorization: `Bearer ${adminToken}` } : {};
   results.push({
     endpoint: '/api/v1/auth/admin/login',
     method: 'POST',
     status: adminLogin.status,
     expectedStatus: 200,
-    passed: adminLogin.status === 200 && !!adminLogin.body?.token,
+    passed: adminLogin.status === 200 && !!adminToken,
     details: `Role: ${adminLogin.body?.user?.role}, Name: ${adminLogin.body?.user?.name}`,
   });
 
-  // 8. Orders & Stats
-  console.log('Testing: GET /api/v1/orders/stats');
-  const stats = await dispatchRequest('GET', '/api/v1/orders/stats');
+  // 12. Admin Orders & Stats (with admin token)
+  console.log('Testing: GET /api/v1/orders/stats (Authenticated Admin)');
+  const stats = await dispatchRequest('GET', '/api/v1/orders/stats', undefined, adminHeaders);
   results.push({
     endpoint: '/api/v1/orders/stats',
     method: 'GET',
@@ -196,9 +260,9 @@ async function runTests() {
     details: `Revenue: ${stats.body?.stats?.find((s: any) => s.label === 'Revenue')?.value || 'N/A'}`,
   });
 
-  // 9. Customers Directory
-  console.log('Testing: GET /api/v1/customers');
-  const customers = await dispatchRequest('GET', '/api/v1/customers');
+  // 13. Admin Customers Directory (with admin token)
+  console.log('Testing: GET /api/v1/customers (Authenticated Admin)');
+  const customers = await dispatchRequest('GET', '/api/v1/customers', undefined, adminHeaders);
   results.push({
     endpoint: '/api/v1/customers',
     method: 'GET',
@@ -208,9 +272,9 @@ async function runTests() {
     details: `${customers.body?.customers?.length || 0} customer records`,
   });
 
-  // 10. Production Queue
-  console.log('Testing: GET /api/v1/production');
-  const prod = await dispatchRequest('GET', '/api/v1/production');
+  // 14. Admin Production Queue (with admin token)
+  console.log('Testing: GET /api/v1/production (Authenticated Admin)');
+  const prod = await dispatchRequest('GET', '/api/v1/production', undefined, adminHeaders);
   results.push({
     endpoint: '/api/v1/production',
     method: 'GET',
@@ -220,9 +284,9 @@ async function runTests() {
     details: `${prod.body?.columns?.length || 0} fulfillment stages`,
   });
 
-  // 11. Tickets
-  console.log('Testing: GET /api/v1/tickets');
-  const tickets = await dispatchRequest('GET', '/api/v1/tickets');
+  // 15. Admin Tickets (with admin token)
+  console.log('Testing: GET /api/v1/tickets (Authenticated Admin)');
+  const tickets = await dispatchRequest('GET', '/api/v1/tickets', undefined, adminHeaders);
   results.push({
     endpoint: '/api/v1/tickets',
     method: 'GET',
@@ -232,7 +296,7 @@ async function runTests() {
     details: `${tickets.body?.tickets?.length || 0} support tickets`,
   });
 
-  // 12. Shipping calculate
+  // 16. Shipping calculate (Public calculation)
   console.log('Testing: POST /api/v1/shipping/calculate');
   const shipping = await dispatchRequest('POST', '/api/v1/shipping/calculate', {});
   results.push({
@@ -244,9 +308,9 @@ async function runTests() {
     details: shipping.body?.note || 'Pan-India free shipping',
   });
 
-  // 13. Analytics Dashboard
-  console.log('Testing: GET /api/v1/analytics/dashboard');
-  const analytics = await dispatchRequest('GET', '/api/v1/analytics/dashboard');
+  // 17. Admin Analytics Dashboard (with admin token)
+  console.log('Testing: GET /api/v1/analytics/dashboard (Authenticated Admin)');
+  const analytics = await dispatchRequest('GET', '/api/v1/analytics/dashboard', undefined, adminHeaders);
   results.push({
     endpoint: '/api/v1/analytics/dashboard',
     method: 'GET',
@@ -258,13 +322,13 @@ async function runTests() {
 
   // Print results
   console.log('\n📊 ====================================================');
-  console.log('📊 PerfectPic Backend Test Summary');
+  console.log('📊 PerfectPic Backend API Verification Summary');
   console.log('📊 ====================================================\n');
 
   let passedCount = 0;
   for (const r of results) {
     const symbol = r.passed ? '✅' : '❌';
-    console.log(`${symbol} [${r.method}] ${r.endpoint.padEnd(30)} HTTP ${r.status} (${r.details || ''})`);
+    console.log(`${symbol} [${r.method}] ${r.endpoint.padEnd(32)} HTTP ${r.status} (${r.details || ''})`);
     if (r.passed) passedCount++;
   }
 
