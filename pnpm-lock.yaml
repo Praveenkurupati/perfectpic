@@ -84,9 +84,6 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.700.0
         version: 3.1141.0
-      '@repo/database':
-        specifier: workspace:*
-        version: link:../../packages/database
       '@repo/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -247,22 +244,6 @@ importers:
         version: 3.4.19(tsx@4.23.15)
 
   packages/config-typescript: {}
-
-  packages/database:
-    dependencies:
-      '@prisma/client':
-        specifier: ^6.1.0
-        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
-    devDependencies:
-      '@repo/config-typescript':
-        specifier: workspace:*
-        version: link:../config-typescript
-      prisma:
-        specifier: ^6.1.0
-        version: 6.19.3(typescript@5.9.3)
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
 
   packages/types:
     dependencies:
