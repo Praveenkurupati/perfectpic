@@ -39,6 +39,40 @@ export class OrderController {
     try {
       const id = String(req.params.id);
       const order = await OrderService.getOrderById(id);
+      const user = (req as any).user;
+
+      // Ownership authorization check (IDOR protection):
+      // 1. Admin can access any order
+      // 2. Authenticated user can access their own orders
+      // 3. Guest can access if order was created as guest and verified email parameter is provided
+      if (user) {
+        if (user.role !== 'admin') {
+          const userEmail = (user.email || '').toLowerCase().trim();
+          const orderEmail = (
+            (order as any).customerEmail ||
+            (order as any).shippingAddress?.email ||
+            ''
+          ).toLowerCase().trim();
+          const orderUserId = String((order as any).userId || '');
+          const currentUserId = String(user.id || user._id || '');
+
+          if (userEmail !== orderEmail && (!orderUserId || orderUserId !== currentUserId)) {
+            throw ApiError.forbidden('You do not have permission to view this order.');
+          }
+        }
+      } else {
+        const queryEmail = String(req.query.email || '').toLowerCase().trim();
+        const orderEmail = (
+          (order as any).customerEmail ||
+          (order as any).shippingAddress?.email ||
+          ''
+        ).toLowerCase().trim();
+
+        if (!queryEmail || queryEmail !== orderEmail) {
+          throw ApiError.unauthorized('Authentication or customer email confirmation required to view order.');
+        }
+      }
+
       return res.status(200).json(order);
     } catch (err) {
       next(err);
@@ -49,6 +83,36 @@ export class OrderController {
     try {
       const id = String(req.params.id);
       const order = await OrderService.getOrderById(id);
+      const user = (req as any).user;
+
+      // Ownership authorization check (IDOR protection):
+      if (user) {
+        if (user.role !== 'admin') {
+          const userEmail = (user.email || '').toLowerCase().trim();
+          const orderEmail = (
+            (order as any).customerEmail ||
+            (order as any).shippingAddress?.email ||
+            ''
+          ).toLowerCase().trim();
+          const orderUserId = String((order as any).userId || '');
+          const currentUserId = String(user.id || user._id || '');
+
+          if (userEmail !== orderEmail && (!orderUserId || orderUserId !== currentUserId)) {
+            throw ApiError.forbidden('You do not have permission to download this order document.');
+          }
+        }
+      } else {
+        const queryEmail = String(req.query.email || '').toLowerCase().trim();
+        const orderEmail = (
+          (order as any).customerEmail ||
+          (order as any).shippingAddress?.email ||
+          ''
+        ).toLowerCase().trim();
+
+        if (!queryEmail || queryEmail !== orderEmail) {
+          throw ApiError.unauthorized('Authentication or customer email confirmation required to download order document.');
+        }
+      }
 
       // If the order has an S3 print-ready photobook PDF URL, redirect directly to it
       if (order && (order as any).pdfUrl) {

@@ -224,8 +224,28 @@ export const api = {
       lastUpdated: string;
     }>(`/shipping/track/${trackingId}`),
 
-  // Payments (Razorpay)
-  createPaymentOrder: (data: { amount: number; currency?: string; receipt?: string }) =>
+  // Authoritative Pricing & Payments (Razorpay)
+  calculatePricing: (data: {
+    items?: any[];
+    accessories?: any;
+    packaging?: any;
+    promoCode?: string | null;
+    deliveryOption?: string;
+  }) =>
+    fetcher<{ success: boolean; pricing: any }>('/pricing/calculate', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  createPaymentOrder: (data: {
+    amount?: number;
+    items?: any[];
+    accessories?: any;
+    promoCode?: string | null;
+    deliveryOption?: string;
+    currency?: string;
+    receipt?: string;
+  }) =>
     fetcher<any>('/payments/create-order', {
       method: 'POST',
       headers: authHeaders(),

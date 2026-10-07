@@ -15,6 +15,7 @@ import addressesRoutes from './addresses.routes';
 import promosRoutes from './promos.routes';
 import pageOptionRoutes from './pageOptions.routes';
 import bundleRoutes from './bundles.routes';
+import pricingRoutes from './pricing.routes';
 
 const v1Router = Router();
 
@@ -34,5 +35,6 @@ v1Router.use('/addresses', addressesRoutes);
 v1Router.use('/promos', promosRoutes);
 v1Router.use('/page-options', pageOptionRoutes);
 v1Router.use('/bundles', bundleRoutes);
+v1Router.use('/pricing', pricingRoutes);
 
 export default v1Router;

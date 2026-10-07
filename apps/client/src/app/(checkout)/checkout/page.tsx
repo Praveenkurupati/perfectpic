@@ -192,7 +192,7 @@ export default function CheckoutPage() {
     setSubmissionStep('Preparing print specifications & order summary...');
 
     try {
-      const finalTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
+      let finalTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
 
       // 1. Build Itemized Order Lines (including photobooks and selected accessories)
       const orderItems = items.map(item => ({
@@ -472,7 +472,23 @@ export default function CheckoutPage() {
       setSubmissionStep('Preparing payment gateway...');
       let paymentOrder: any = null;
       try {
-        paymentOrder = await api.createPaymentOrder({ amount: finalTotal });
+        paymentOrder = await api.createPaymentOrder({
+          amount: finalTotal,
+          items: orderItems,
+          accessories: {
+            keepsakeBox: Boolean(accessories.keepsakeBox),
+            giftWrap: Boolean(accessories.giftWrap),
+            uvGlaze: Boolean(accessories.uvGlaze),
+            miniPolaroids: Boolean(accessories.miniPolaroids),
+          },
+          promoCode: promoCode || null,
+          deliveryOption,
+        });
+
+        // Synchronize with server authoritative total if returned
+        if (paymentOrder?.authoritativePricing?.finalTotal !== undefined) {
+          finalTotal = paymentOrder.authoritativePricing.finalTotal;
+        }
       } catch (payOrderErr: any) {
         console.warn('Could not create server payment order, falling back to simulated checkout:', payOrderErr);
       }

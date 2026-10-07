@@ -1,6 +1,7 @@
 // apps/backend/src/services/OrderService.ts
 import { OrderRepository } from '../repositories/OrderRepository';
 import { PromoCodeService } from './PromoCodeService';
+import { PricingService } from './PricingService';
 import { ApiError } from '../utils/apiError';
 import { mailService } from './MailService';
 import { MetaCapiService } from './MetaCapiService';
@@ -20,6 +21,59 @@ export class OrderService {
   }
 
   public static async createOrder(orderData: any) {
+    // 1. Authoritative Server-Side Pricing Verification
+    if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
+      const authoritativePricing = await PricingService.calculateOrderPrice({
+        items: orderData.items,
+        accessories: orderData.accessories || orderData.packaging,
+        promoCode: orderData.promoCode || orderData.pricing?.promoCode,
+        deliveryOption:
+          orderData.deliveryOption ||
+          (orderData.pricing?.shipping === 299 ? 'express' : 'standard'),
+        customerEmail: orderData.customerEmail || orderData.shippingAddress?.email,
+        customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
+        userId: orderData.userId,
+        claimedTotal:
+          orderData.total !== undefined
+            ? Number(orderData.total)
+            : orderData.amount !== undefined
+            ? Number(orderData.amount)
+            : undefined,
+      });
+
+      // Lock authoritative amounts to prevent client-side price tampering
+      orderData.total = authoritativePricing.finalTotal;
+      orderData.amount = authoritativePricing.finalTotal;
+      orderData.subtotal = authoritativePricing.subtotal;
+      orderData.discount = authoritativePricing.totalDiscount;
+      orderData.pricing = {
+        subtotal: authoritativePricing.subtotal,
+        promoCode: authoritativePricing.promoCode,
+        discount: authoritativePricing.promoDiscount,
+        bundleDiscount: authoritativePricing.bundleDiscount,
+        bundleTier: authoritativePricing.bundleTier,
+        shipping: authoritativePricing.shippingFee,
+        packagingPrice: authoritativePricing.accessoriesSubtotal,
+        packagingAddon: authoritativePricing.accessoriesSubtotal > 0,
+        total: authoritativePricing.finalTotal,
+        paymentMethod: orderData.pricing?.paymentMethod || 'prepaid',
+        advancePaid: authoritativePricing.finalTotal,
+        balanceDue: 0,
+      };
+
+      // Map enriched authoritative items back
+      orderData.items = orderData.items.map((item: any, idx: number) => {
+        const calculated = authoritativePricing.items[idx];
+        return {
+          ...item,
+          price: calculated ? calculated.unitPrice : item.price,
+          unitBasePrice: calculated ? calculated.unitBasePrice : item.unitBasePrice,
+          coverAdjustment: calculated ? calculated.coverAdjustment : 0,
+          pageAdjustment: calculated ? calculated.pageAdjustment : 0,
+        };
+      });
+    }
+
     if (!orderData.title) {
       if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
         const first = orderData.items[0];

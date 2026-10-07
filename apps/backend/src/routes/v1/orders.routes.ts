@@ -10,11 +10,11 @@ router.get('/', optionalAuth, OrderController.getOrders);
 // Dashboard aggregate metrics for admin
 router.get('/stats', authenticate, adminOnly, OrderController.getDashboardStats);
 
-// Single order by ID or order number
-router.get('/:id', OrderController.getOrderById);
+// Single order by ID or order number (requires ownership or admin authentication)
+router.get('/:id', optionalAuth, OrderController.getOrderById);
 
-// Download order PDF invoice/summary
-router.get('/:id/pdf', OrderController.downloadOrderPdf);
+// Download order PDF invoice/summary (requires ownership or admin authentication)
+router.get('/:id/pdf', optionalAuth, OrderController.downloadOrderPdf);
 
 // Order Review & Rating endpoints
 router.get('/:id/review', OrderController.getOrderReview);

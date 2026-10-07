@@ -9,21 +9,45 @@ import { PromoCodeService } from '../services/PromoCodeService';
 import { acquireLock } from '../cache/redis';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { mailService } from '../services/MailService';
+import { PricingService, AuthoritativePricingResult } from '../services/PricingService';
 
 export class PaymentController {
   public static async createOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const rawAmount = Number(req.body.amount);
-      if (isNaN(rawAmount) || rawAmount <= 0) {
-        throw ApiError.badRequest('A valid positive order amount is required.');
+      let finalRupeeAmount: number;
+      let authoritativePricing: AuthoritativePricingResult | null = null;
+      const user = (req as any).user;
+
+      // 1. Authoritative price calculation if cart items are provided
+      if (req.body.items && Array.isArray(req.body.items) && req.body.items.length > 0) {
+        authoritativePricing = await PricingService.calculateOrderPrice({
+          items: req.body.items,
+          accessories: req.body.accessories || req.body.packaging,
+          promoCode: req.body.promoCode,
+          deliveryOption: req.body.deliveryOption,
+          customerEmail: user?.email || req.body.customerEmail,
+          customerPhone: user?.phone || req.body.customerPhone,
+          userId: user?.id || user?._id || req.body.userId,
+          claimedTotal: req.body.amount !== undefined ? Number(req.body.amount) : undefined,
+        });
+
+        finalRupeeAmount = authoritativePricing.finalTotal;
+      } else {
+        // Fallback for bare payment requests without items
+        const rawAmount = Number(req.body.amount);
+        if (isNaN(rawAmount) || rawAmount <= 0) {
+          throw ApiError.badRequest('A valid positive order amount is required.');
+        }
+
+        // Safeguard: photobook orders and accessories must meet minimum charge (₹99)
+        if (rawAmount < 99) {
+          throw ApiError.badRequest('Order amount does not meet the minimum checkout threshold.');
+        }
+
+        finalRupeeAmount = rawAmount;
       }
 
-      // Safeguard: photobook orders and accessories must meet a minimum charge (₹99)
-      if (rawAmount < 99) {
-        throw ApiError.badRequest('Order amount does not meet the minimum checkout threshold.');
-      }
-
-      const paiseAmount = Math.round(rawAmount * 100); // Razorpay requires paise
+      const paiseAmount = Math.round(finalRupeeAmount * 100); // Razorpay requires paise
       const receiptId = `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
       const options = {
@@ -39,6 +63,7 @@ export class PaymentController {
             ...(typeof order === 'object' ? order : {}),
             key: env.RAZORPAY_KEY_ID,
             isMock: false,
+            authoritativePricing: authoritativePricing || undefined,
           });
         } catch (rzpErr: any) {
           logger.warn('Razorpay order creation call failed:', rzpErr?.message || rzpErr);
@@ -63,6 +88,7 @@ export class PaymentController {
         status: 'created',
         key: env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
         isMock: true,
+        authoritativePricing: authoritativePricing || undefined,
       });
     } catch (err) {
       next(err);

@@ -527,6 +527,155 @@ async function runTests() {
     details: advanceRes.body?.message || 'Production status advanced to rendering',
   });
 
+  // 27. Business Logic: Authoritative Server-Side Pricing Calculation (Bundle + Accessories)
+  console.log('Testing: POST /api/v1/pricing/calculate (Authoritative Pricing Engine)');
+  const pricingCalcRes = await dispatchRequest('POST', '/api/v1/pricing/calculate', {
+    items: [
+      {
+        templateSlug: 'travel-series-paris',
+        size: '8.25x8.25',
+        pageCount: 32,
+        coverType: 'Hardcover Vegan Leather', // +500
+        quantity: 3, // 3 books trigger bundle-3 (₹300 savings)
+      },
+    ],
+    accessories: {
+      keepsakeBox: true, // +499
+      giftWrap: true, // +199
+    },
+    deliveryOption: 'standard', // Free shipping
+  });
+  // (1999 + 500) * 3 = 7497. Accessories = 499 + 199 = 698. Subtotal = 8195. Bundle discount = 300. Final = 7895.
+  const expectedPricingTotal = (1999 + 500) * 3 + (499 + 199) - 300;
+  const pricingPassed =
+    pricingCalcRes.status === 200 &&
+    pricingCalcRes.body?.pricing?.finalTotal === expectedPricingTotal &&
+    pricingCalcRes.body?.pricing?.bundleDiscount === 300;
+
+  results.push({
+    endpoint: '/api/v1/pricing/calculate',
+    method: 'POST',
+    status: pricingCalcRes.status,
+    expectedStatus: 200,
+    passed: pricingPassed,
+    details: `Calculated: ₹${pricingCalcRes.body?.pricing?.finalTotal} (Bundle: -₹${pricingCalcRes.body?.pricing?.bundleDiscount}, Subtotal: ₹${pricingCalcRes.body?.pricing?.subtotal})`,
+  });
+
+  // 28. Business Logic: Price Tampering Defense on Pricing Verification
+  console.log('Testing: POST /api/v1/pricing/verify (Tampering Detection: ₹1 Attack)');
+  const tamperVerifyRes = await dispatchRequest('POST', '/api/v1/pricing/verify', {
+    items: [
+      {
+        templateSlug: 'travel-series-paris',
+        size: '8.25x8.25',
+        pageCount: 32,
+        quantity: 1,
+      },
+    ],
+    claimedTotal: 1, // Tampered ₹1 instead of ₹1999
+  });
+  results.push({
+    endpoint: '/api/v1/pricing/verify (Tamper Defense)',
+    method: 'POST',
+    status: tamperVerifyRes.status,
+    expectedStatus: 400,
+    passed: tamperVerifyRes.status === 400,
+    details: `Rejected tampering attempt: HTTP ${tamperVerifyRes.status} (Defense Active)`,
+  });
+
+  // 29. Payment Gateway: Price Tampering Defense on Payment Order Creation
+  console.log('Testing: POST /api/v1/payments/create-order (Tampered Amount Defense)');
+  const tamperPayRes = await dispatchRequest('POST', '/api/v1/payments/create-order', {
+    items: [
+      {
+        templateSlug: 'travel-series-paris',
+        size: '8.25x8.25',
+        pageCount: 32,
+        quantity: 1,
+      },
+    ],
+    amount: 1, // Claimed ₹1 on ₹1999 item
+  });
+  results.push({
+    endpoint: '/api/v1/payments/create-order (Tamper Defense)',
+    method: 'POST',
+    status: tamperPayRes.status,
+    expectedStatus: 400,
+    passed: tamperPayRes.status === 400,
+    details: `Blocked underpaid payment order creation: HTTP ${tamperPayRes.status}`,
+  });
+
+  // 30. Order Placement: Authoritative Server-Side Order Creation
+  console.log('Testing: POST /api/v1/orders (Authoritative Server Pricing Lock)');
+  const createOrderRes = await dispatchRequest('POST', '/api/v1/orders', {
+    items: [
+      {
+        templateSlug: 'travel-series-paris',
+        size: '8.25x8.25',
+        pageCount: 32,
+        quantity: 1,
+      },
+    ],
+    customerName: 'Praveen Tester',
+    customerEmail: 'praveen@perfectpic.in',
+    shippingAddress: {
+      fullName: 'Praveen Tester',
+      email: 'praveen@perfectpic.in',
+      phone: '+919876543210',
+      addressLine1: 'Indiranagar 100ft Rd',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      pincode: '560038',
+    },
+  });
+  const newCreatedOrderId = createOrderRes.body?.order?.orderNumber || createOrderRes.body?.id;
+  results.push({
+    endpoint: '/api/v1/orders (Create)',
+    method: 'POST',
+    status: createOrderRes.status,
+    expectedStatus: 201,
+    passed:
+      createOrderRes.status === 201 &&
+      createOrderRes.body?.order?.total === 1999 &&
+      createOrderRes.body?.order?.subtotal === 1999,
+    details: `Created Order #${newCreatedOrderId} (Authoritative Total Locked: ₹${createOrderRes.body?.order?.total})`,
+  });
+
+  // 31. Order Placement: Anti-Tampering Rejection on Order Creation
+  console.log('Testing: POST /api/v1/orders (Tampered Price Rejection: ₹99 for ₹1999 Book)');
+  const tamperOrderRes = await dispatchRequest('POST', '/api/v1/orders', {
+    items: [
+      {
+        templateSlug: 'travel-series-paris',
+        size: '8.25x8.25',
+        pageCount: 32,
+        quantity: 1,
+      },
+    ],
+    total: 99, // Tampered ₹99 for a ₹1999 photobook
+    customerEmail: 'attacker@example.com',
+  });
+  results.push({
+    endpoint: '/api/v1/orders (Tamper Defense)',
+    method: 'POST',
+    status: tamperOrderRes.status,
+    expectedStatus: 400,
+    passed: tamperOrderRes.status === 400,
+    details: `Blocked tampered order submission: HTTP ${tamperOrderRes.status}`,
+  });
+
+  // 32. Security & Privacy: Order IDOR Defense
+  console.log('Testing: GET /api/v1/orders/:id (Anonymous IDOR Snooping Attempt)');
+  const anonOrderRes = await dispatchRequest('GET', `/api/v1/orders/${newCreatedOrderId || 'PP-8491'}`);
+  results.push({
+    endpoint: '/api/v1/orders/:id (IDOR Defense)',
+    method: 'GET',
+    status: anonOrderRes.status,
+    expectedStatus: 401,
+    passed: anonOrderRes.status === 401,
+    details: `Protected: Anonymous caller blocked with HTTP ${anonOrderRes.status}`,
+  });
+
   // Print results
   console.log('\n📊 ====================================================');
   console.log('📊 PerfectPic Backend API Verification Summary');
