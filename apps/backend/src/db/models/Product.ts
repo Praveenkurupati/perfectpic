@@ -87,5 +87,9 @@ const ProductSchema: Schema = new Schema(
   }
 );
 
+// High-speed catalog compound indexes
+ProductSchema.index({ category: 1, priority: -1 });
+ProductSchema.index({ featured: 1, priority: -1 });
+
 export const Product: mongoose.Model<IProduct> = 
   (mongoose.models.Product as mongoose.Model<IProduct>) || mongoose.model<IProduct>('Product', ProductSchema);

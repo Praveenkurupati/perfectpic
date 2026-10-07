@@ -8,6 +8,7 @@ import { env } from './config/env';
 import { requestLogger } from './middlewares/requestLogger';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { logger } from './utils/logger';
+import { globalApiRateLimiter } from './middlewares/rateLimiter';
 import apiRouter from './routes';
 
 export function createApp(): Application {
@@ -112,8 +113,8 @@ export function createApp(): Application {
     });
   });
 
-  // Master API router (serves /api/health, /api/v1/*, and /api/*)
-  app.use('/api', apiRouter);
+  // Master API router protected with global volumetric rate limiter
+  app.use('/api', globalApiRateLimiter, apiRouter);
 
   // 404 handler for unrecognized routes
   app.use(notFoundHandler);

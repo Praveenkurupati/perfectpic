@@ -210,5 +210,10 @@ const OrderSchema: Schema = new Schema(
   }
 );
 
+// High-concurrency compound query indexes
+OrderSchema.index({ customerEmail: 1, createdAt: -1 });
+OrderSchema.index({ status: 1, createdAt: -1 });
+OrderSchema.index({ createdAt: -1 });
+
 export const Order: mongoose.Model<IOrder> = 
   (mongoose.models.Order as mongoose.Model<IOrder>) || mongoose.model<IOrder>('Order', OrderSchema);

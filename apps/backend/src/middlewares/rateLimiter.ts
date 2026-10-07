@@ -118,3 +118,10 @@ export const orderRateLimiter = createRateLimiter({
   message: 'Rate limit exceeded. Please wait a moment before trying again.',
   prefix: 'rl:order',
 });
+
+export const globalApiRateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 600, // 600 requests per minute per IP
+  message: 'API rate limit exceeded. Please wait a moment before making more requests.',
+  prefix: 'rl:global',
+});
