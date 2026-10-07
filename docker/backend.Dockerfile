@@ -28,7 +28,7 @@ COPY turbo.json turbo.json
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=3072"
 
-RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo pnpm --filter=@repo/backend build
+RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo pnpm --filter=@repo/types build && pnpm --filter=@repo/backend build
 
 # Stage 4: Minimal Production Runner
 FROM node:20-alpine AS runner
@@ -43,9 +43,12 @@ RUN adduser --system --uid 1001 expressjs
 # Pre-create writable directories for uploads and logs, set ownership
 RUN mkdir -p /app/uploads /app/logs && chown -R expressjs:nodejs /app
 
-# Copy runtime node_modules and built dist bundle
+# Copy runtime node_modules, shared workspace packages, and built dist bundle
 COPY --from=builder --chown=expressjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/node_modules ./apps/backend/node_modules
+COPY --from=builder --chown=expressjs:nodejs /app/packages/types ./packages/types
+COPY --from=builder --chown=expressjs:nodejs /app/packages/types ./apps/backend/node_modules/@repo/types
+COPY --from=builder --chown=expressjs:nodejs /app/packages/types ./node_modules/@repo/types
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/package.json ./apps/backend/package.json
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/dist ./apps/backend/dist
 COPY --from=builder --chown=expressjs:nodejs /app/apps/backend/src/templates ./apps/backend/src/templates

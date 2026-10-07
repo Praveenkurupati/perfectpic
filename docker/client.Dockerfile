@@ -31,7 +31,7 @@ ENV NODE_OPTIONS="--max-old-space-size=3072"
 
 RUN --mount=type=cache,id=turbo-cache,target=/app/.turbo \
     --mount=type=cache,id=next-cache-client,target=/app/apps/client/.next/cache \
-    pnpm --filter=@repo/client build
+    pnpm --filter=@repo/types build && pnpm --filter=@repo/client build
 
 # Stage 4: Minimal Production Runner
 FROM node:20-alpine AS runner
