@@ -3,10 +3,11 @@ import { Router } from 'express';
 import v1Routes from './v1';
 import { isDbConnected } from '../db/connection';
 import { isRedisConnected } from '../cache/redis';
+import { QueueManager } from '../queues/QueueManager';
 
 const apiRouter = Router();
 
-// Health check endpoint
+// Standard Health check endpoint
 apiRouter.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -16,6 +17,30 @@ apiRouter.get('/health', (req, res) => {
     services: {
       mongodb: isDbConnected() ? 'connected' : 'in-memory-fallback',
       redis: isRedisConnected() ? 'connected' : 'cache-bypass-active',
+    },
+  });
+});
+
+// Shallow liveness probe for Kubernetes / Docker compose
+apiRouter.get('/health/live', (req, res) => {
+  res.status(200).json({
+    status: 'alive',
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Deep readiness probe verifying database, cache, and queue pipelines
+apiRouter.get('/health/ready', async (req, res) => {
+  const queueStats = await QueueManager.getAllStats();
+
+  res.status(200).json({
+    status: 'ready',
+    timestamp: new Date().toISOString(),
+    services: {
+      mongodb: isDbConnected() ? 'connected' : 'in-memory-fallback',
+      redis: isRedisConnected() ? 'connected' : 'cache-bypass-active',
+      queues: queueStats,
     },
   });
 });

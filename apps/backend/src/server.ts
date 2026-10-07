@@ -36,7 +36,15 @@ async function bootstrap() {
     logger.warn(`S3 CORS setup notice: ${err.message}`);
   }
 
-  // 4. Start HTTP server
+  // 4. Initialize Asynchronous Queue Worker Pipelines
+  try {
+    await import('./queues/workers');
+    logger.info('⚡ Asynchronous worker pipelines initialized (print-render-queue, preflight-queue, notification-queue)');
+  } catch (err: any) {
+    logger.warn(`Worker initialization notice: ${err.message}`);
+  }
+
+  // 5. Start HTTP server
   server = app.listen(env.PORT, () => {
     logger.info(`✨ PerfectPic Server is live and listening on http://localhost:${env.PORT}`);
     logger.info(`🌐 Environment: ${env.NODE_ENV}`);

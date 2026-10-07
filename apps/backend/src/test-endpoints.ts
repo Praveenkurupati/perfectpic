@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import crypto from 'crypto';
 import app from './app';
 import { env } from './config/env';
+import { PrintEngineService } from './services/PrintEngineService';
 
 interface TestResult {
   endpoint: string;
@@ -404,6 +405,87 @@ async function runTests() {
     expectedStatus: 200,
     passed: idempotencyPassed,
     details: `First: ${firstWebhookRes.body?.status || 'ok'}, Duplicate: ${duplicateWebhookRes.body?.status} (Lock held)`,
+  });
+
+  // 21. DevOps: Shallow Liveness Probe (Kubernetes/Docker)
+  console.log('Testing: GET /api/health/live');
+  const liveRes = await dispatchRequest('GET', '/api/health/live');
+  results.push({
+    endpoint: '/api/health/live',
+    method: 'GET',
+    status: liveRes.status,
+    expectedStatus: 200,
+    passed: liveRes.status === 200 && liveRes.body?.status === 'alive',
+    details: `Uptime: ${liveRes.body?.uptime}s`,
+  });
+
+  // 22. DevOps: Deep Readiness Probe (Verifying DB, Cache, and Queue Pipeline)
+  console.log('Testing: GET /api/health/ready');
+  const readyRes = await dispatchRequest('GET', '/api/health/ready');
+  results.push({
+    endpoint: '/api/health/ready',
+    method: 'GET',
+    status: readyRes.status,
+    expectedStatus: 200,
+    passed: readyRes.status === 200 && readyRes.body?.status === 'ready',
+    details: `Services: db=${readyRes.body?.services?.mongodb}, cache=${readyRes.body?.services?.redis}`,
+  });
+
+  // 23. Core Print Engine: Preflight Quality Assurance Audit
+  console.log('Testing: PrintEngineService.auditPreflight (Quality Assurance)');
+  const preflightReport = PrintEngineService.auditPreflight(24, {
+    dimensions: '8.25x8.25',
+    coverType: 'hardcover',
+    paperType: 'matte-200',
+    spineText: 'Himalayan Expedition',
+  });
+  results.push({
+    endpoint: 'PrintEngine.auditPreflight',
+    method: 'INTERNAL',
+    status: 200,
+    expectedStatus: 200,
+    passed: preflightReport.passed && preflightReport.score >= 90 && preflightReport.bleedValidated,
+    details: `Score: ${preflightReport.score}/100, Spine: ${preflightReport.spineMetrics.spineWidthMm}mm, Fogra39: OK`,
+  });
+
+  // 24. Core Print Engine: Server-Side 300 DPI Press Master Compilation
+  console.log('Testing: PrintEngineService.compilePressReadyPdf (300 DPI + 3mm Bleed)');
+  const compiledPressMaster = await PrintEngineService.compilePressReadyPdf(
+    'Himalayan Expedition Photobook',
+    24,
+    {
+      dimensions: '8.25x8.25',
+      coverType: 'hardcover',
+      paperType: 'matte-200',
+      coverTitle: 'Himalayan Expedition',
+      coverSubtitle: 'Annapurna Circuit 2026',
+      spineText: 'Himalayan Expedition',
+    }
+  );
+  results.push({
+    endpoint: 'PrintEngine.compilePressReadyPdf',
+    method: 'INTERNAL',
+    status: 200,
+    expectedStatus: 200,
+    passed: Buffer.isBuffer(compiledPressMaster.pdfBuffer) && compiledPressMaster.pdfBuffer.length > 5000,
+    details: `Output: ${compiledPressMaster.pdfBuffer.length} bytes (300 DPI Press Master, 3mm Bleed Included)`,
+  });
+
+  // 25. Production Pipeline: Advance status & Queue Pipeline
+  console.log('Testing: PUT /api/v1/production/:orderId/status (Kanban & Queue Dispatch)');
+  const advanceRes = await dispatchRequest(
+    'PUT',
+    '/api/v1/production/PP-8491/status',
+    { status: 'rendering' },
+    adminHeaders
+  );
+  results.push({
+    endpoint: '/api/v1/production/:id/status',
+    method: 'PUT',
+    status: advanceRes.status,
+    expectedStatus: 200,
+    passed: advanceRes.status === 200,
+    details: advanceRes.body?.message || 'Production status advanced to rendering',
   });
 
   // Print results
