@@ -54,6 +54,39 @@ export const BINDERY_SPECS = {
 };
 
 /**
+ * Authoritative color palette for photobook canvas, print masters, and bindery styling (DS-01).
+ * Unifies client-side preview rendering and server-side PDF generation.
+ */
+export const BINDERY_CANVAS_PALETTE = {
+  // Page tones
+  pageBackgroundLight: '#faf8f5',
+  pageBackgroundPure: '#ffffff',
+  
+  // Archival cover finishes
+  coverBackgroundDark: '#141413',
+  coverBackgroundCream: '#faf8f5',
+  coverBackgroundLinen: '#f4ede4',
+  coverBackgroundNavy: '#0f172a',
+  coverBackgroundBurgundy: '#2d151e',
+  coverBackgroundSage: '#1c2826',
+  
+  // Bindery guidelines & preflight indicators
+  safetyZoneBorder: '#f0f0eb',
+  bleedGuide: '#d4af37', // 24k gold foil indicator
+  cutGuide: '#e2e8f0',
+  spineCenterLine: '#b4963c',
+  
+  // Typography & foil stamping
+  textDark: '#141413',
+  textLight: '#f5f0e6',
+  textMuted: '#a0a096',
+  captionDark: '#323232',
+  foilGold: '#b4963c',
+  foilSilver: '#94a3b8',
+  foilRoseGold: '#b76e79',
+} as const;
+
+/**
  * Calculates exact spine thickness in millimeters.
  * Spine (mm) = ((PageCount / 2) * PaperCaliper) + BoardThickness
  */

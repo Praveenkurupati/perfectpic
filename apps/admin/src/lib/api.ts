@@ -66,6 +66,12 @@ export const adminApi = {
       headers: authHeaders(),
       body: JSON.stringify({ status, ...additionalData }),
     }),
+  updateOrderAddress: (id: string, shippingAddress: any) =>
+    fetcher<{ message: string; order: any }>(`/orders/${id}/address`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ shippingAddress }),
+    }),
   
   // Products & Templates
   getProducts: (param?: string | { category?: string; page?: number; limit?: number; search?: string }) => {

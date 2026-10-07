@@ -28,8 +28,13 @@ router.get('/apple', AuthController.appleInit);
 router.post('/apple/callback', AuthController.appleCallback);
 router.post('/oauth/login', AuthController.oauthLogin);
 
+import { PrivacyController } from '../../controllers/PrivacyController';
+
 // Current User Profile
 router.get('/me', authenticate, AuthController.getMe);
+router.get('/me/export', authenticate, PrivacyController.exportUserData);
+router.post('/me/erase', authenticate, PrivacyController.eraseUserData);
+router.delete('/me/erase', authenticate, PrivacyController.eraseUserData);
 
 // List Users (Admin only)
 router.get('/users', authenticate, adminOnly, AuthController.getUsers);

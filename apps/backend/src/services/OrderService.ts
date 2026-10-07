@@ -299,6 +299,17 @@ export class OrderService {
     return updated;
   }
 
+  public static async updateOrderAddress(id: string, newAddress: any, updatedBy: string) {
+    if (!newAddress || (!newAddress.addressLine1 && !newAddress.pincode)) {
+      throw ApiError.badRequest('Valid shipping address details are required.');
+    }
+    const updated = await OrderRepository.updateAddress(id, newAddress, updatedBy);
+    if (!updated) {
+      throw ApiError.notFound(`Order with ID '${id}' not found.`);
+    }
+    return updated;
+  }
+
   public static async submitReview(id: string, reviewData: any) {
     if (!reviewData.rating) {
       throw ApiError.badRequest('Rating is required (1-5 stars).');

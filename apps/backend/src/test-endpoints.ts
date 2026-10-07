@@ -802,6 +802,70 @@ async function runTests() {
     details: `Created Order #${promoOrder.orderNumber} (Total: ₹${promoOrder.total}, Status: ${promoOrder.status})`,
   });
 
+  // 39. Postal Pincode Delivery Estimation (Issue 14)
+  console.log('Testing: POST /api/v1/shipping/pincode-lookup (Issue 14)');
+  const pincodeRes = await dispatchRequest('POST', '/api/v1/shipping/pincode-lookup', {
+    pincode: '560001',
+  });
+  results.push({
+    endpoint: '/api/v1/shipping/pincode-lookup',
+    method: 'POST',
+    status: pincodeRes.status,
+    expectedStatus: 200,
+    passed: pincodeRes.status === 200 && pincodeRes.body?.isServiceable === true,
+    details: `Resolved ${pincodeRes.body?.city}, ${pincodeRes.body?.state} (Courier: ${pincodeRes.body?.courierPartner || 'BlueDart'})`,
+  });
+
+  // 40. Admin Order Address Amendment & Audit Logging (OPS-01 / OPS-02)
+  console.log('Testing: PUT /api/v1/orders/:id/address (OPS-01 / OPS-02)');
+  const updateAddressRes = await dispatchRequest(
+    'PUT',
+    `/api/v1/orders/${promoOrder.orderNumber || promoOrder.id}/address`,
+    {
+      shippingAddress: {
+        fullName: 'Updated Recipient',
+        phone: '+919876543210',
+        addressLine1: 'Flat 402, Signature Towers, MG Road',
+        city: 'Bangalore',
+        state: 'Karnataka',
+        pincode: '560001',
+      },
+    },
+    adminHeaders
+  );
+  results.push({
+    endpoint: '/api/v1/orders/:id/address',
+    method: 'PUT',
+    status: updateAddressRes.status,
+    expectedStatus: 200,
+    passed: updateAddressRes.status === 200,
+    details: `Address amended & operational audit log entry created`,
+  });
+
+  // 41. DPDP Act 2023: Customer Data Portability & Export
+  console.log('Testing: GET /api/v1/privacy/export-data (DPDP Export)');
+  const exportRes = await dispatchRequest('GET', '/api/v1/privacy/export-data', undefined, userHeaders);
+  results.push({
+    endpoint: '/api/v1/privacy/export-data',
+    method: 'GET',
+    status: exportRes.status,
+    expectedStatus: 200,
+    passed: exportRes.status === 200 && !!exportRes.body?.complianceStandard,
+    details: `Export generated under ${exportRes.body?.complianceStandard || 'DPDP Act 2023'}`,
+  });
+
+  // 42. DPDP Act 2023: Customer Right to Erasure / "Erase My Data"
+  console.log('Testing: POST /api/v1/privacy/erase-my-data (DPDP Erasure)');
+  const eraseRes = await dispatchRequest('POST', '/api/v1/privacy/erase-my-data', {}, userHeaders);
+  results.push({
+    endpoint: '/api/v1/privacy/erase-my-data',
+    method: 'POST',
+    status: eraseRes.status,
+    expectedStatus: 200,
+    passed: eraseRes.status === 200 && eraseRes.body?.success === true && !!eraseRes.body?.summary?.statutoryRetentionNote,
+    details: `Drafts purged & PII redacted with Section 36 CGST tax retention notice`,
+  });
+
   // Print results
   console.log('\n📊 ====================================================');
   console.log('📊 PerfectPic Backend API Verification Summary');

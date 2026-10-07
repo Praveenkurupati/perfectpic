@@ -432,7 +432,21 @@ export class OrderRepository {
         return null;
       }
 
+      const previousStatus = orderDoc.status;
       orderDoc.status = normalizedStatus;
+
+      if (!Array.isArray(orderDoc.auditLog)) {
+        orderDoc.auditLog = [];
+      }
+      orderDoc.auditLog.push({
+        action: 'status_change',
+        updatedBy: updatedBy || 'admin_staff',
+        timestamp: now,
+        details: notes || `Status changed from ${previousStatus} to ${normalizedStatus}`,
+        previousValue: previousStatus,
+        newValue: normalizedStatus,
+      });
+      orderDoc.markModified('auditLog');
 
       // Update shippingDetails safely on the document to avoid MongoDB path conflicts
       if (tracking || normalizedStatus === 'dispatched' || normalizedStatus === 'delivered') {
@@ -498,7 +512,21 @@ export class OrderRepository {
     const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
     if (index !== -1) {
       const order = mockOrders[index]!;
+      const previousStatus = order.status;
       order.status = normalizedStatus;
+
+      if (!Array.isArray((order as any).auditLog)) {
+        (order as any).auditLog = [];
+      }
+      (order as any).auditLog.push({
+        action: 'status_change',
+        updatedBy: updatedBy || 'admin_staff',
+        timestamp: now,
+        details: notes || `Status changed from ${previousStatus} to ${normalizedStatus}`,
+        previousValue: previousStatus,
+        newValue: normalizedStatus,
+      });
+
       if (tracking || normalizedStatus === 'dispatched' || normalizedStatus === 'delivered') {
         if (!(order as any).shippingDetails) (order as any).shippingDetails = {};
         if (tracking) {
@@ -526,6 +554,71 @@ export class OrderRepository {
       if (normalizedStatus === 'production') (order as any).production.startedAt = now;
       if (normalizedStatus === 'printing') (order as any).production.printedAt = now;
       if (normalizedStatus === 'qc') (order as any).production.qcAt = now;
+      return order;
+    }
+    return null;
+  }
+
+  /**
+   * Amend delivery address on placed order with authorized audit logging (OPS-01)
+   */
+  public static async updateAddress(
+    idParam: string,
+    newAddress: any,
+    updatedBy: string
+  ) {
+    const now = new Date();
+    if (isDbConnected()) {
+      let query: any = { orderNumber: idParam };
+      if (mongoose.isValidObjectId(idParam)) {
+        query = { $or: [{ _id: idParam }, { orderNumber: idParam }] };
+      }
+      const orderDoc = await Order.findOne(query);
+      if (!orderDoc) return null;
+
+      const previousAddress = orderDoc.shippingAddress ? { ...orderDoc.shippingAddress } : null;
+      orderDoc.shippingAddress = {
+        ...(orderDoc.shippingAddress || {}),
+        ...newAddress,
+      };
+      orderDoc.markModified('shippingAddress');
+
+      if (!Array.isArray(orderDoc.auditLog)) {
+        orderDoc.auditLog = [];
+      }
+      orderDoc.auditLog.push({
+        action: 'address_update',
+        updatedBy: updatedBy || 'support_admin',
+        timestamp: now,
+        details: `Shipping address amended by ${updatedBy}`,
+        previousValue: previousAddress,
+        newValue: orderDoc.shippingAddress,
+      });
+      orderDoc.markModified('auditLog');
+
+      await orderDoc.save();
+      return orderDoc;
+    }
+
+    const index = mockOrders.findIndex((o) => o.id === idParam || o.orderNumber === idParam);
+    if (index !== -1) {
+      const order = mockOrders[index]!;
+      const previousAddress = (order as any).shippingAddress ? { ...(order as any).shippingAddress } : null;
+      (order as any).shippingAddress = {
+        ...((order as any).shippingAddress || {}),
+        ...newAddress,
+      };
+      if (!Array.isArray((order as any).auditLog)) {
+        (order as any).auditLog = [];
+      }
+      (order as any).auditLog.push({
+        action: 'address_update',
+        updatedBy: updatedBy || 'support_admin',
+        timestamp: now,
+        details: `Shipping address amended by ${updatedBy}`,
+        previousValue: previousAddress,
+        newValue: (order as any).shippingAddress,
+      });
       return order;
     }
     return null;

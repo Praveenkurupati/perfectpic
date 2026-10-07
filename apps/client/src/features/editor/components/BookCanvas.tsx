@@ -17,6 +17,7 @@ import {
 import PortionCutModal from './PortionCutModal';
 import { getSpineMetrics } from '@/lib/spineCalculator';
 import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
+import { BINDERY_CANVAS_PALETTE } from '@repo/types';
 
 interface SlotProps {
   slotId: string;
@@ -31,7 +32,8 @@ interface SlotProps {
   slotWidthFraction?: number;
 }
 
-function PhotoSlot({
+// Memoized PhotoSlot component (FE-02) prevents re-rendering entire spreads on slot clicks
+const PhotoSlot = React.memo(function PhotoSlot({
   slotId,
   photo,
   isSelected,
@@ -85,10 +87,11 @@ function PhotoSlot({
           onSelect(slotId);
         }
       }}
+      style={{ backgroundColor: isSelected ? undefined : BINDERY_CANVAS_PALETTE.pageBackgroundLight }}
       className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center focus-visible:ring-2 focus-visible:ring-foil-gold focus-visible:border-foil-gold focus-visible:outline-none focus:outline-none ${
         isSelected
           ? 'border-foil-gold ring-2 ring-foil-gold bg-amber-50/50 shadow-sm'
-          : 'border-cream-300 bg-[#faf8f5] hover:border-noir-900'
+          : 'border-cream-300 hover:border-noir-900'
       }`}
     >
       {photo ? (
@@ -188,7 +191,7 @@ function PhotoSlot({
       )}
     </div>
   );
-}
+});
 
 function RenderPageSlots({
   pageNum,

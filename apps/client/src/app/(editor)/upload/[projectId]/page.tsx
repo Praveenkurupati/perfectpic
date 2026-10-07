@@ -464,7 +464,11 @@ function UploadContent() {
               } p-8 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group`}
             >
               {isUploading ? (
-                <div className="flex flex-col items-center w-full max-w-md mx-auto py-2">
+                <div 
+                  className="flex flex-col items-center w-full max-w-md mx-auto py-2"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
                   <div className="w-14 h-14 bg-foil-gold/15 rounded-full flex items-center justify-center mb-3 border border-foil-gold/40">
                     <Loader2 size={26} className="text-foil-gold animate-spin" />
                   </div>
@@ -476,7 +480,14 @@ function UploadContent() {
                       <span className="text-noir-600 font-medium">Photo {uploadCurrent} of {uploadTotal}</span>
                       <span className="font-bold text-foil-gold">{uploadPercent}%</span>
                     </div>
-                    <div className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden border border-cream-300">
+                    <div 
+                      role="progressbar"
+                      aria-valuenow={uploadPercent}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`Photo upload progress: ${uploadPercent}% (${uploadCurrent} of ${uploadTotal} processed)`}
+                      className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden border border-cream-300"
+                    >
                       <div 
                         className="bg-gradient-to-r from-foil-gold to-amber-500 h-full rounded-full transition-all duration-300 ease-out"
                         style={{ width: `${Math.max(5, uploadPercent)}%` }}

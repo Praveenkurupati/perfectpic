@@ -160,6 +160,27 @@ export interface IOrder extends Document {
     completedAt?: Date | string;
     [key: string]: any;
   };
+  recipients?: Array<{
+    recipientName: string;
+    phone?: string;
+    email?: string;
+    addressLine1: string;
+    addressLine2?: string;
+    landmark?: string;
+    city: string;
+    state: string;
+    pincode: string;
+    giftMessage?: string;
+    itemIndexes?: number[];
+  }>;
+  auditLog?: Array<{
+    action: string;
+    updatedBy: string;
+    timestamp: Date | string;
+    details?: string;
+    previousValue?: any;
+    newValue?: any;
+  }>;
   review?: any;
   createdAt: Date;
   updatedAt: Date;
@@ -192,6 +213,8 @@ const OrderSchema: Schema = new Schema(
     accessories: { type: Object },
     isGift: { type: Boolean, default: false },
     shippingAddress: { type: Object },
+    recipients: { type: Array, default: [] },
+    auditLog: { type: Array, default: [] },
     deliveryOption: { type: String, default: 'standard' },
     shippingDetails: { type: Object },
     paymentDetails: { type: Object },

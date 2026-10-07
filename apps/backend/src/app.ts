@@ -10,6 +10,7 @@ import { requestLogger } from './middlewares/requestLogger';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { logger } from './utils/logger';
 import { globalApiRateLimiter } from './middlewares/rateLimiter';
+import { csrfProtection } from './middlewares/csrf.middleware';
 import apiRouter from './routes';
 
 export function createApp(): Application {
@@ -87,6 +88,9 @@ export function createApp(): Application {
     })
   );
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+  // CSRF protection on state-changing mutation routes (SEC-03)
+  app.use(csrfProtection);
 
   // Static uploads directory serving with permissive cross-origin headers
   const uploadsDir = path.join(process.cwd(), 'uploads');

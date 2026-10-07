@@ -186,16 +186,32 @@ export class OrderController {
     try {
       const id = String(req.params.id);
       const { status, notes, tracking, carrier, trackingNumber, trackingUrl, updatedBy } = req.body;
+      const staffActor = (req as any).user?.email || (req as any).user?.name || updatedBy || 'admin';
       const updated = await OrderService.updateOrderStatus(id, status, {
         notes,
         tracking,
         carrier,
         trackingNumber,
         trackingUrl,
-        updatedBy,
+        updatedBy: staffActor,
       });
       return res.status(200).json({
         message: `Order status updated to '${status}' successfully`,
+        order: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async updateOrderAddress(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const address = req.body.shippingAddress || req.body;
+      const staffActor = (req as any).user?.email || (req as any).user?.name || 'admin_staff';
+      const updated = await OrderService.updateOrderAddress(id, address, staffActor);
+      return res.status(200).json({
+        message: 'Shipping address updated successfully',
         order: updated,
       });
     } catch (err) {

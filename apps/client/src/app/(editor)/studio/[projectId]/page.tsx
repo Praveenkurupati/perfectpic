@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { generateBookProofPdf } from '@/lib/pdfGenerator';
+import { trackEvent } from '@/lib/analytics';
 
 const BookCanvas = dynamic(() => import('@/features/editor/components/BookCanvas'), { ssr: false });
 const EditorToolbar = dynamic(() => import('@/features/editor/components/EditorToolbar'), { ssr: false });
@@ -89,6 +90,17 @@ function StudioContent() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSpreadIndex, pageCount, setCurrentSpreadIndex, mobileDrawer]);
+
+  // Analytics: Emit studio_spread_edited when spread is changed/edited
+  useEffect(() => {
+    if (projectId) {
+      trackEvent('editor_action', 'studio_spread_edited', {
+        projectId,
+        spreadIndex: currentSpreadIndex,
+        pageCount,
+      });
+    }
+  }, [currentSpreadIndex, projectId, pageCount]);
 
   const handleApproveAndOrder = () => {
     const thumbnail = pagePhotos[0]?.url || template?.coverImage || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400';
@@ -263,7 +275,10 @@ function StudioContent() {
 
           {/* 3D Preview Button (Desktop) */}
           <button 
-            onClick={() => router.push(`/preview/${projectId}`)}
+            onClick={() => {
+              trackEvent('editor_action', 'studio_preview_viewed', { projectId, pageCount });
+              router.push(`/preview/${projectId}`);
+            }}
             className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-noir-900 rounded-sm hover:bg-cream-100 transition-colors"
           >
             <Eye size={13} />

@@ -26,6 +26,9 @@ router.post('/', OrderController.createOrder);
 // Admin: Update order fulfillment status
 router.put('/:id/status', authenticate, adminOnly, OrderController.updateOrderStatus);
 
+// Admin: Amend order delivery address (OPS-01)
+router.put('/:id/address', authenticate, adminOnly, OrderController.updateOrderAddress);
+
 // Admin / System: Update order PDF URL (e.g., when S3 PDF is generated)
 router.put('/:id/pdf', authenticate, adminOnly, OrderController.updateOrderPdf);
 

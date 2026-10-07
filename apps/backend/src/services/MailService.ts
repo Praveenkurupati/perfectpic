@@ -15,8 +15,54 @@ class MailService {
   private transporter: any = null;
   public isConfigured = false;
 
+  // Circuit Breaker State (SRE-01)
+  private cbState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED';
+  private cbConsecutiveFailures = 0;
+  private cbLastFailureTime = 0;
+  private readonly CB_FAILURE_THRESHOLD = 3;
+  private readonly CB_RESET_TIMEOUT_MS = 20000; // 20s recovery cooldown
+  private readonly CB_TIMEOUT_MS = 3000; // 3-second timeout guard
+
   constructor() {
     this.initTransporter();
+  }
+
+  public getCircuitBreakerStatus(): { state: 'CLOSED' | 'OPEN' | 'HALF_OPEN'; consecutiveFailures: number } {
+    this.checkCircuitBreakerHalfOpen();
+    return {
+      state: this.cbState,
+      consecutiveFailures: this.cbConsecutiveFailures,
+    };
+  }
+
+  private checkCircuitBreakerHalfOpen(): boolean {
+    if (this.cbState === 'OPEN') {
+      const now = Date.now();
+      if (now - this.cbLastFailureTime > this.CB_RESET_TIMEOUT_MS) {
+        this.cbState = 'HALF_OPEN';
+        logger.info('🔄 [SMTP CircuitBreaker] State transitioned to HALF_OPEN (probing connection)');
+        return true;
+      }
+      return false;
+    }
+    return true;
+  }
+
+  private recordCircuitSuccess() {
+    if (this.cbState !== 'CLOSED') {
+      logger.info('✅ [SMTP CircuitBreaker] State recovered to CLOSED (SMTP connection healthy)');
+    }
+    this.cbState = 'CLOSED';
+    this.cbConsecutiveFailures = 0;
+  }
+
+  private recordCircuitFailure(errMessage: string) {
+    this.cbConsecutiveFailures++;
+    this.cbLastFailureTime = Date.now();
+    if (this.cbConsecutiveFailures >= this.CB_FAILURE_THRESHOLD || this.cbState === 'HALF_OPEN') {
+      this.cbState = 'OPEN';
+      logger.warn(`⚡ [SMTP CircuitBreaker] State transitioned to OPEN (${this.cbConsecutiveFailures} failures, reason: ${errMessage}). Fast-failing for ${this.CB_RESET_TIMEOUT_MS / 1000}s`);
+    }
   }
 
   public initTransporter() {
@@ -87,20 +133,38 @@ class MailService {
     const { to, subject, html, text } = options;
     const transporter = this.ensureTransporter();
 
+    // Check circuit breaker status (SRE-01)
+    this.checkCircuitBreakerHalfOpen();
+    if (this.cbState === 'OPEN') {
+      logger.warn(`⚡ [SMTP CircuitBreaker OPEN] Fast-failing email to ${to} (Subject: "${subject}") without blocking`);
+      logger.info(`📨 [SIMULATED EMAIL FALLBACK] To: ${to} | Subject: "${subject}"`);
+      return false;
+    }
+
     if (this.isConfigured && transporter) {
       try {
         const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
-        const info = await transporter.sendMail({
+
+        // 3-second timeout guard using Promise.race (SRE-01)
+        const sendPromise = transporter.sendMail({
           from: fromAddress,
           to,
           subject,
           html,
           text: text || html.replace(/<[^>]*>?/gm, ''),
         });
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('SMTP send operation timed out after 3000ms')), this.CB_TIMEOUT_MS)
+        );
+
+        const info = (await Promise.race([sendPromise, timeoutPromise])) as any;
+        this.recordCircuitSuccess();
         logger.info(`✉️ Email successfully dispatched to ${to}`, { messageId: info.messageId, subject });
         return true;
       } catch (error: any) {
-        logger.error(`❌ Failed to send email to ${to}: ${error.message}`, { error });
+        this.recordCircuitFailure(error?.message || 'Unknown SMTP error');
+        logger.error(`❌ Failed to send email to ${to}: ${error.message}`);
         return false;
       }
     }

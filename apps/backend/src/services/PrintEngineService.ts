@@ -2,6 +2,7 @@
 import { jsPDF } from 'jspdf';
 import {
   BINDERY_SPECS,
+  BINDERY_CANVAS_PALETTE,
   calculateSpineWidthMm,
   getSpineMetrics,
   BinderyCoverType,

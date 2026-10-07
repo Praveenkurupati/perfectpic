@@ -109,6 +109,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
+import { DpdpConsentBanner } from "@/components/common/DpdpConsentBanner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -126,6 +128,7 @@ export default function RootLayout({
         <AnimationProvider>
           {children}
         </AnimationProvider>
+        <DpdpConsentBanner />
         {/* Google Identity Services & Google Picker API SDKs */}
         <script src="https://accounts.google.com/gsi/client" async defer />
         <script src="https://apis.google.com/js/api.js" async defer />

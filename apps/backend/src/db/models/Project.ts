@@ -55,6 +55,9 @@ const ProjectSchema: Schema = new Schema(
 
 ProjectSchema.index({ userId: 1, updatedAt: -1 });
 ProjectSchema.index({ guestSessionId: 1, updatedAt: -1 });
+ProjectSchema.index({ userId: 1, status: 1, updatedAt: -1 });
+ProjectSchema.index({ guestSessionId: 1, status: 1, updatedAt: -1 });
+ProjectSchema.index({ userId: 1, createdAt: -1 });
 
 export const Project: mongoose.Model<IProject> = 
   (mongoose.models.Project as mongoose.Model<IProject>) || mongoose.model<IProject>('Project', ProjectSchema);

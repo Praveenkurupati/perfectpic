@@ -23,7 +23,9 @@ import {
   Clock,
   ExternalLink,
   ArrowRight,
-  Send
+  Send,
+  Pencil,
+  History
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { generateAdminProductionPdf } from "@/lib/pdfGenerator";
@@ -108,6 +110,55 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
   const [carrier, setCarrier] = useState('BlueDart Express');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [selectedTargetStage, setSelectedTargetStage] = useState<string>('production');
+
+  // Edit Address State (OPS-01)
+  const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [editAddressForm, setEditAddressForm] = useState({
+    fullName: '',
+    phone: '',
+    addressLine1: '',
+    landmark: '',
+    city: '',
+    state: '',
+    pincode: '',
+  });
+
+  const handleOpenEditAddress = () => {
+    setEditAddressForm({
+      fullName: order?.shippingAddress?.fullName || order?.customerName || '',
+      phone: order?.shippingAddress?.phone || order?.customerPhone || '',
+      addressLine1: order?.shippingAddress?.addressLine1 || '',
+      landmark: order?.shippingAddress?.landmark || '',
+      city: order?.shippingAddress?.city || '',
+      state: order?.shippingAddress?.state || '',
+      pincode: order?.shippingAddress?.pincode || '',
+    });
+    setIsEditAddressOpen(true);
+  };
+
+  const handleSaveAddress = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingAddress(true);
+    try {
+      const res = await adminApi.updateOrderAddress(orderId, editAddressForm);
+      if (res?.order) {
+        setOrder(res.order);
+      } else {
+        setOrder((prev: any) => ({
+          ...prev,
+          shippingAddress: { ...prev?.shippingAddress, ...editAddressForm },
+        }));
+      }
+      setIsEditAddressOpen(false);
+      setFeedbackToast('Shipping address amended and logged in audit trail.');
+      setTimeout(() => setFeedbackToast(null), 4000);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update shipping address.');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
 
   useEffect(() => {
     adminApi.getOrder(orderId)
@@ -820,7 +871,18 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
         <div className="space-y-6">
           {/* Customer Info */}
           <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 p-6">
-            <h2 className="text-lg font-semibold text-noir-950 mb-4 border-b border-cream-100 pb-2">Customer Info</h2>
+            <div className="flex items-center justify-between border-b border-cream-100 pb-2 mb-4">
+              <h2 className="text-lg font-semibold text-noir-950">Customer Info</h2>
+              <button
+                type="button"
+                onClick={handleOpenEditAddress}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-foil-gold hover:text-amber-700 transition-colors py-1 px-2 rounded-sm hover:bg-cream-100"
+                title="Amend Delivery Address (OPS-01)"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                <span>Edit Address</span>
+              </button>
+            </div>
             <div className="space-y-4 text-sm">
               <div>
                 <p className="font-medium text-noir-900">{customerName}</p>
@@ -923,8 +985,162 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
               </button>
             )}
           </div>
+
+          {/* Operational Audit Trail (OPS-02) */}
+          <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-noir-950 border-b border-cream-100 pb-2 flex items-center gap-2">
+              <History className="w-4 h-4 text-foil-gold" />
+              <span>Operational Audit Trail</span>
+            </h2>
+            {order?.auditLog && order.auditLog.length > 0 ? (
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {order.auditLog.slice().reverse().map((log: any, idx: number) => (
+                  <div key={idx} className="p-3 bg-cream-50 rounded-sm border border-cream-200 text-xs">
+                    <div className="flex items-center justify-between text-noir-500 mb-1">
+                      <span className="font-semibold text-noir-900">{log.action}</span>
+                      <span className="text-[10px]">{new Date(log.timestamp).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                    </div>
+                    {log.details && <p className="text-noir-700 text-[11px] mt-0.5 leading-relaxed">{log.details}</p>}
+                    <p className="text-noir-500 text-[10px] mt-1">Staff: <span className="font-medium text-noir-800">{log.updatedBy}</span></p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-noir-500 italic">No operational modifications recorded yet.</p>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Edit Shipping Address Modal (OPS-01) */}
+      {isEditAddressOpen && (
+        <div className="fixed inset-0 z-50 bg-noir-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-sm max-w-lg w-full p-6 shadow-2xl border border-cream-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-cream-200 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-foil-gold" />
+                <h3 className="font-serif text-lg font-bold text-noir-950">Amend Shipping Address</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditAddressOpen(false)}
+                className="text-noir-400 hover:text-noir-800 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAddress} className="space-y-4 text-xs font-sans">
+              <div>
+                <label className="block text-noir-700 font-medium mb-1">Recipient Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editAddressForm.fullName}
+                  onChange={(e) => setEditAddressForm({ ...editAddressForm, fullName: e.target.value })}
+                  className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-noir-700 font-medium mb-1">Contact Phone</label>
+                <input
+                  type="text"
+                  required
+                  value={editAddressForm.phone}
+                  onChange={(e) => setEditAddressForm({ ...editAddressForm, phone: e.target.value })}
+                  className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-noir-700 font-medium mb-1">Street Address / Flat / Floor</label>
+                <input
+                  type="text"
+                  required
+                  value={editAddressForm.addressLine1}
+                  onChange={(e) => setEditAddressForm({ ...editAddressForm, addressLine1: e.target.value })}
+                  className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-noir-700 font-medium mb-1">Landmark (Optional)</label>
+                <input
+                  type="text"
+                  value={editAddressForm.landmark}
+                  onChange={(e) => setEditAddressForm({ ...editAddressForm, landmark: e.target.value })}
+                  className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-noir-700 font-medium mb-1">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={editAddressForm.city}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-noir-700 font-medium mb-1">State</label>
+                  <input
+                    type="text"
+                    required
+                    value={editAddressForm.state}
+                    onChange={(e) => setEditAddressForm({ ...editAddressForm, state: e.target.value })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-noir-700 font-medium mb-1">Pincode (6 digits)</label>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  value={editAddressForm.pincode}
+                  onChange={(e) => setEditAddressForm({ ...editAddressForm, pincode: e.target.value })}
+                  className="w-full px-3 py-2 border border-cream-300 rounded-sm focus:border-noir-900 focus:outline-none"
+                />
+              </div>
+
+              <p className="text-[11px] text-amber-700 bg-amber-50 p-2.5 rounded-sm border border-amber-200">
+                Any address amendment is recorded in the operational audit trail with your staff ID and timestamp.
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-cream-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditAddressOpen(false)}
+                  disabled={isSavingAddress}
+                  className="px-4 py-2 text-noir-700 hover:bg-cream-100 rounded-sm font-semibold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAddress}
+                  className="px-5 py-2 bg-noir-950 text-cream-50 hover:bg-noir-900 rounded-sm font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+                >
+                  {isSavingAddress ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Address</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

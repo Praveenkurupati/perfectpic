@@ -60,6 +60,24 @@
       "Threshold": 1,
       "ComparisonOperator": "GreaterThanOrEqualToThreshold",
       "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "PerfectPic-EC2-HealthCheck-Failure",
+      "AlarmDescription": "Triggers when EC2 backend /api/health/live probe fails or StatusCheckFailed > 0",
+      "MetricName": "StatusCheckFailed",
+      "Namespace": "AWS/EC2",
+      "Statistic": "Maximum",
+      "Period": 60,
+      "EvaluationPeriods": 2,
+      "Threshold": 1,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "breaching",
+      "Dimensions": [
+        {
+          "Name": "InstanceId",
+          "Value": "i-perfectpic-prod-api"
+        }
+      ]
     }
   ]
 }

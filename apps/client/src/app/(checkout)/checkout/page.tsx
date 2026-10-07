@@ -15,7 +15,7 @@ import PackagingUpsellModal from '@/features/checkout/components/PackagingUpsell
 
 // Modular Step Components
 import CheckoutStepper from '@/components/checkout/CheckoutStepper';
-import ShippingAddressStep, { ShippingAddressFormState } from '@/components/checkout/ShippingAddressStep';
+import ShippingAddressStep, { ShippingAddressFormState, SplitGiftRecipient } from '@/components/checkout/ShippingAddressStep';
 import DeliveryMethodStep from '@/components/checkout/DeliveryMethodStep';
 import AddonsStep from '@/components/checkout/AddonsStep';
 import PaymentStep from '@/components/checkout/PaymentStep';
@@ -73,6 +73,7 @@ export default function CheckoutPage() {
   });
 
   const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express'>('standard');
+  const [recipients, setRecipients] = useState<SplitGiftRecipient[]>([]);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [hasPromptedUpsell, setHasPromptedUpsell] = useState(false);
 
@@ -241,7 +242,8 @@ export default function CheckoutPage() {
         },
         deliveryOption,
         accessories,
-        isGift,
+        isGift: isGift || recipients.length > 0,
+        recipients: recipients.length > 0 ? recipients : undefined,
         promoCode: promoCode || undefined,
         paymentDetails: {
           paymentMethod: isProduction ? 'razorpay' : 'online_upi',
@@ -333,6 +335,8 @@ export default function CheckoutPage() {
               formData={shippingForm}
               onChange={handleFieldChange}
               hasSavedAddress={addresses.length > 0}
+              recipients={recipients}
+              onRecipientsChange={setRecipients}
             />
 
             <DeliveryMethodStep
