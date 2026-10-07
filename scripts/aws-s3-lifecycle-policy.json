@@ -1,0 +1,30 @@
+{
+  "Rules": [
+    {
+      "ID": "AutoPruneTempUploads30Days",
+      "Filter": {
+        "Prefix": "uploads/"
+      },
+      "Status": "Enabled",
+      "Expiration": {
+        "Days": 30
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "AutoPruneTempPhotos30Days",
+      "Filter": {
+        "Prefix": "photos/temp/"
+      },
+      "Status": "Enabled",
+      "Expiration": {
+        "Days": 30
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    }
+  ]
+}

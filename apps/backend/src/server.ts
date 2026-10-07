@@ -27,13 +27,14 @@ async function bootstrap() {
 
   // 3. Ensure AWS S3 Bucket CORS rules are active
   try {
-    const { isS3Configured, ensureS3Cors } = await import('./lib/s3');
+    const { isS3Configured, ensureS3Cors, ensureS3LifecycleConfiguration } = await import('./lib/s3');
     if (isS3Configured()) {
       await ensureS3Cors();
-      logger.info('☁️ AWS S3 Bucket CORS verified and active for client canvas rendering.');
+      await ensureS3LifecycleConfiguration();
+      logger.info('☁️ AWS S3 Bucket CORS and 30-day lifecycle retention verified.');
     }
   } catch (err: any) {
-    logger.warn(`S3 CORS setup notice: ${err.message}`);
+    logger.warn(`S3 initialization notice: ${err.message}`);
   }
 
   // 4. Initialize Asynchronous Queue Worker Pipelines
@@ -44,7 +45,15 @@ async function bootstrap() {
     logger.warn(`Worker initialization notice: ${err.message}`);
   }
 
-  // 5. Start HTTP server
+  // 5. Initialize Automated MongoDB Backup Scheduler (24h daily interval, 30-day retention)
+  try {
+    const { BackupScheduler } = await import('./services/BackupScheduler');
+    BackupScheduler.start(24);
+  } catch (err: any) {
+    logger.warn(`Backup scheduler initialization notice: ${err.message}`);
+  }
+
+  // 6. Start HTTP server
   server = app.listen(env.PORT, () => {
     logger.info(`✨ PerfectPic Server is live and listening on http://localhost:${env.PORT}`);
     logger.info(`🌐 Environment: ${env.NODE_ENV}`);

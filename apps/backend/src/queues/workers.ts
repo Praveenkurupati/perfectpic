@@ -23,16 +23,27 @@ export const printRenderWorker = new Worker<{
 
     // Step 2: Store / Update Order Record with generated press PDF metadata
     const orderId = job.data.orderId;
-    const generatedPdfUrl = `/api/v1/orders/${orderId}/invoice`; // S3 or binary download URL
+    let generatedPdfUrl = `/api/v1/orders/${orderId}/pdf`;
+
+    try {
+      const { isS3Configured, uploadBufferToS3 } = await import('../lib/s3');
+      if (isS3Configured()) {
+        const s3Result = await uploadBufferToS3(
+          pdfBuffer,
+          `photobooks/photobook-${orderId}.pdf`,
+          'application/pdf'
+        );
+        generatedPdfUrl = s3Result.url;
+      }
+    } catch (s3Err: any) {
+      logger.warn(`[Worker:printRender] S3 upload fallback to local URL: ${s3Err?.message}`);
+    }
 
     try {
       await OrderRepository.updateStatus(orderId, 'printing', {
         notes: `300 DPI Press Master rasterized via PrintEngine (Score: ${preflight.score}/100, Bytes: ${pdfBuffer.length})`,
       });
-      await (OrderRepository as any).update?.(orderId, {
-        printPdfUrl: generatedPdfUrl,
-        productionStage: 'printing',
-      });
+      await OrderRepository.updatePdfUrl(orderId, generatedPdfUrl);
     } catch (orderUpdateErr: any) {
       logger.warn(`[Worker:printRender] Could not update order record: ${orderUpdateErr?.message}`);
     }

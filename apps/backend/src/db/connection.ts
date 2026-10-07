@@ -8,20 +8,42 @@ let isConnected = false;
 
 export async function connectDB() {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/perfectpic';
+  const isAtlas = uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net');
 
   try {
     mongoose.set('strictQuery', false);
+
+    // Attach Atlas cluster lifecycle event monitors once
+    if (mongoose.connection.listeners('disconnected').length === 0) {
+      mongoose.connection.on('disconnected', () => {
+        isConnected = false;
+        console.warn('⚠️ [MongoDB Atlas] Database connection lost. Reconnecting...');
+      });
+      mongoose.connection.on('reconnected', () => {
+        isConnected = true;
+        console.info('🍃 [MongoDB Atlas] Reconnection established successfully.');
+      });
+      mongoose.connection.on('error', (err) => {
+        console.error('❌ [MongoDB Atlas] Connection error:', err.message);
+      });
+    }
+
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
       maxPoolSize: 50,
-      minPoolSize: 5,
-      maxIdleTimeMS: 30000,
+      minPoolSize: 10,
+      maxIdleTimeMS: 45000,
+      waitQueueTimeoutMS: 10000,
+      retryWrites: true,
+      w: 'majority',
       dbName: 'perfectpic',
+      autoIndex: process.env.NODE_ENV !== 'production',
     });
     
     isConnected = true;
-    console.log(`🍃 MongoDB connected successfully: ${uri.includes('@') ? uri.split('@')[1] : uri}`);
+    const host = mongoose.connection.host || (uri.includes('@') ? (uri.split('@')[1] || '').split('/')[0] : 'localhost');
+    console.log(`🍃 [MongoDB ${isAtlas ? 'Atlas' : 'Cluster'}] Connected successfully to host: ${host} (db: ${mongoose.connection.name})`);
 
     // Seed default template books if empty
     await seedDefaultData();
@@ -29,7 +51,7 @@ export async function connectDB() {
     isConnected = false;
     console.warn(`⚠️ MongoDB connection error: ${error.message}`);
     console.warn(`👉 The application will continue running with in-memory fallbacks.`);
-    console.warn(`👉 To use MongoDB, ensure mongod is running locally on port 27017 or set MONGODB_URI in apps/backend/.env.`);
+    console.warn(`👉 To use MongoDB Atlas, configure MONGODB_URI in apps/backend/.env.`);
   }
 }
 

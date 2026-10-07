@@ -46,6 +46,10 @@ export function isRedisConnected(): boolean {
   return isConnected && redisClient !== null && redisClient.status === 'ready';
 }
 
+export function getRedisClient(): Redis | null {
+  return redisClient;
+}
+
 export async function cacheGet<T>(key: string): Promise<T | null> {
   if (!isRedisConnected() || !redisClient) return null;
   try {

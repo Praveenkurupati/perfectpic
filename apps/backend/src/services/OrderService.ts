@@ -5,7 +5,9 @@ import { PricingService } from './PricingService';
 import { ApiError } from '../utils/apiError';
 import { mailService } from './MailService';
 import { MetaCapiService } from './MetaCapiService';
+import { env } from '../config/env';
 import { logger } from '../utils/logger';
+import { printRenderQueue } from '../queues/QueueManager';
 
 export class OrderService {
   public static async getOrders(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number }) {
@@ -21,6 +23,23 @@ export class OrderService {
   }
 
   public static async createOrder(orderData: any) {
+    // In production, block all simulated or mock payment orders (PAY-01 enforcement)
+    if (env.isProd) {
+      const paymentDetails = orderData.paymentDetails || orderData.pricing;
+      const isMockPayment =
+        orderData.payment?.isMock ||
+        orderData.paymentId === 'mock' ||
+        paymentDetails?.paymentMethod === 'mock' ||
+        String(orderData.paymentDetails?.razorpayPaymentId || '').startsWith('pay_sim_') ||
+        String(orderData.paymentDetails?.razorpaySignature || '') === 'mock_signature';
+
+      if (isMockPayment) {
+        throw ApiError.forbidden(
+          'Simulated mock payments cannot be used to place orders in production.'
+        );
+      }
+    }
+
     // 1. Authoritative Server-Side Pricing Verification
     if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
       const authoritativePricing = await PricingService.calculateOrderPrice({
@@ -151,6 +170,19 @@ export class OrderService {
       },
     }).catch((err) => {
       logger.error('[Meta CAPI Order Purchase Error]:', err.message);
+    });
+
+    // Enqueue print-ready PDF compilation in background worker queue
+    const orderNumber = String(order.orderNumber || order.id || (order as any)._id);
+    printRenderQueue.add('compile-print-pdf', {
+      orderId: orderNumber,
+      projectId: orderData.projectId || (orderData.items && orderData.items[0]?.projectId),
+      customerEmail: customerEmail,
+      options: {
+        projectManifest: orderData.projectManifest || (orderData.items && orderData.items[0]?.projectSnapshot),
+      },
+    }).catch((qErr: any) => {
+      logger.warn(`Could not enqueue print render job for ${orderNumber}:`, qErr?.message);
     });
 
     return order;

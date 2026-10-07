@@ -14,7 +14,9 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
-    "test:email": "node scripts/test-email.js"
+    "test:email": "node scripts/test-email.js",
+    "backup:mongo": "bash scripts/backup-mongodb.sh",
+    "restore:mongo": "bash scripts/restore-mongodb.sh"
   },
   "devDependencies": {
     "prettier": "^3.3.3",

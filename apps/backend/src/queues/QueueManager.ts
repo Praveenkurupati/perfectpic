@@ -1,10 +1,11 @@
 // apps/backend/src/queues/QueueManager.ts
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
 import { Job, JobOptions, JobProcessor, JobStatus, QueueStats, WorkerOptions } from './types';
-import redisClientModule, { isRedisConnected } from '../cache/redis';
+import redisClientModule, { isRedisConnected, getRedisClient } from '../cache/redis';
 import { logger } from '../utils/logger';
 
-class ManagedJob<T = any> implements Job<T> {
+export class ManagedJob<T = any> implements Job<T> {
   public id: string;
   public queueName: string;
   public name: string;
@@ -20,7 +21,7 @@ class ManagedJob<T = any> implements Job<T> {
   public finishedAt?: number;
 
   constructor(queueName: string, name: string, data: T, opts?: JobOptions) {
-    this.id = `job_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    this.id = opts?.jobId || `job_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     this.queueName = queueName;
     this.name = name;
     this.data = data;
@@ -32,37 +33,85 @@ class ManagedJob<T = any> implements Job<T> {
   }
 
   public async updateProgress(percent: number): Promise<void> {
-    this.progress = Math.min(100, Math.max(0, percent));
+    this.progress = Math.min(100, Math.max(0, Math.round(percent)));
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        await redis.hset(`bullmq:${this.queueName}:jobs:${this.id}`, 'progress', this.progress).catch(() => {});
+      }
+    }
     QueueManager.emitProgress(this);
+  }
+
+  public toJSON() {
+    return {
+      id: this.id,
+      queueName: this.queueName,
+      name: this.name,
+      data: this.data,
+      status: this.status,
+      progress: this.progress,
+      attempts: this.attempts,
+      maxAttempts: this.maxAttempts,
+      failedReason: this.failedReason,
+      returnValue: this.returnValue,
+      createdAt: this.createdAt,
+      processedAt: this.processedAt,
+      finishedAt: this.finishedAt,
+    };
+  }
+
+  public static fromJSON<T = any>(obj: any): ManagedJob<T> {
+    const job = new ManagedJob<T>(obj.queueName, obj.name, obj.data);
+    job.id = obj.id;
+    job.status = obj.status || 'waiting';
+    job.progress = obj.progress || 0;
+    job.attempts = obj.attempts || 0;
+    job.maxAttempts = obj.maxAttempts || 3;
+    job.failedReason = obj.failedReason;
+    job.returnValue = obj.returnValue;
+    job.createdAt = obj.createdAt || Date.now();
+    job.processedAt = obj.processedAt;
+    job.finishedAt = obj.finishedAt;
+    return job;
   }
 }
 
 export class Queue<T = any> extends EventEmitter {
   private inMemoryJobs: Map<string, ManagedJob<T>> = new Map();
-  private waitingIds: string[] = [];
+  private inMemoryWaiting: string[] = [];
+  private inMemoryActive: string[] = [];
 
   constructor(public readonly name: string) {
     super();
   }
 
+  /**
+   * Adds a job with durable Redis persistence and BullMQ queue mechanics
+   */
   public async add(jobName: string, data: T, opts?: JobOptions): Promise<Job<T>> {
     const job = new ManagedJob<T>(this.name, jobName, data, opts);
-    this.inMemoryJobs.set(job.id, job);
-    this.waitingIds.push(job.id);
 
-    // Distributed Redis persistence when connected
+    // 1. In-memory state tracking
+    this.inMemoryJobs.set(job.id, job);
+    this.inMemoryWaiting.push(job.id);
+
+    // 2. Redis-backed BullMQ persistence
     if (isRedisConnected()) {
-      try {
-        await redisClientModule.set(`queue:${this.name}:job:${job.id}`, {
-          id: job.id,
-          name: job.name,
-          data: job.data,
-          status: job.status,
-          createdAt: job.createdAt,
-          maxAttempts: job.maxAttempts,
-        }, 86400); // 24-hour TTL
-      } catch (err: any) {
-        logger.warn(`Redis queue add warning for ${job.id}:`, err?.message);
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const serialized = JSON.stringify(job.toJSON());
+          const pipeline = redis.pipeline();
+          // Store job payload hash with 48h TTL
+          pipeline.hset(`bullmq:${this.name}:jobs:${job.id}`, 'payload', serialized);
+          pipeline.expire(`bullmq:${this.name}:jobs:${job.id}`, 172800);
+          // Push job ID onto waiting queue list
+          pipeline.rpush(`bullmq:${this.name}:waiting`, job.id);
+          await pipeline.exec();
+        } catch (err: any) {
+          logger.warn(`[BullMQ:${this.name}] Redis add warning for ${job.id}:`, err?.message);
+        }
       }
     }
 
@@ -76,10 +125,18 @@ export class Queue<T = any> extends EventEmitter {
     if (inMem) return inMem;
 
     if (isRedisConnected()) {
-      try {
-        const cached = await redisClientModule.get<any>(`queue:${this.name}:job:${id}`);
-        if (cached) return cached as Job<T>;
-      } catch {}
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const raw = await redis.hget(`bullmq:${this.name}:jobs:${id}`, 'payload');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const restored = ManagedJob.fromJSON<T>(parsed);
+            this.inMemoryJobs.set(id, restored);
+            return restored;
+          }
+        } catch {}
+      }
     }
     return null;
   }
@@ -91,6 +148,27 @@ export class Queue<T = any> extends EventEmitter {
   }
 
   public async getStats(): Promise<QueueStats> {
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const [waiting, active, completed, failed] = await Promise.all([
+            redis.llen(`bullmq:${this.name}:waiting`),
+            redis.llen(`bullmq:${this.name}:active`),
+            redis.scard(`bullmq:${this.name}:completed`),
+            redis.llen(`bullmq:${this.name}:failed`),
+          ]);
+          return {
+            waiting,
+            active,
+            completed,
+            failed,
+            total: waiting + active + completed + failed,
+          };
+        } catch {}
+      }
+    }
+
     let waiting = 0;
     let active = 0;
     let completed = 0;
@@ -112,21 +190,124 @@ export class Queue<T = any> extends EventEmitter {
     };
   }
 
-  public _popWaiting(): ManagedJob<T> | null {
-    while (this.waitingIds.length > 0) {
-      const id = this.waitingIds.shift()!;
+  /**
+   * Internal claim: Atomically shifts job from waiting to active queue
+   */
+  public async _claimNextJob(): Promise<ManagedJob<T> | null> {
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          // Atomic BullMQ RPOPLPUSH transition: waiting -> active
+          const claimedId = await redis.rpoplpush(
+            `bullmq:${this.name}:waiting`,
+            `bullmq:${this.name}:active`
+          );
+          if (claimedId) {
+            const job = await this.getJob(claimedId);
+            if (job) return job as ManagedJob<T>;
+          }
+        } catch (err: any) {
+          logger.warn(`[BullMQ:${this.name}] Atomic claim fallback:`, err?.message);
+        }
+      }
+    }
+
+    // In-memory fallback
+    while (this.inMemoryWaiting.length > 0) {
+      const id = this.inMemoryWaiting.shift()!;
       const job = this.inMemoryJobs.get(id);
       if (job && job.status === 'waiting') {
+        this.inMemoryActive.push(id);
         return job;
       }
     }
     return null;
   }
 
-  public _requeue(job: ManagedJob<T>) {
-    job.status = 'waiting';
-    this.waitingIds.push(job.id);
-    QueueManager.notifyWorkers(this.name);
+  /**
+   * Acknowledges successful job completion (ACK)
+   */
+  public async _ackJob(job: ManagedJob<T>, result: any) {
+    job.status = 'completed';
+    job.progress = 100;
+    job.returnValue = result;
+    job.finishedAt = Date.now();
+
+    // Remove from in-memory active list
+    this.inMemoryActive = this.inMemoryActive.filter((id) => id !== job.id);
+
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const pipeline = redis.pipeline();
+          // Remove from active list
+          pipeline.lrem(`bullmq:${this.name}:active`, 1, job.id);
+          // Add to completed set
+          pipeline.sadd(`bullmq:${this.name}:completed`, job.id);
+          // Update persistent job hash
+          pipeline.hset(`bullmq:${this.name}:jobs:${job.id}`, 'payload', JSON.stringify(job.toJSON()));
+          pipeline.del(`bullmq:${this.name}:lock:${job.id}`);
+          await pipeline.exec();
+        } catch (err: any) {
+          logger.warn(`[BullMQ:${this.name}] Ack warning:`, err?.message);
+        }
+      }
+    }
+  }
+
+  /**
+   * Rejects job or requeues with backoff (NACK)
+   */
+  public async _nackJob(job: ManagedJob<T>, error: any) {
+    job.attempts++;
+    job.failedReason = error?.message || String(error);
+
+    // Remove from in-memory active list
+    this.inMemoryActive = this.inMemoryActive.filter((id) => id !== job.id);
+
+    if (job.attempts < job.maxAttempts) {
+      // Exponential backoff retry
+      const backoffMs = Math.min(1000 * Math.pow(2, job.attempts - 1), 10000);
+      job.status = 'waiting';
+
+      setTimeout(async () => {
+        this.inMemoryWaiting.push(job.id);
+        if (isRedisConnected()) {
+          const redis = getRedisClient();
+          if (redis) {
+            try {
+              const pipeline = redis.pipeline();
+              pipeline.lrem(`bullmq:${this.name}:active`, 1, job.id);
+              pipeline.rpush(`bullmq:${this.name}:waiting`, job.id);
+              pipeline.hset(`bullmq:${this.name}:jobs:${job.id}`, 'payload', JSON.stringify(job.toJSON()));
+              pipeline.del(`bullmq:${this.name}:lock:${job.id}`);
+              await pipeline.exec();
+            } catch {}
+          }
+        }
+        QueueManager.notifyWorkers(this.name);
+      }, backoffMs);
+    } else {
+      // Dead-letter queue
+      job.status = 'failed';
+      job.finishedAt = Date.now();
+
+      if (isRedisConnected()) {
+        const redis = getRedisClient();
+        if (redis) {
+          try {
+            const pipeline = redis.pipeline();
+            pipeline.lrem(`bullmq:${this.name}:active`, 1, job.id);
+            pipeline.rpush(`bullmq:${this.name}:failed`, job.id);
+            pipeline.hset(`bullmq:${this.name}:jobs:${job.id}`, 'payload', JSON.stringify(job.toJSON()));
+            pipeline.del(`bullmq:${this.name}:lock:${job.id}`);
+            await pipeline.exec();
+          } catch {}
+        }
+      }
+    }
   }
 }
 
@@ -134,6 +315,7 @@ export class Worker<T = any, R = any> extends EventEmitter {
   private isRunning = false;
   private activeCount = 0;
   private concurrency: number;
+  private workerId: string;
 
   constructor(
     public readonly queueName: string,
@@ -142,6 +324,7 @@ export class Worker<T = any, R = any> extends EventEmitter {
   ) {
     super();
     this.concurrency = opts?.concurrency || 2;
+    this.workerId = `worker_${process.pid}_${crypto.randomBytes(3).toString('hex')}`;
     QueueManager.registerWorker(this);
     this.start();
   }
@@ -161,59 +344,36 @@ export class Worker<T = any, R = any> extends EventEmitter {
     const queue = QueueManager.getQueue<T>(this.queueName);
     if (!queue) return;
 
-    const job = queue._popWaiting();
+    const job = await queue._claimNextJob();
     if (!job) return;
 
     this.activeCount++;
     job.status = 'active';
     job.processedAt = Date.now();
-    job.attempts++;
+
+    // Durable Redis lease lock for 60 seconds
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        await redis.set(`bullmq:${this.queueName}:lock:${job.id}`, this.workerId, 'EX', 60, 'NX').catch(() => {});
+      }
+    }
 
     this.emit('active', job);
 
-    // Process job asynchronously
+    // Process job asynchronously with durable acknowledgments
     (async () => {
       try {
         const result = await this.processor(job);
-        job.status = 'completed';
-        job.progress = 100;
-        job.returnValue = result;
-        job.finishedAt = Date.now();
+        // Durable Worker Acknowledgment (ACK)
+        await queue._ackJob(job, result);
         this.emit('completed', job, result);
-
-        if (isRedisConnected()) {
-          try {
-            await redisClientModule.set(`queue:${this.queueName}:job:${job.id}`, {
-              ...job,
-              status: 'completed',
-              finishedAt: job.finishedAt,
-            }, 86400);
-          } catch {}
-        }
       } catch (err: any) {
-        logger.error(`[Worker ${this.queueName}] Job ${job.id} failed (attempt ${job.attempts}/${job.maxAttempts}):`, err?.message || err);
-        job.failedReason = err?.message || String(err);
-
-        if (job.attempts < job.maxAttempts) {
-          // Exponential backoff retry
-          const backoff = Math.min(1000 * Math.pow(2, job.attempts - 1), 10000);
-          setTimeout(() => {
-            queue._requeue(job);
-          }, backoff);
-        } else {
-          job.status = 'failed';
-          job.finishedAt = Date.now();
+        logger.error(`[Worker:${this.queueName}] Job ${job.id} failed (attempt ${job.attempts + 1}/${job.maxAttempts}):`, err?.message || err);
+        // Durable Worker Negative Acknowledgment / Dead-Letter (NACK)
+        await queue._nackJob(job, err);
+        if (job.status === 'failed') {
           this.emit('failed', job, err);
-
-          if (isRedisConnected()) {
-            try {
-              await redisClientModule.set(`queue:${this.queueName}:job:${job.id}`, {
-                ...job,
-                status: 'failed',
-                finishedAt: job.finishedAt,
-              }, 86400);
-            } catch {}
-          }
         }
       } finally {
         this.activeCount--;
@@ -221,7 +381,7 @@ export class Worker<T = any, R = any> extends EventEmitter {
       }
     })();
 
-    // Fill remaining concurrency slots
+    // Check remaining concurrency slots
     if (this.activeCount < this.concurrency) {
       this.checkNext();
     }

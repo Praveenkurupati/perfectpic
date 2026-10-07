@@ -150,7 +150,17 @@ export const api = {
     const queryString = params.toString() ? `?${params.toString()}` : '';
     return fetcher<{ orders: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/orders${queryString}`, { headers: authHeaders() });
   },
-  getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),
+  getOrder: (id: string, opts?: { email?: string; token?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.email) params.append('email', opts.email);
+    if (opts?.token) params.append('token', opts.token);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const headers: Record<string, string> = { ...(authHeaders() as Record<string, string>) };
+    if (opts?.token) {
+      headers['x-guest-token'] = opts.token;
+    }
+    return fetcher<any>(`/orders/${id}${qs}`, { headers });
+  },
   createOrder: (data: any) =>
     fetcher<{ id: string; orderNumber?: string; order?: any }>('/orders', {
       method: 'POST',
@@ -266,12 +276,67 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // Uploads
+  // Presigned S3 direct uploads
+  getPresignedUploadUrl: async (filename: string, contentType: string) => {
+    return fetcher<{ url: string; key: string }>('/upload/presign', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ filename, contentType }),
+    });
+  },
+
+  // Uploads (Direct-to-S3 presigned PUT with local streaming fallback)
   uploadPhoto: async (file: File) => {
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('pp_token') || localStorage.getItem('token')) : null;
+
+    // 1. Attempt Direct-to-S3 Presigned PUT
+    try {
+      const presignRes = await fetch(`${getApiBaseUrl()}/api/v1/upload/presign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type || 'image/jpeg',
+        }),
+      });
+
+      if (presignRes.ok) {
+        const { url: presignedPutUrl, key } = await presignRes.json();
+
+        // If real S3 presigned URL (not mock S3), upload directly to S3
+        if (presignedPutUrl && presignedPutUrl.includes('.amazonaws.com') && !presignedPutUrl.includes('mock-s3-bucket')) {
+          const directRes = await fetch(presignedPutUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': file.type || 'image/jpeg',
+            },
+            body: file,
+          });
+
+          if (directRes.ok) {
+            // Clean direct S3 public URL
+            const publicUrl = presignedPutUrl.split('?')[0];
+            return {
+              url: publicUrl,
+              filename: key,
+              originalName: file.name,
+              size: file.size,
+              storage: 's3-direct',
+            };
+          }
+        }
+      }
+    } catch (presignErr) {
+      console.warn('Presigned direct upload unavailable; cascading to fallback streaming:', presignErr);
+    }
+
+    // 2. Fallback streaming via Express (for local offline dev environments)
     const formData = new FormData();
     formData.append('file', file);
     formData.append('folder', 'photos');
-    const token = typeof window !== 'undefined' ? (localStorage.getItem('pp_token') || localStorage.getItem('token')) : null;
     const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},

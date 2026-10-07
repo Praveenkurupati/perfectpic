@@ -3,6 +3,7 @@
 export type JobStatus = 'waiting' | 'active' | 'completed' | 'failed' | 'delayed';
 
 export interface JobOptions {
+  jobId?: string;           // custom job identifier
   attempts?: number;        // default: 3
   backoffMs?: number;       // default: 1000
   timeoutMs?: number;       // default: 60000

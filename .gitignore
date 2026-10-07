@@ -52,3 +52,12 @@ logs/
 
 # Scratch
 scratch/
+
+# Database Backups (Retained locally and in S3, never committed to git)
+backups/mongodb/*.tar.gz
+backups/mongodb/*.gz
+backups/mongodb/*.dump
+backups/mongodb/dump/
+backups/mongodb/*.meta.json
+!backups/mongodb/.gitkeep
+!backups/mongodb/README.md

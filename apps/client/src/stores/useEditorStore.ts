@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { indexedDbStorage } from '@/lib/storage/indexedDbStorage';
 
 export interface Page {
   id: string;
@@ -377,7 +378,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 
-  addPhoto: (photo) => set((state) => ({ photos: [...state.photos, photo] })),
+  addPhoto: (photo) => {
+    if (typeof window !== 'undefined' && photo.url && photo.url.startsWith('data:')) {
+      fetch(photo.url)
+        .then((res) => res.blob())
+        .then((blob) => indexedDbStorage.storePhotoBlob(photo.id, blob, photo.name))
+        .then((objectUrl) => {
+          set((state) => ({
+            photos: state.photos.map((p) => (p.id === photo.id ? { ...p, url: objectUrl } : p)),
+          }));
+        })
+        .catch(() => {});
+    }
+    set((state) => ({ photos: [...state.photos, photo] }));
+  },
   removePhoto: (id) => set((state) => ({ photos: state.photos.filter(p => p.id !== id) })),
   updatePageCanvas: (index, elements) => set((state) => {
     const page = state.pages[index];
@@ -400,6 +414,20 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         get().setPageCount(initialConfig.pages);
       }
       return;
+    }
+
+    // Check IndexedDB asynchronously for robust full project storage
+    if (typeof window !== 'undefined') {
+      indexedDbStorage.getProjectSnapshot(projectId).then((dbSnapshot) => {
+        if (dbSnapshot && dbSnapshot.photos && dbSnapshot.photos.length > 0) {
+          set({
+            photos: dbSnapshot.photos,
+            slotPhotos: dbSnapshot.slotPhotos || {},
+            slotCrops: dbSnapshot.slotCrops || {},
+            pagePhotos: dbSnapshot.pagePhotos || {},
+          });
+        }
+      }).catch(() => {});
     }
 
     // Attempt to hydrate from saved localStorage snapshot for this project
@@ -489,6 +517,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (typeof window !== 'undefined' && projectId) {
       try {
         localStorage.removeItem(`pp_snapshot_${projectId}`);
+        indexedDbStorage.deleteProjectSnapshot(projectId).catch(() => {});
       } catch {}
     }
     const pageCount = 32;

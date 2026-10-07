@@ -4,6 +4,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutBucketCorsCommand,
+  PutBucketLifecycleConfigurationCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { env } from '../config/env';
@@ -140,6 +141,48 @@ export async function ensureS3Cors(): Promise<boolean> {
     return true;
   } catch (err: any) {
     console.warn('Notice: Could not auto-apply S3 CORS configuration:', err?.message);
+    return false;
+  }
+}
+
+/**
+ * Ensures strict 30-day data retention lifecycle policy on AWS S3 temporary uploads.
+ * Automatically deletes transient uploads and photos in uploads/ and photos/temp/ older than 30 days.
+ */
+export async function ensureS3LifecycleConfiguration(): Promise<boolean> {
+  const client = getS3Client();
+  if (!client || !env.S3_BUCKET) {
+    return false;
+  }
+
+  try {
+    const command = new PutBucketLifecycleConfigurationCommand({
+      Bucket: env.S3_BUCKET,
+      LifecycleConfiguration: {
+        Rules: [
+          {
+            ID: 'AutoPruneTempUploads30Days',
+            Filter: { Prefix: 'uploads/' },
+            Status: 'Enabled',
+            Expiration: { Days: 30 },
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 },
+          },
+          {
+            ID: 'AutoPruneTempPhotos30Days',
+            Filter: { Prefix: 'photos/temp/' },
+            Status: 'Enabled',
+            Expiration: { Days: 30 },
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 },
+          },
+        ],
+      },
+    });
+
+    await client.send(command);
+    console.info('🛡️ [S3 Retention] 30-day photo lifecycle retention rule verified on bucket:', env.S3_BUCKET);
+    return true;
+  } catch (err: any) {
+    console.warn('Notice: Could not auto-apply S3 lifecycle configuration:', err?.message);
     return false;
   }
 }

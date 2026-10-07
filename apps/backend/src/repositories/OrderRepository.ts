@@ -1,5 +1,6 @@
 // apps/backend/src/repositories/OrderRepository.ts
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { Order, IOrder } from '../db/models/Order';
 import { User } from '../db/models/User';
 import { Product } from '../db/models/Product';
@@ -333,10 +334,12 @@ export class OrderRepository {
     };
 
     const isGift = Boolean(orderData.isGift || hasGiftWrap);
+    const guestToken = orderData.guestToken || crypto.randomBytes(24).toString('hex');
 
     const payload = {
       ...orderData,
       orderNumber,
+      guestToken,
       amount: total,
       total,
       status: orderData.status || 'confirmed',

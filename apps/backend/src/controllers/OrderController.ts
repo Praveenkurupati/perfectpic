@@ -62,14 +62,24 @@ export class OrderController {
         }
       } else {
         const queryEmail = String(req.query.email || '').toLowerCase().trim();
+        const queryPhone = String(req.query.phone || '').replace(/\D/g, '');
+        const guestToken = String(req.headers['x-guest-token'] || req.query.token || '').trim();
         const orderEmail = (
           (order as any).customerEmail ||
           (order as any).shippingAddress?.email ||
           ''
         ).toLowerCase().trim();
+        const orderPhone = String((order as any).customerPhone || (order as any).shippingAddress?.phone || '').replace(/\D/g, '');
+        const orderToken = String((order as any).guestToken || '').trim();
 
-        if (!queryEmail || queryEmail !== orderEmail) {
-          throw ApiError.unauthorized('Authentication or customer email confirmation required to view order.');
+        const isTokenMatch = Boolean(guestToken && orderToken && guestToken === orderToken);
+        const isEmailAndPhoneMatch = Boolean(
+          queryEmail && orderEmail && queryEmail === orderEmail &&
+          queryPhone && orderPhone && (queryPhone === orderPhone || orderPhone.endsWith(queryPhone))
+        );
+
+        if (!isTokenMatch && !isEmailAndPhoneMatch) {
+          throw ApiError.unauthorized('Authentication, verified guest token, or matching customer credentials required to view order.');
         }
       }
 
@@ -103,14 +113,24 @@ export class OrderController {
         }
       } else {
         const queryEmail = String(req.query.email || '').toLowerCase().trim();
+        const queryPhone = String(req.query.phone || '').replace(/\D/g, '');
+        const guestToken = String(req.headers['x-guest-token'] || req.query.token || '').trim();
         const orderEmail = (
           (order as any).customerEmail ||
           (order as any).shippingAddress?.email ||
           ''
         ).toLowerCase().trim();
+        const orderPhone = String((order as any).customerPhone || (order as any).shippingAddress?.phone || '').replace(/\D/g, '');
+        const orderToken = String((order as any).guestToken || '').trim();
 
-        if (!queryEmail || queryEmail !== orderEmail) {
-          throw ApiError.unauthorized('Authentication or customer email confirmation required to download order document.');
+        const isTokenMatch = Boolean(guestToken && orderToken && guestToken === orderToken);
+        const isEmailAndPhoneMatch = Boolean(
+          queryEmail && orderEmail && queryEmail === orderEmail &&
+          queryPhone && orderPhone && (queryPhone === orderPhone || orderPhone.endsWith(queryPhone))
+        );
+
+        if (!isTokenMatch && !isEmailAndPhoneMatch) {
+          throw ApiError.unauthorized('Authentication, verified guest token, or matching customer credentials required to download order document.');
         }
       }
 
@@ -150,6 +170,8 @@ export class OrderController {
       return res.status(201).json({
         message: 'Order created successfully',
         id: (order as any).orderNumber || (order as any).id,
+        orderNumber: (order as any).orderNumber || (order as any).id,
+        guestToken: (order as any).guestToken,
         order,
       });
     } catch (err) {

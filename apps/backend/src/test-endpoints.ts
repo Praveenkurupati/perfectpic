@@ -676,6 +676,57 @@ async function runTests() {
     details: `Protected: Anonymous caller blocked with HTTP ${anonOrderRes.status}`,
   });
 
+  // 33. Disaster Recovery: Create Automated Backup
+  console.log('Testing: POST /api/v1/admin/backups/create (Automated DB Backup)');
+  const createBackupRes = await dispatchRequest(
+    'POST',
+    '/api/v1/admin/backups/create',
+    { retentionDays: 30 },
+    adminHeaders
+  );
+  results.push({
+    endpoint: '/api/v1/admin/backups/create',
+    method: 'POST',
+    status: createBackupRes.status,
+    expectedStatus: 201,
+    passed: createBackupRes.status === 201 && Boolean(createBackupRes.body?.backup?.filename),
+    details: `Created: ${createBackupRes.body?.backup?.filename || 'archive'} (Retention: 30d)`,
+  });
+
+  // 34. Disaster Recovery: List Stored Backups with 30-Day Retention
+  console.log('Testing: GET /api/v1/admin/backups (Retention Policy Manifest)');
+  const listBackupsRes = await dispatchRequest(
+    'GET',
+    '/api/v1/admin/backups',
+    undefined,
+    adminHeaders
+  );
+  results.push({
+    endpoint: '/api/v1/admin/backups',
+    method: 'GET',
+    status: listBackupsRes.status,
+    expectedStatus: 200,
+    passed: listBackupsRes.status === 200 && listBackupsRes.body?.retentionPolicyDays === 30,
+    details: `Active Backups: ${listBackupsRes.body?.count || 0} (Retention Policy: ${listBackupsRes.body?.retentionPolicyDays || 30} days)`,
+  });
+
+  // 35. Disaster Recovery: 30-Day Retention Automatic Pruner
+  console.log('Testing: POST /api/v1/admin/backups/prune (Retention Pruner)');
+  const pruneRes = await dispatchRequest(
+    'POST',
+    '/api/v1/admin/backups/prune',
+    { retentionDays: 30 },
+    adminHeaders
+  );
+  results.push({
+    endpoint: '/api/v1/admin/backups/prune',
+    method: 'POST',
+    status: pruneRes.status,
+    expectedStatus: 200,
+    passed: pruneRes.status === 200,
+    details: `Pruner Active: ${pruneRes.body?.message || 'Pruning complete'}`,
+  });
+
   // Print results
   console.log('\n📊 ====================================================');
   console.log('📊 PerfectPic Backend API Verification Summary');

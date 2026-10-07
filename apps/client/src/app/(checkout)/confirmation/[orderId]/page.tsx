@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { 
   CheckCircle2, 
@@ -23,14 +23,17 @@ import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
 
 export default function ConfirmationPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orderId = (params?.orderId as string) || '';
+  const token = searchParams?.get('token') || '';
+  const email = searchParams?.get('email') || '';
 
   const [order, setOrder] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
-    api.getOrder(orderId)
+    api.getOrder(orderId, { token, email })
       .then((res) => {
         const orderData = res?.order || res;
         if (orderData) setOrder(orderData);
@@ -38,7 +41,7 @@ export default function ConfirmationPage() {
       .catch((err) => {
         console.warn('Order confirmation lookup notice:', err);
       });
-  }, [orderId]);
+  }, [orderId, token, email]);
 
   const orderNum = order?.orderNumber || order?.id || orderId || 'PP-6262';
   const displayTotal = Number(order?.total || order?.amount) || 2499;

@@ -57,6 +57,7 @@ export interface IOrder extends Document {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  guestToken?: string;
   amount: number;
   total: number;
   status: string;
@@ -171,6 +172,7 @@ const OrderSchema: Schema = new Schema(
     customerName: { type: String, default: 'Guest User' },
     customerEmail: { type: String, index: true },
     customerPhone: { type: String },
+    guestToken: { type: String, index: true },
     amount: { type: Number, required: true },
     total: { type: Number, required: true },
     status: { type: String, default: 'confirmed', index: true }, // pending, confirmed, production, printing, qc, dispatched, delivered, cancelled
