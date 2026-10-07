@@ -19,9 +19,15 @@ export class ProjectController {
   public static async getProjects(req: Request, res: Response, next: NextFunction) {
     try {
       const scope = extractScope(req);
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : undefined;
+      const skip = req.query.skip ? parseInt(req.query.skip as string, 10) : undefined;
       const filter = {
         status: req.query.status as string,
         search: req.query.search as string,
+        page,
+        limit,
+        skip,
       };
       const result = await ProjectService.getProjects(scope, filter);
       return res.status(200).json(result);

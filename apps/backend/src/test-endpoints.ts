@@ -32,7 +32,12 @@ function dispatchRequest(
       accept: 'application/json',
       ...headers,
     };
-    req.query = {};
+    const parsedUrl = new URL(url, 'http://localhost');
+    const queryObj: Record<string, string> = {};
+    parsedUrl.searchParams.forEach((val, key) => {
+      queryObj[key] = val;
+    });
+    req.query = queryObj;
     req.params = {};
     req.body = body || {};
     req.rawBody = Buffer.from(JSON.stringify(body || {}));
@@ -127,6 +132,23 @@ async function runTests() {
     expectedStatus: 200,
     passed: legacyProducts.status === 200 && Array.isArray(legacyProducts.body?.products),
     details: `Catalog contains ${legacyProducts.body?.products?.length || 0} books`,
+  });
+
+  // 3b. Paginated Products Endpoint
+  console.log('Testing: GET /api/v1/products?page=2&limit=5 (Pagination Verification)');
+  const paginatedProducts = await dispatchRequest('GET', '/api/v1/products?page=2&limit=5');
+  results.push({
+    endpoint: '/api/v1/products?page=2&limit=5',
+    method: 'GET',
+    status: paginatedProducts.status,
+    expectedStatus: 200,
+    passed: paginatedProducts.status === 200 &&
+      Array.isArray(paginatedProducts.body?.products) &&
+      paginatedProducts.body?.products.length === 5 &&
+      paginatedProducts.body?.page === 2 &&
+      paginatedProducts.body?.limit === 5 &&
+      paginatedProducts.body?.total >= 30,
+    details: `Page ${paginatedProducts.body?.page}/${paginatedProducts.body?.totalPages} (${paginatedProducts.body?.products?.length} items, Total: ${paginatedProducts.body?.total})`,
   });
 
   // 4. Fuzzy Slug Matching (Paris_1)
@@ -262,6 +284,23 @@ async function runTests() {
     expectedStatus: 200,
     passed: stats.status === 200 && Array.isArray(stats.body?.stats),
     details: `Revenue: ${stats.body?.stats?.find((s: any) => s.label === 'Revenue')?.value || 'N/A'}`,
+  });
+
+  // 12b. Admin Paginated Orders
+  console.log('Testing: GET /api/v1/orders?page=1&limit=2 (Admin Orders Pagination)');
+  const pagedOrders = await dispatchRequest('GET', '/api/v1/orders?page=1&limit=2', undefined, adminHeaders);
+  results.push({
+    endpoint: '/api/v1/orders?page=1&limit=2',
+    method: 'GET',
+    status: pagedOrders.status,
+    expectedStatus: 200,
+    passed: pagedOrders.status === 200 &&
+      Array.isArray(pagedOrders.body?.orders) &&
+      pagedOrders.body?.orders.length === 2 &&
+      pagedOrders.body?.page === 1 &&
+      pagedOrders.body?.limit === 2 &&
+      pagedOrders.body?.total >= 2,
+    details: `Page ${pagedOrders.body?.page}/${pagedOrders.body?.totalPages} (${pagedOrders.body?.orders?.length} orders, Total: ${pagedOrders.body?.total})`,
   });
 
   // 13. Admin Customers Directory (with admin token)

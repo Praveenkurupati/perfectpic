@@ -6,6 +6,7 @@ import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
 import { api } from "@/lib/api";
 import { Sparkles, ArrowLeft, Search, X } from "lucide-react";
 import Link from "next/link";
+import { Pagination } from "@/components/ui/Pagination";
 
 const popularTags = [
   { id: "all", label: "All" },
@@ -27,6 +28,8 @@ function TemplatesContent() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [selectedTag, setSelectedTag] = useState<string>(initialTag);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(9);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -75,6 +78,13 @@ function TemplatesContent() {
 
     return matchesCategory && matchesTag && matchesSearch;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeCategory, selectedTag, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / pageSize));
+  const paginatedBooks = filteredBooks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="min-h-screen bg-[#faf8f5] py-16 md:py-24 px-4 md:px-8">
@@ -168,11 +178,25 @@ function TemplatesContent() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredBooks.map(book => (
-              <BookCard key={book.id || book.slug} book={book} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {paginatedBooks.map(book => (
+                <BookCard key={book.id || book.slug} book={book} />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="mt-8 border-t border-neutral-200/80 pt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredBooks.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemLabel="heirloom editions"
+              />
+            </div>
+          </>
         )}
 
         {!loading && filteredBooks.length === 0 && (

@@ -40,7 +40,15 @@ export const adminApi = {
     }),
 
   // Orders
-  getOrders: () => fetcher<{ orders: any[] }>('/orders', { headers: authHeaders() }),
+  getOrders: (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    if (params?.status && params.status !== 'All') query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{ orders: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/orders${qs}`, { headers: authHeaders() });
+  },
   getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),
   updateOrderStatus: (
     id: string,
@@ -60,9 +68,18 @@ export const adminApi = {
     }),
   
   // Products & Templates
-  getProducts: (category?: string) => {
-    const params = category ? `?category=${encodeURIComponent(category)}` : '';
-    return fetcher<{ products: any[]; total: number }>(`/products${params}`);
+  getProducts: (param?: string | { category?: string; page?: number; limit?: number; search?: string }) => {
+    const query = new URLSearchParams();
+    if (typeof param === 'string') {
+      if (param && param !== 'all') query.append('category', param);
+    } else if (param) {
+      if (param.category && param.category !== 'all') query.append('category', param.category);
+      if (param.page) query.append('page', String(param.page));
+      if (param.limit) query.append('limit', String(param.limit));
+      if (param.search) query.append('search', param.search);
+    }
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{ products: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/products${qs}`);
   },
   getProduct: (idOrSlug: string) => fetcher<any>(`/products/${idOrSlug}`),
   createProduct: (data: any) => fetcher<{ message: string; product: any }>('/products', {
@@ -116,9 +133,17 @@ export const adminApi = {
   getProjects: () => fetcher<{ projects: any[] }>('/projects', { headers: authHeaders() }),
 
   // Customers
-  getCustomers: (search?: string) => {
-    const params = search ? `?search=${encodeURIComponent(search)}` : '';
-    return fetcher<{ customers: any[]; total: number }>(`/customers${params}`, { headers: authHeaders() });
+  getCustomers: (param?: string | { search?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (typeof param === 'string') {
+      if (param) query.append('search', param);
+    } else if (param) {
+      if (param.search) query.append('search', param.search);
+      if (param.page) query.append('page', String(param.page));
+      if (param.limit) query.append('limit', String(param.limit));
+    }
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{ customers: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/customers${qs}`, { headers: authHeaders() });
   },
 
   // Production Queue
@@ -131,9 +156,19 @@ export const adminApi = {
     }),
 
   // Support Tickets
-  getTickets: (status?: string) => {
-    const params = status && status !== 'All' ? `?status=${encodeURIComponent(status)}` : '';
-    return fetcher<{ tickets: any[]; total: number }>(`/tickets${params}`, { headers: authHeaders() });
+  getTickets: (statusOrParams?: string | { status?: string; page?: number; limit?: number }, page?: number, limit?: number) => {
+    const query = new URLSearchParams();
+    if (typeof statusOrParams === 'string') {
+      if (statusOrParams && statusOrParams !== 'All') query.append('status', statusOrParams);
+      if (page) query.append('page', String(page));
+      if (limit) query.append('limit', String(limit));
+    } else if (statusOrParams) {
+      if (statusOrParams.status && statusOrParams.status !== 'All') query.append('status', statusOrParams.status);
+      if (statusOrParams.page) query.append('page', String(statusOrParams.page));
+      if (statusOrParams.limit) query.append('limit', String(statusOrParams.limit));
+    }
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{ tickets: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/tickets${qs}`, { headers: authHeaders() });
   },
   createTicket: (data: any) =>
     fetcher<any>('/tickets', {

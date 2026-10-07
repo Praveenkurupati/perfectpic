@@ -3,8 +3,8 @@ import { TicketRepository } from '../repositories/TicketRepository';
 import { ApiError } from '../utils/apiError';
 
 export class TicketService {
-  public static async getTickets(statusFilter?: string) {
-    return await TicketRepository.findAll(statusFilter);
+  public static async getTickets(statusFilter?: string, page: number = 1, limit: number = 10) {
+    return await TicketRepository.findAll(statusFilter, page, limit);
   }
 
   public static async getTicketById(id: string) {

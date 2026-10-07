@@ -3,7 +3,7 @@ import { ProjectRepository, IProjectScope } from '../repositories/ProjectReposit
 import { ApiError } from '../utils/apiError';
 
 export class ProjectService {
-  public static async getProjects(scope?: IProjectScope, filter?: { status?: string; search?: string }) {
+  public static async getProjects(scope?: IProjectScope, filter?: { status?: string; search?: string; page?: number; limit?: number; skip?: number }) {
     return await ProjectRepository.findAll(scope, filter);
   }
 

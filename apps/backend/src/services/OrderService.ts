@@ -7,7 +7,7 @@ import { MetaCapiService } from './MetaCapiService';
 import { logger } from '../utils/logger';
 
 export class OrderService {
-  public static async getOrders(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number }) {
+  public static async getOrders(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number }) {
     return await OrderRepository.findAll(filter);
   }
 

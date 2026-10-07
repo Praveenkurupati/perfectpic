@@ -15,6 +15,8 @@ import {
   Check
 } from 'lucide-react';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
+import { LazyImage } from '@/components/ui/LazyImage';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface OrderReview {
   rating: number;
@@ -30,6 +32,8 @@ interface OrderReview {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(5);
 
   // Review modal state
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<any | null>(null);
@@ -223,26 +227,33 @@ export default function OrdersPage() {
               <a href="/configure" className="text-sm font-medium border border-noir-900 px-4 py-2 rounded-sm hover:bg-cream-50">Start Creating</a>
             </div>
           ) : (
-            orders.map(order => {
-              const isDelivered = order.status?.toLowerCase() === 'delivered';
-              const review = order.review || getCachedReview(order.orderNumber || order.id);
+            (() => {
+              const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+              const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
               return (
-                <div 
-                  key={order.id || order.orderNumber} 
-                  className="bg-white p-6 rounded-sm shadow-luxury-xs border border-cream-200 hover:border-cream-300 transition-all flex flex-col justify-between gap-6"
-                >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    {/* Left: Book Cover + Details */}
-                    <div className="flex items-start sm:items-center gap-5">
-                      <div className="w-20 h-20 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200 shadow-sm">
-                        <img 
-                          src={order.coverUrl || order.thumbnail || "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop"} 
-                          alt="Cover" 
-                          className="w-full h-full object-cover" 
-                        />
-                      </div>
-                      <div>
+                <>
+                  {paginatedOrders.map(order => {
+                    const isDelivered = order.status?.toLowerCase() === 'delivered';
+                    const review = order.review || getCachedReview(order.orderNumber || order.id);
+
+                    return (
+                      <div 
+                        key={order.id || order.orderNumber} 
+                        className="bg-white p-6 rounded-sm shadow-luxury-xs border border-cream-200 hover:border-cream-300 transition-all flex flex-col justify-between gap-6"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                          {/* Left: Book Cover + Details */}
+                          <div className="flex items-start sm:items-center gap-5">
+                            <div className="w-20 h-20 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200 shadow-sm relative">
+                              <LazyImage 
+                                src={order.coverUrl || order.thumbnail || "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop"} 
+                                alt="Cover" 
+                                className="w-full h-full object-cover"
+                                containerClassName="w-full h-full" 
+                              />
+                            </div>
+                            <div>
                         <h3 className="font-serif text-xl font-medium text-noir-950 mb-1">{order.title}</h3>
                         <p className="text-xs text-noir-500 mb-2 font-mono">
                           Order #{order.orderNumber || order.id} • {formatDate(order.createdAt || order.date)}
@@ -425,10 +436,26 @@ export default function OrdersPage() {
                   )}
                 </div>
               );
-            })
-          )}
-        </div>
-      )}
+            })}
+
+            {orders.length > pageSize && (
+              <div className="pt-2 border-t border-cream-200">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={orders.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  itemLabel="orders"
+                />
+              </div>
+            )}
+          </>
+        );
+      })()
+    )}
+  </div>
+)}
 
       {/* Review Modal */}
       {reviewModalOpen && selectedOrderForReview && (
@@ -443,11 +470,12 @@ export default function OrdersPage() {
 
             {/* Modal Header */}
             <div className="flex items-center gap-4 mb-6 pb-4 border-b border-cream-200">
-              <div className="w-14 h-14 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200">
-                <img
+              <div className="w-14 h-14 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200 relative">
+                <LazyImage
                   src={selectedOrderForReview.coverUrl || selectedOrderForReview.thumbnail || "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop"}
                   alt="Book Cover"
                   className="w-full h-full object-cover"
+                  containerClassName="w-full h-full"
                 />
               </div>
               <div>

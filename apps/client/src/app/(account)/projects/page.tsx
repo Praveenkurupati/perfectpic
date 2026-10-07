@@ -4,9 +4,13 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { normalizeImageUrl } from '@/lib/urls';
+import { LazyImage } from '@/components/ui/LazyImage';
+import { Pagination } from '@/components/ui/Pagination';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<any[]>([]);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize] = useState<number>(8);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -39,6 +43,9 @@ export default function ProjectsPage() {
     return rtf.format(daysDifference, 'day');
   };
 
+  const totalPages = Math.max(1, Math.ceil(projects.length / pageSize));
+  const paginatedProjects = projects.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center pb-4 border-b border-cream-200">
@@ -51,30 +58,36 @@ export default function ProjectsPage() {
         </Link>
       </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="bg-white border border-cream-200 rounded-sm overflow-hidden animate-pulse">
-                <div className="aspect-square bg-cream-200"></div>
-                <div className="p-4 space-y-2">
-                  <div className="h-5 bg-cream-200 rounded w-3/4"></div>
-                  <div className="h-3 bg-cream-200 rounded w-1/2"></div>
-                </div>
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-white border border-cream-200 rounded-sm overflow-hidden animate-pulse">
+              <div className="aspect-square bg-cream-200"></div>
+              <div className="p-4 space-y-2">
+                <div className="h-5 bg-cream-200 rounded w-3/4"></div>
+                <div className="h-3 bg-cream-200 rounded w-1/2"></div>
               </div>
-            ))}
-          </div>
-        ) : (
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {projects.length === 0 ? (
               <div className="col-span-full py-12 text-center text-noir-500 bg-white border border-cream-200 rounded-sm">
                 No projects found. Start creating your first photobook!
               </div>
             ) : (
-              projects.map(project => (
+              paginatedProjects.map(project => (
                 <div key={project.id} className="bg-white border border-cream-200 rounded-sm overflow-hidden group">
                   <div className="aspect-square bg-cream-100 relative">
                     {(project.coverUrl || project.coverImage) ? (
-                      <img src={normalizeImageUrl(project.coverUrl || project.coverImage)} alt={project.title} className="w-full h-full object-cover" />
+                      <LazyImage 
+                        src={normalizeImageUrl(project.coverUrl || project.coverImage)} 
+                        alt={project.title} 
+                        className="w-full h-full object-cover"
+                        containerClassName="w-full h-full"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-cream-400">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -100,7 +113,21 @@ export default function ProjectsPage() {
               ))
             )}
           </div>
-        )}
+
+          {projects.length > pageSize && (
+            <div className="pt-4 border-t border-cream-200">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={projects.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                itemLabel="projects"
+              />
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

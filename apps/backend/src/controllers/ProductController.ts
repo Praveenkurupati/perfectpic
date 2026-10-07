@@ -5,11 +5,14 @@ import { ProductService } from '../services/ProductService';
 export class ProductController {
   public static async getProducts(req: Request, res: Response, next: NextFunction) {
     try {
-      const { category, search, tag } = req.query;
+      const { category, search, tag, limit, skip, page } = req.query;
       const result = await ProductService.getProducts({
         category: typeof category === 'string' ? category : undefined,
         search: typeof search === 'string' ? search : undefined,
         tag: typeof tag === 'string' ? tag : undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        skip: skip ? parseInt(skip as string, 10) : undefined,
+        page: page ? parseInt(page as string, 10) : undefined,
       });
       return res.status(200).json(result);
     } catch (err) {

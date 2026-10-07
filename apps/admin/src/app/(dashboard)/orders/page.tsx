@@ -25,6 +25,7 @@ import {
 import { recentOrders } from "@/lib/mock-data";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui/Pagination";
 
 interface StageConfig {
   id: string;
@@ -124,6 +125,8 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("All");
   const [orders, setOrders] = useState<any[]>(recentOrders);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -250,6 +253,17 @@ export default function OrdersPage() {
       return matchesTab && matchesSearch;
     });
   }, [orders, activeTab, searchQuery]);
+
+  // Reset to first page whenever filter or tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredOrders.slice(start, start + pageSize);
+  }, [filteredOrders, currentPage, pageSize]);
 
   const handleQuickAdvance = async (order: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -559,7 +573,7 @@ export default function OrdersPage() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => {
+                paginatedOrders.map((order) => {
                   const stageInfo = getStageInfo(order.status);
                   const isUpdating = updatingOrderId === order.id;
 
@@ -686,15 +700,17 @@ export default function OrdersPage() {
           </table>
         </div>
 
-        {/* Pagination */}
-        <div className="p-4 border-t border-cream-200 flex items-center justify-between text-sm text-noir-500">
-          <div>Showing {filteredOrders.length} results</div>
-          <div className="flex space-x-1">
-            <button className="p-1 rounded-sm hover:bg-cream-100 border border-transparent disabled:opacity-50"><ChevronLeft className="w-4 h-4" /></button>
-            <button className="px-3 py-1 rounded-sm bg-noir-950 text-cream-50 font-medium">1</button>
-            <button className="p-1 rounded-sm hover:bg-cream-100 border border-transparent"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
+        {/* Dynamic Enterprise Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredOrders.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+          itemLabel="orders"
+        />
       </div>
 
       {/* Stage Follow-Up & Update Modal */}

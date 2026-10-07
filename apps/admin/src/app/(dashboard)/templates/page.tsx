@@ -8,6 +8,7 @@ import {
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
+import { Pagination } from "@/components/ui/Pagination";
 
 interface TemplateItem {
   id: string;
@@ -41,6 +42,8 @@ export default function TemplatesManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(9);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -193,6 +196,13 @@ export default function TemplatesManagementPage() {
     return matchesCat && matchesSearch;
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTemplates.length / pageSize));
+  const paginatedTemplates = filteredTemplates.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -270,7 +280,7 @@ export default function TemplatesManagementPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredTemplates.map(book => (
+          {paginatedTemplates.map(book => (
             <div 
               key={book.id} 
               className="bg-white border border-neutral-200/90 rounded-2xl p-6 shadow-luxury-sm hover:shadow-luxury-md transition-all flex flex-col justify-between relative group"
@@ -392,6 +402,20 @@ export default function TemplatesManagementPage() {
           ))}
         </div>
       )}
+
+      {/* Dynamic Enterprise Pagination */}
+      <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 overflow-hidden">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredTemplates.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[6, 9, 18, 36]}
+          itemLabel="templates"
+        />
+      </div>
 
       {/* Edit / Add Modal */}
       {isModalOpen && (

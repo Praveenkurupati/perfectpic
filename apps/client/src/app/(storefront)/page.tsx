@@ -223,6 +223,9 @@ export default function Home() {
                 <img
                   src="/images/curated-journals-hero.jpg"
                   alt="Photomemories: Curated Journals & Hardcovers"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
                   className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
                 />
 
@@ -343,6 +346,8 @@ export default function Home() {
                 <img
                   src="/images/curated-journals-hero.jpg"
                   alt="Photomemories: Curated Journals Showcase"
+                  loading="lazy"
+                  decoding="async"
                   className="w-full h-auto rounded-xl object-cover"
                 />
               </div>

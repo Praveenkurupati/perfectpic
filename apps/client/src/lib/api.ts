@@ -35,12 +35,19 @@ function authHeaders(): HeadersInit {
 
 export const api = {
   // Products & Templates
-  getProducts: (category?: string, search?: string) => {
+  getProducts: (param?: string | { category?: string; search?: string; page?: number; limit?: number }, maybeSearch?: string) => {
     const params = new URLSearchParams();
-    if (category) params.append('category', category);
-    if (search) params.append('search', search);
+    if (typeof param === 'string') {
+      if (param && param !== 'all') params.append('category', param);
+      if (maybeSearch) params.append('search', maybeSearch);
+    } else if (param) {
+      if (param.category && param.category !== 'all') params.append('category', param.category);
+      if (param.search) params.append('search', param.search);
+      if (param.page) params.append('page', String(param.page));
+      if (param.limit) params.append('limit', String(param.limit));
+    }
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    return fetcher<{ products: any[]; total: number }>(`/products${queryString}`);
+    return fetcher<{ products: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/products${queryString}`);
   },
   getFeaturedProducts: () => fetcher<{ products: any[] }>('/products/featured'),
   getProduct: (slug: string) => fetcher<any>(`/products/${slug}`),
@@ -106,7 +113,15 @@ export const api = {
     }>('/auth/oauth/config'),
 
   // Projects & Drafts
-  getProjects: () => fetcher<{ projects: any[] }>('/projects', { headers: authHeaders() }),
+  getProjects: (opts?: { page?: number; limit?: number; status?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.page) params.append('page', String(opts.page));
+    if (opts?.limit) params.append('limit', String(opts.limit));
+    if (opts?.status) params.append('status', opts.status);
+    if (opts?.search) params.append('search', opts.search);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return fetcher<{ projects: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/projects${queryString}`, { headers: authHeaders() });
+  },
   getProject: (id: string) => fetcher<any>(`/projects/${id}`, { headers: authHeaders() }),
   createProject: (data: any) =>
     fetcher<{ id: string; project?: any }>('/projects', {
@@ -127,7 +142,14 @@ export const api = {
     }),
 
   // Orders
-  getOrders: () => fetcher<{ orders: any[] }>('/orders', { headers: authHeaders() }),
+  getOrders: (opts?: { page?: number; limit?: number; status?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.page) params.append('page', String(opts.page));
+    if (opts?.limit) params.append('limit', String(opts.limit));
+    if (opts?.status) params.append('status', opts.status);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return fetcher<{ orders: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/orders${queryString}`, { headers: authHeaders() });
+  },
   getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),
   createOrder: (data: any) =>
     fetcher<{ id: string; orderNumber?: string; order?: any }>('/orders', {

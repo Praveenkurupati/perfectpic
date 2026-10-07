@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Star } from "lucide-react";
+import { LazyImage } from "@/components/ui/LazyImage";
 
 export interface BookItem {
   id: string;
@@ -53,10 +54,11 @@ export default function BookCard({ book }: { book: BookItem }) {
             /* Custom Magazine Mockup */
             <div className="relative w-44 h-60 rounded-[3px] p-2.5 shadow-2xl transition-transform duration-500 group-hover:scale-105 group-hover:-translate-y-1" style={{ backgroundColor: coverBg }}>
               <div className="w-full h-full relative overflow-hidden rounded-[2px] bg-neutral-900 border border-white/20">
-                <img 
+                <LazyImage 
                   src={book.coverImage} 
                   alt={book.displayName || book.title} 
                   className="w-full h-full object-cover" 
+                  containerClassName="w-full h-full"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30 p-3 flex flex-col justify-between">
                   <span className="font-serif text-xl font-bold tracking-[0.2em] text-white text-center uppercase">
@@ -93,10 +95,11 @@ export default function BookCard({ book }: { book: BookItem }) {
 
                 {/* Front Cover Artwork */}
                 <div className="flex-1 relative overflow-hidden bg-neutral-100 flex flex-col justify-between p-2.5">
-                  <img 
+                  <LazyImage 
                     src={book.coverImage} 
                     alt={book.displayName || book.title} 
-                    className="w-full h-full object-cover absolute inset-0" 
+                    className="w-full h-full object-cover" 
+                    containerClassName="w-full h-full absolute inset-0"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
                   

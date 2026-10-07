@@ -7,7 +7,7 @@ import { ApiError } from '../utils/apiError';
 export class OrderController {
   public static async getOrders(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status, search, limit, skip, customerEmail } = req.query;
+      const { status, search, limit, skip, page, customerEmail } = req.query;
       const user = req.user;
 
       let emailFilter = typeof customerEmail === 'string' ? customerEmail : undefined;
@@ -27,6 +27,7 @@ export class OrderController {
         customerEmail: emailFilter,
         limit: limit ? parseInt(limit as string, 10) : undefined,
         skip: skip ? parseInt(skip as string, 10) : undefined,
+        page: page ? parseInt(page as string, 10) : undefined,
       });
       return res.status(200).json(result);
     } catch (err) {

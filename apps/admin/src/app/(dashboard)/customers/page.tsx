@@ -4,24 +4,47 @@ import { useState, useEffect } from "react";
 import { customers as fallbackCustomers } from "@/lib/mock-data";
 import { adminApi } from "@/lib/api";
 import { Search, Mail, Phone, Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
 
 export default function CustomersPage() {
   const [customerList, setCustomerList] = useState<any[]>(fallbackCustomers);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(fallbackCustomers.length);
+  const [totalPages, setTotalPages] = useState(Math.ceil(fallbackCustomers.length / 10));
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
 
-    adminApi.getCustomers(searchTerm)
+    adminApi.getCustomers({ search: searchTerm, page: currentPage, limit: pageSize })
       .then((res) => {
         if (isMounted && res && res.customers) {
           setCustomerList(res.customers);
+          if (res.total !== undefined) {
+            setTotalItems(res.total);
+            setTotalPages(res.totalPages || Math.ceil(res.total / pageSize));
+          }
         }
       })
       .catch((err) => {
         console.warn("Falling back to local customer list:", err);
+        const filtered = fallbackCustomers.filter((c) =>
+          !searchTerm ||
+          c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.phone.includes(searchTerm)
+        );
+        setTotalItems(filtered.length);
+        setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
+        const start = (currentPage - 1) * pageSize;
+        setCustomerList(filtered.slice(start, start + pageSize));
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -30,7 +53,7 @@ export default function CustomersPage() {
     return () => {
       isMounted = false;
     };
-  }, [searchTerm]);
+  }, [searchTerm, currentPage, pageSize]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -97,13 +120,25 @@ export default function CustomersPage() {
               {customerList.length === 0 && !isLoading && (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-sm text-noir-500">
-                    No customers found matching "{searchTerm}".
+                    No customers found matching &ldquo;{searchTerm}&rdquo;.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Dynamic Enterprise Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+          itemLabel="customers"
+        />
       </div>
     </div>
   );

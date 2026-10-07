@@ -18,7 +18,14 @@ export class ProjectRepository {
    * List projects scoped by user tenancy, guest session, or administrator privileges.
    * Defends against data leakage and IDOR.
    */
-  public static async findAll(scope?: IProjectScope, filter?: { status?: string; search?: string }) {
+  public static async findAll(
+    scope?: IProjectScope,
+    filter?: { status?: string; search?: string; page?: number; limit?: number; skip?: number }
+  ) {
+    const limit = Math.max(1, filter?.limit ? Number(filter.limit) : 50);
+    const page = Math.max(1, filter?.page ? Number(filter.page) : (filter?.skip !== undefined ? Math.floor(Number(filter.skip) / limit) + 1 : 1));
+    const skip = filter?.skip !== undefined ? Number(filter.skip) : (page - 1) * limit;
+
     try {
       if (isDbConnected()) {
         const query: any = {};
@@ -36,15 +43,17 @@ export class ProjectRepository {
           if (filter?.status) query.status = filter.status;
         } else {
           // Unauthenticated requests without session scope receive zero projects
-          return { projects: [], total: 0 };
+          return { projects: [], total: 0, page, totalPages: 1, limit };
         }
 
         if (filter?.search) {
           query.title = { $regex: filter.search, $options: 'i' };
         }
 
-        const projects = await Project.find(query).sort({ updatedAt: -1 });
-        return { projects, total: projects.length };
+        const projects = await Project.find(query).sort({ updatedAt: -1 }).skip(skip).limit(limit);
+        const total = await Project.countDocuments(query);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        return { projects, total, page, totalPages, limit };
       }
     } catch (err: any) {
       logger.error('ProjectRepository findAll error:', err.message);
@@ -60,7 +69,7 @@ export class ProjectRepository {
     } else if (scope?.guestSessionId) {
       filtered = filtered.filter((p) => p.guestSessionId === scope.guestSessionId);
     } else {
-      return { projects: [], total: 0 };
+      return { projects: [], total: 0, page, totalPages: 1, limit };
     }
 
     if (filter?.status) {
@@ -70,7 +79,10 @@ export class ProjectRepository {
       filtered = filtered.filter((p) => p.title?.toLowerCase().includes(filter.search!.toLowerCase()));
     }
 
-    return { projects: filtered, total: filtered.length };
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const paged = filtered.slice(skip, skip + limit);
+    return { projects: paged, total, page, totalPages, limit };
   }
 
   /**

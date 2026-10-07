@@ -3,7 +3,7 @@ import { ProductRepository } from '../repositories/ProductRepository';
 import { ApiError } from '../utils/apiError';
 
 export class ProductService {
-  public static async getProducts(filter: { category?: string; search?: string; tag?: string }) {
+  public static async getProducts(filter: { category?: string; search?: string; tag?: string; limit?: number; skip?: number; page?: number }) {
     return await ProductRepository.findAll(filter);
   }
 

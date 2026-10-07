@@ -10,8 +10,12 @@ const fallbackCustomers = [
 ];
 
 export class CustomerService {
-  public static async getCustomers(searchQuery?: string) {
-    const { users, total } = await UserRepository.findAll(100, 0);
+  public static async getCustomers(searchQuery?: string, page: number = 1, limit: number = 10) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const skip = (safePage - 1) * safeLimit;
+
+    const { users } = await UserRepository.findAll(100, 0);
 
     if (users && users.length > 0) {
       const customers = users.map((u: any, idx: number) => ({
@@ -24,13 +28,16 @@ export class CustomerService {
         totalSpent: '1,999',
       }));
 
+      let filtered = customers;
       if (searchQuery) {
         const q = searchQuery.toLowerCase().trim();
-        const filtered = customers.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q));
-        return { customers: filtered, total: filtered.length };
+        filtered = customers.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q));
       }
 
-      return { customers, total: customers.length };
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+      const paged = filtered.slice(skip, skip + safeLimit);
+      return { customers: paged, total, page: safePage, totalPages, limit: safeLimit };
     }
 
     let result = [...fallbackCustomers];
@@ -38,7 +45,10 @@ export class CustomerService {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q) || c.phone.includes(q));
     }
-    return { customers: result, total: result.length };
+    const total = result.length;
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    const paged = result.slice(skip, skip + safeLimit);
+    return { customers: paged, total, page: safePage, totalPages, limit: safeLimit };
   }
 }
 

@@ -5,24 +5,44 @@ import { tickets as fallbackTickets } from "@/lib/mock-data";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { MessageSquare, AlertCircle, RefreshCcw, PackageX, Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/Pagination";
 
 export default function TicketsPage() {
   const [activeTab, setActiveTab] = useState("All");
   const [ticketList, setTicketList] = useState<any[]>(fallbackTickets);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(fallbackTickets.length);
+  const [totalPages, setTotalPages] = useState(Math.ceil(fallbackTickets.length / 10));
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
 
-    adminApi.getTickets(activeTab)
+    adminApi.getTickets({ status: activeTab, page: currentPage, limit: pageSize })
       .then(res => {
         if (isMounted && res && res.tickets) {
           setTicketList(res.tickets);
+          if (res.total !== undefined) {
+            setTotalItems(res.total);
+            setTotalPages(res.totalPages || Math.ceil(res.total / pageSize));
+          }
         }
       })
       .catch(err => {
         console.warn("Using fallback ticket list:", err);
+        const filtered = fallbackTickets.filter((t) =>
+          activeTab === "All" || t.status.toLowerCase() === activeTab.toLowerCase()
+        );
+        setTotalItems(filtered.length);
+        setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
+        const start = (currentPage - 1) * pageSize;
+        setTicketList(filtered.slice(start, start + pageSize));
       })
       .finally(() => {
         if (isMounted) setLoading(false);
@@ -31,7 +51,7 @@ export default function TicketsPage() {
     return () => {
       isMounted = false;
     };
-  }, [activeTab]);
+  }, [activeTab, currentPage, pageSize]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -60,7 +80,7 @@ export default function TicketsPage() {
                 key={tab} 
                 onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "px-3 py-1.5 rounded-sm text-sm font-medium transition-colors",
+                  "px-3 py-1.5 rounded-sm text-sm font-medium transition-colors cursor-pointer",
                   activeTab === tab ? "bg-noir-950 text-cream-50" : "bg-cream-50 text-noir-600 hover:bg-cream-100"
                 )}
               >
@@ -117,13 +137,25 @@ export default function TicketsPage() {
               {ticketList.length === 0 && !loading && (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-sm text-noir-500">
-                    No tickets found for status "{activeTab}".
+                    No tickets found for status &ldquo;{activeTab}&rdquo;.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Dynamic Enterprise Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 25, 50]}
+          itemLabel="tickets"
+        />
       </div>
     </div>
   );

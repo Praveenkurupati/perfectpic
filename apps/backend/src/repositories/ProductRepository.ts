@@ -18,15 +18,21 @@ import { logger } from '../utils/logger';
 import { PageOptionRepository } from './PageOptionRepository';
 
 export class ProductRepository {
-  public static async findAll(filter: { category?: string; search?: string; tag?: string }) {
+  public static async findAll(filter: { category?: string; search?: string; tag?: string; limit?: number; skip?: number; page?: number }) {
     const { category, search, tag } = filter;
     const categoryKey = category && typeof category === 'string' ? category.toLowerCase() : 'all';
     const searchKey = search && typeof search === 'string' ? search.trim().toLowerCase() : '';
     const tagKey = tag && typeof tag === 'string' ? tag.trim().toLowerCase() : '';
-    const cacheKey = `products:list:${categoryKey}:${searchKey}:${tagKey}`;
+    
+    const hasPagination = filter.limit !== undefined || filter.page !== undefined || filter.skip !== undefined;
+    const limit = filter.limit ? Math.max(1, Number(filter.limit)) : (hasPagination ? 24 : 100);
+    const page = Math.max(1, filter.page ? Number(filter.page) : (filter.skip !== undefined ? Math.floor(Number(filter.skip) / limit) + 1 : 1));
+    const skip = filter.skip !== undefined ? Number(filter.skip) : (page - 1) * limit;
+
+    const cacheKey = `products:list:${categoryKey}:${searchKey}:${tagKey}:${page}:${limit}`;
 
     // 1. Try Redis cache
-    const cached = await cacheGet<{ products: any[]; total: number }>(cacheKey);
+    const cached = await cacheGet<{ products: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(cacheKey);
     if (cached) return cached;
 
     // 2. Query MongoDB
@@ -67,8 +73,10 @@ export class ProductRepository {
           query = { $and: conditions };
         }
 
-        const products = await Product.find(query).sort({ priority: -1, createdAt: 1 });
-        const responseData = { products, total: products.length };
+        const products = await Product.find(query).sort({ priority: -1, createdAt: 1 }).skip(skip).limit(limit);
+        const total = await Product.countDocuments(query);
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        const responseData = { products, total, page, totalPages, limit };
         await cacheSet(cacheKey, responseData, 300);
         return responseData;
       }
@@ -102,7 +110,10 @@ export class ProductRepository {
     }
 
     filtered.sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
-    const responseData = { products: filtered, total: filtered.length };
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const paged = filtered.slice(skip, skip + limit);
+    const responseData = { products: paged, total, page, totalPages, limit };
     await cacheSet(cacheKey, responseData, 300);
     return responseData;
   }

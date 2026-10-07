@@ -56,15 +56,21 @@ const mockTickets = [
 ];
 
 export class TicketRepository {
-  public static async findAll(statusFilter?: string) {
+  public static async findAll(statusFilter?: string, page: number = 1, limit: number = 10) {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.max(1, limit);
+    const skip = (safePage - 1) * safeLimit;
+
     try {
       if (isDbConnected()) {
         const query: any = {};
         if (statusFilter && statusFilter.toLowerCase() !== 'all') {
           query.status = new RegExp(`^${statusFilter}$`, 'i');
         }
-        const tickets = await Ticket.find(query).sort({ createdAt: -1 });
-        return { tickets, total: tickets.length };
+        const tickets = await Ticket.find(query).sort({ createdAt: -1 }).skip(skip).limit(safeLimit);
+        const total = await Ticket.countDocuments(query);
+        const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+        return { tickets, total, page: safePage, totalPages, limit: safeLimit };
       }
     } catch (err: any) {
       logger.error('TicketRepository findAll error:', err.message);
@@ -74,7 +80,10 @@ export class TicketRepository {
     if (statusFilter && statusFilter.toLowerCase() !== 'all') {
       filtered = filtered.filter((t) => t.status.toLowerCase() === statusFilter.toLowerCase());
     }
-    return { tickets: filtered, total: filtered.length };
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    const paged = filtered.slice(skip, skip + safeLimit);
+    return { tickets: paged, total, page: safePage, totalPages, limit: safeLimit };
   }
 
   public static async findById(idParam: string) {

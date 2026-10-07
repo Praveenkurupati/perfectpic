@@ -6,7 +6,9 @@ export class TicketController {
   public static async getTickets(req: Request, res: Response, next: NextFunction) {
     try {
       const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-      const result = await TicketService.getTickets(status);
+      const page = req.query.page ? parseInt(req.query.page as string, 10) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const result = await TicketService.getTickets(status, page, limit);
       return res.status(200).json(result);
     } catch (err) {
       next(err);

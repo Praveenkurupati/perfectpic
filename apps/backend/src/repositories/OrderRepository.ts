@@ -143,8 +143,11 @@ const mockOrders = [
 ];
 
 export class OrderRepository {
-  public static async findAll(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number }) {
-    const { status, search, customerEmail, limit = 50, skip = 0 } = filter;
+  public static async findAll(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number }) {
+    const limit = Math.max(1, filter.limit ? Number(filter.limit) : 50);
+    const page = Math.max(1, filter.page ? Number(filter.page) : (filter.skip !== undefined ? Math.floor(Number(filter.skip) / limit) + 1 : 1));
+    const skip = filter.skip !== undefined ? Number(filter.skip) : (page - 1) * limit;
+    const { status, search, customerEmail } = filter;
 
     try {
       if (isDbConnected()) {
@@ -165,7 +168,8 @@ export class OrderRepository {
           .skip(skip)
           .limit(limit);
         const total = await Order.countDocuments(query);
-        return { orders, total };
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        return { orders, total, page, totalPages, limit };
       }
     } catch (err: any) {
       logger.error('OrderRepository findAll error:', err.message);
@@ -178,7 +182,19 @@ export class OrderRepository {
     if (status && status !== 'all') {
       filtered = filtered.filter((o) => o.status.toLowerCase() === status.toLowerCase());
     }
-    return { orders: filtered, total: filtered.length };
+    if (search) {
+      const s = search.trim().toLowerCase();
+      filtered = filtered.filter((o) =>
+        (o.orderNumber && o.orderNumber.toLowerCase().includes(s)) ||
+        (o.title && o.title.toLowerCase().includes(s)) ||
+        (o.customerName && o.customerName.toLowerCase().includes(s)) ||
+        (o.customerEmail && o.customerEmail.toLowerCase().includes(s))
+      );
+    }
+    const total = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const paged = filtered.slice(skip, skip + limit);
+    return { orders: paged, total, page, totalPages, limit };
   }
 
   public static async findById(idParam: string) {
