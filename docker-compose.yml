@@ -53,8 +53,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=4000
-      - MONGODB_URI=mongodb://mongodb:27017/perfectpic
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/perfectpic}
       - REDIS_URL=redis://redis:6379
+      - RUN_WORKERS_IN_API=${RUN_WORKERS_IN_API:-true}
       - JWT_SECRET=perfectpic-production-super-secure-jwt-key-2026
       - CORS_ORIGIN=*
       - SMTP_HOST=${SMTP_HOST:-smtppro.zoho.in}
@@ -81,6 +82,35 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+    networks:
+      - perfectpic-network
+
+  # Dedicated Background Worker (Processes Heavy 300 DPI Renders & Queues Independently)
+  worker:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: perfectpic-worker
+    command: ["npm", "run", "start:worker"]
+    restart: unless-stopped
+    env_file:
+      - apps/backend/.env
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017/perfectpic}
+      - REDIS_URL=redis://redis:6379
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-${AWS_ACCESS_KEY:-}}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-${AWS_SECRET_KEY:-}}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - S3_BUCKET=${S3_BUCKET:-${AWS_BUCKET:-perfectpic-assets-2026}}
+      - AWS_BUCKET=${AWS_BUCKET:-perfectpic-assets-2026}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - perfectpic-network
 

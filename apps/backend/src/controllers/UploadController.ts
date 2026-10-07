@@ -90,7 +90,8 @@ export class UploadController {
       const isS3 = isS3Configured() && (
         (env.S3_BUCKET && imageUrl.includes(env.S3_BUCKET)) ||
         imageUrl.startsWith('photos/') ||
-        imageUrl.startsWith('photobooks/')
+        imageUrl.startsWith('photobooks/') ||
+        imageUrl.startsWith('uploads/')
       );
 
       if (isS3) {
@@ -101,6 +102,21 @@ export class UploadController {
             key = u.pathname.replace(/^\/+/, '');
           } catch {}
         }
+
+        // Direct CloudFront / CDN distribution redirect (EA-01)
+        const cdnDomain = process.env.CLOUDFRONT_URL || process.env.CDN_URL;
+        if (cdnDomain) {
+          const cleanCdn = cdnDomain.replace(/\/+$/, '');
+          return res.redirect(302, `${cleanCdn}/${key}`);
+        }
+
+        // Direct S3 Presigned GET redirect (bypasses Node.js RAM/CPU bottleneck)
+        try {
+          const { generatePresignedGetUrl } = await import('../lib/s3');
+          const directSignedUrl = await generatePresignedGetUrl(key, 7200);
+          return res.redirect(302, directSignedUrl);
+        } catch {}
+
         const s3Obj = await getObjectBufferFromS3(key);
         if (s3Obj && s3Obj.buffer) {
           res.setHeader('Content-Type', s3Obj.contentType);

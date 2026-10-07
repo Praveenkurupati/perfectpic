@@ -78,7 +78,9 @@ function StudioContent() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const totalSpreads = Math.ceil(pageCount / 2);
-      if (e.key === 'ArrowLeft' && currentSpreadIndex > 0) {
+      if (e.key === 'Escape' && mobileDrawer) {
+        setMobileDrawer(null);
+      } else if (e.key === 'ArrowLeft' && currentSpreadIndex > 0) {
         setCurrentSpreadIndex(currentSpreadIndex - 1);
       } else if (e.key === 'ArrowRight' && currentSpreadIndex <= totalSpreads) {
         setCurrentSpreadIndex(currentSpreadIndex + 1);
@@ -86,7 +88,7 @@ function StudioContent() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSpreadIndex, pageCount, setCurrentSpreadIndex]);
+  }, [currentSpreadIndex, pageCount, setCurrentSpreadIndex, mobileDrawer]);
 
   const handleApproveAndOrder = () => {
     const thumbnail = pagePhotos[0]?.url || template?.coverImage || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400';
@@ -357,17 +359,25 @@ function StudioContent() {
 
       {/* Mobile Slide-Up Drawer (< lg) */}
       {mobileDrawer && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-fade-in">
+        <div 
+          role="dialog" 
+          aria-modal="true" 
+          aria-label="Studio customization drawer" 
+          className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-fade-in"
+        >
           <div 
             className="absolute inset-0" 
             onClick={() => setMobileDrawer(null)} 
           />
-          <div className="relative bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[82vh] h-[80vh] z-10 overflow-hidden border-t border-cream-300">
-            {/* Drawer Drag Bar & Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-cream-200 bg-cream-50/80 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-foil-gold" />
-                <h3 className="font-serif font-bold text-sm tracking-wide text-noir-950 uppercase">
+          <div className="relative bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85vh] h-[80vh] z-10 overflow-hidden border-t border-cream-300 pb-[calc(env(safe-area-inset-bottom,16px)+8px)] touch-pan-y">
+            {/* Visual Touch Drag Indicator Pill */}
+            <div className="w-10 h-1 bg-cream-400/80 rounded-full mx-auto mt-2 mb-0.5 shrink-0" />
+
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between px-3.5 sm:px-4 py-2.5 border-b border-cream-200 bg-cream-50/80 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-2 h-2 rounded-full bg-foil-gold shrink-0" />
+                <h3 className="font-serif font-bold text-xs sm:text-sm tracking-wide text-noir-950 uppercase truncate">
                   {mobileDrawer === 'photos' && 'Photo Library & Cloud Uploads'}
                   {mobileDrawer === 'toolbar' && 'Layout, Theme & Foil Finishes'}
                   {mobileDrawer === 'filmstrip' && 'All Spreads & Page Navigator'}

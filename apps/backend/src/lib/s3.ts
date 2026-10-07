@@ -230,3 +230,25 @@ export async function deleteFromS3(key: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Generate a pre-signed GET URL for direct client access (EA-01),
+ * completely bypassing API server bandwidth and memory buffering.
+ */
+export async function generatePresignedGetUrl(
+  key: string,
+  expiresIn = 3600
+): Promise<string> {
+  const client = getS3Client();
+  const cleanKey = key.replace(/^\/+/, '');
+  if (!client || !env.S3_BUCKET) {
+    return `https://${env.S3_BUCKET || 'perfectpic-assets'}.s3.amazonaws.com/${cleanKey}`;
+  }
+
+  const command = new GetObjectCommand({
+    Bucket: env.S3_BUCKET,
+    Key: cleanKey,
+  });
+
+  return getSignedUrl(client, command, { expiresIn });
+}

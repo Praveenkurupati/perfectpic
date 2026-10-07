@@ -39,11 +39,14 @@ export function errorHandler(
   }
 
   if (statusCode >= 500) {
-    logger.error(`💥 Unhandled Exception: ${message}`, {
-      stack: err.stack,
-      url: req.originalUrl,
-      method: req.method,
-      body: req.body,
+    const { ObservabilityService } = require('../services/ObservabilityService');
+    ObservabilityService.captureException(err, {
+      source: 'api',
+      correlationId: req.correlationId,
+      extra: {
+        url: req.originalUrl,
+        method: req.method,
+      },
     });
   }
 

@@ -67,11 +67,25 @@ function PhotoSlot({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={
+        photo
+          ? `${label || 'Photo slot ' + slotId}: occupied, press Enter or Space to select or edit`
+          : `${label || 'Photo slot ' + slotId}: empty, press Enter or Space to select and place photo`
+      }
       onClick={(e) => {
         e.stopPropagation();
         onSelect(slotId);
       }}
-      className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center ${
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          e.stopPropagation();
+          onSelect(slotId);
+        }
+      }}
+      className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center focus-visible:ring-2 focus-visible:ring-foil-gold focus-visible:border-foil-gold focus-visible:outline-none focus:outline-none ${
         isSelected
           ? 'border-foil-gold ring-2 ring-foil-gold bg-amber-50/50 shadow-sm'
           : 'border-cream-300 bg-[#faf8f5] hover:border-noir-900'
@@ -771,10 +785,10 @@ export default function BookCanvas() {
                     <span className="text-[10px] uppercase font-bold tracking-[0.25em] text-white/90 block">
                       {template?.seriesLabel || 'Curated Photobook'}
                     </span>
-                    <h2 className={`font-serif text-2xl font-bold uppercase tracking-wider ${foilClasses}`}>
+                    <h2 className={`font-serif text-2xl font-bold uppercase tracking-wider break-words leading-tight ${foilClasses}`}>
                       {coverTitle}
                     </h2>
-                    <p className="text-xs text-white/80 italic font-serif">
+                    <p className="text-xs text-white/80 italic font-serif break-words">
                       {coverSubtitle}
                     </p>
                   </div>

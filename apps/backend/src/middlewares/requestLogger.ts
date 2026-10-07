@@ -11,12 +11,13 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
     const { statusCode } = res;
     const logMsg = `${method} ${originalUrl} ${statusCode} - ${duration}ms`;
 
+    const cid = req.correlationId;
     if (statusCode >= 500) {
-      logger.error(logMsg, { method, url: originalUrl, statusCode, duration, ip });
+      logger.error(logMsg, { cid, method, url: originalUrl, statusCode, duration, ip });
     } else if (statusCode >= 400) {
-      logger.warn(logMsg, { method, url: originalUrl, statusCode, duration, ip });
+      logger.warn(logMsg, { cid, method, url: originalUrl, statusCode, duration, ip });
     } else {
-      logger.http(logMsg, { method, url: originalUrl, statusCode, duration });
+      logger.http(logMsg, { cid, method, url: originalUrl, statusCode, duration });
     }
   });
 

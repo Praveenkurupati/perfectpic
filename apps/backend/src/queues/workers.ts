@@ -10,11 +10,13 @@ export const printRenderWorker = new Worker<{
   orderId: string;
   projectId?: string;
   customerEmail?: string;
+  correlationId?: string;
   options?: any;
 }>(
   'print-render-queue',
   async (job) => {
-    logger.info(`[Worker:printRender] Starting 300 DPI compile for Order ${job.data.orderId} (Job ${job.id})`);
+    const cid = job.data.correlationId || 'none';
+    logger.info(`[Worker:printRender] [cid: ${cid}] Starting 300 DPI compile for Order ${job.data.orderId} (Job ${job.id})`);
     await job.updateProgress(15);
 
     // Step 1: Compile 300 DPI Press Master with bleed and layflat spreads

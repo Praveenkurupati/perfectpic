@@ -270,7 +270,7 @@ export class OrderRepository {
     return null;
   }
 
-  public static async create(orderData: any) {
+  public static async create(orderData: any, options?: { session?: mongoose.ClientSession }) {
     const orderNumber = orderData.orderNumber || 'PP-' + Math.floor(1000 + Math.random() * 9000);
     const parsedTotal = Number(orderData.total ?? orderData.amount);
     const total = isNaN(parsedTotal) || parsedTotal < 99 ? 1999 : parsedTotal;
@@ -363,6 +363,10 @@ export class OrderRepository {
     };
 
     if (isDbConnected()) {
+      if (options?.session) {
+        const created = await Order.create([payload], { session: options.session });
+        return created[0];
+      }
       return await Order.create(payload);
     }
 

@@ -460,11 +460,15 @@ export class PromoCodeRepository {
     return await this.update(id, { isActive: !promo.isActive });
   }
 
-  public static async incrementUsage(id: string): Promise<void> {
+  public static async incrementUsage(id: string, options?: { session?: mongoose.ClientSession }): Promise<void> {
     if (isDbConnected()) {
       try {
         if (mongoose.isValidObjectId(id)) {
-          await (PromoCode as any).findByIdAndUpdate(id, { $inc: { currentUses: 1 } });
+          await (PromoCode as any).findByIdAndUpdate(
+            id,
+            { $inc: { currentUses: 1 } },
+            options?.session ? { session: options.session } : undefined
+          );
         }
       } catch (err: any) {
         logger.warn(`Failed to increment currentUses on Mongo for promo ${id}:`, err.message);
@@ -476,9 +480,9 @@ export class PromoCodeRepository {
     }
   }
 
-  public static async recordUsage(data: RecordUsageDTO): Promise<any> {
+  public static async recordUsage(data: RecordUsageDTO, options?: { session?: mongoose.ClientSession }): Promise<any> {
     // 1. Increment usage count on the promo code
-    await this.incrementUsage(data.promoCodeId);
+    await this.incrementUsage(data.promoCodeId, options);
 
     // 2. Insert usage record
     const usagePayload = {
@@ -489,11 +493,20 @@ export class PromoCodeRepository {
 
     if (isDbConnected()) {
       try {
-        const created = await (PromoCodeUsage as any).create(usagePayload);
-        if (created) {
-          const obj = created.toJSON();
-          inMemoryUsages.unshift(obj);
-          return obj;
+        if (options?.session) {
+          const created = await (PromoCodeUsage as any).create([usagePayload], { session: options.session });
+          if (created && created[0]) {
+            const obj = created[0].toJSON();
+            inMemoryUsages.unshift(obj);
+            return obj;
+          }
+        } else {
+          const created = await (PromoCodeUsage as any).create(usagePayload);
+          if (created) {
+            const obj = created.toJSON();
+            inMemoryUsages.unshift(obj);
+            return obj;
+          }
         }
       } catch (err: any) {
         logger.warn('Failed to record PromoCodeUsage in Mongo, storing in-memory:', err.message);

@@ -166,7 +166,10 @@ export class OrderController {
 
   public static async createOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await OrderService.createOrder(req.body);
+      const order = await OrderService.createOrder({
+        ...req.body,
+        correlationId: req.correlationId,
+      });
       return res.status(201).json({
         message: 'Order created successfully',
         id: (order as any).orderNumber || (order as any).id,

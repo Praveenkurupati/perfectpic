@@ -37,12 +37,16 @@ async function bootstrap() {
     logger.warn(`S3 initialization notice: ${err.message}`);
   }
 
-  // 4. Initialize Asynchronous Queue Worker Pipelines
-  try {
-    await import('./queues/workers');
-    logger.info('⚡ Asynchronous worker pipelines initialized (print-render-queue, preflight-queue, notification-queue)');
-  } catch (err: any) {
-    logger.warn(`Worker initialization notice: ${err.message}`);
+  // 4. Initialize Asynchronous Queue Worker Pipelines (if not offloaded to dedicated worker containers)
+  if (process.env.RUN_WORKERS_IN_API !== 'false') {
+    try {
+      await import('./queues/workers');
+      logger.info('⚡ Asynchronous worker pipelines initialized in API process (print-render-queue, preflight-queue, notification-queue)');
+    } catch (err: any) {
+      logger.warn(`Worker initialization notice: ${err.message}`);
+    }
+  } else {
+    logger.info('🚀 API server running in dedicated gateway mode (queue workers offloaded to dedicated worker service)');
   }
 
   // 5. Initialize Automated MongoDB Backup Scheduler (24h daily interval, 30-day retention)

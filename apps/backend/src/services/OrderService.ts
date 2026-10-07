@@ -1,4 +1,5 @@
-// apps/backend/src/services/OrderService.ts
+import mongoose from 'mongoose';
+import { isDbConnected } from '../db/connection';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { PromoCodeService } from './PromoCodeService';
 import { PricingService } from './PricingService';
@@ -104,24 +105,74 @@ export class OrderService {
       }
     }
 
-    const order = await OrderRepository.create(orderData);
-
-    // If promo code applied, record usage and increment count
     const promoCode = orderData.pricing?.promoCode || orderData.promoCode;
     const discountAmount = orderData.pricing?.discount || orderData.discount || 0;
-    if (promoCode && order) {
-      PromoCodeService.recordOrderPromoUsage({
-        code: promoCode,
-        orderId: order.id || (order as any)._id,
-        orderNumber: order.orderNumber,
-        customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
-        customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
-        userId: orderData.userId,
-        discountAmount: Number(discountAmount),
-        orderTotal: Number(order.total || order.amount || 0),
-      }).catch((err) => {
-        logger.error(`Failed to record promo code usage for ${promoCode}:`, err.message);
-      });
+
+    let order: any;
+
+    if (isDbConnected()) {
+      let session: mongoose.ClientSession | null = null;
+      try {
+        session = await mongoose.startSession();
+        // Check if MongoDB replica set / Atlas cluster supports multi-document transactions
+        const clientTopology = ((mongoose.connection as any)?.client)?.topology?.description?.type;
+        const isReplicaSet = clientTopology && clientTopology !== 'Single';
+
+        if (isReplicaSet) {
+          await session.withTransaction(async () => {
+            order = await OrderRepository.create(orderData, { session: session! });
+            if (promoCode && order) {
+              await PromoCodeService.recordOrderPromoUsage({
+                code: promoCode,
+                orderId: order.id || (order as any)._id,
+                orderNumber: order.orderNumber,
+                customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
+                customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
+                userId: orderData.userId,
+                discountAmount: Number(discountAmount),
+                orderTotal: Number(order.total || order.amount || 0),
+              }, { session: session! });
+            }
+          });
+        } else {
+          // Standalone dev MongoDB fallback
+          order = await OrderRepository.create(orderData);
+          if (promoCode && order) {
+            await PromoCodeService.recordOrderPromoUsage({
+              code: promoCode,
+              orderId: order.id || (order as any)._id,
+              orderNumber: order.orderNumber,
+              customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
+              customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
+              userId: orderData.userId,
+              discountAmount: Number(discountAmount),
+              orderTotal: Number(order.total || order.amount || 0),
+            });
+          }
+        }
+      } catch (txnError: any) {
+        logger.error('[MongoDB Transaction Error] Order creation aborted:', txnError.message);
+        throw ApiError.internal(`Failed to process order transaction: ${txnError.message}`);
+      } finally {
+        if (session) {
+          await session.endSession();
+        }
+      }
+    } else {
+      // In-memory fallback
+      order = await OrderRepository.create(orderData);
+      if (promoCode && order) {
+        await PromoCodeService.recordOrderPromoUsage({
+          code: promoCode,
+          orderId: order.id || (order as any)._id,
+          orderNumber: order.orderNumber,
+          customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
+          customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
+          userId: orderData.userId,
+          discountAmount: Number(discountAmount),
+          orderTotal: Number(order.total || order.amount || 0),
+        });
+      }
     }
 
     // Send confirmation email asynchronously if customer email exists
@@ -174,10 +225,12 @@ export class OrderService {
 
     // Enqueue print-ready PDF compilation in background worker queue
     const orderNumber = String(order.orderNumber || order.id || (order as any)._id);
+    const correlationId = orderData.correlationId || `cid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     printRenderQueue.add('compile-print-pdf', {
       orderId: orderNumber,
       projectId: orderData.projectId || (orderData.items && orderData.items[0]?.projectId),
       customerEmail: customerEmail,
+      correlationId,
       options: {
         projectManifest: orderData.projectManifest || (orderData.items && orderData.items[0]?.projectSnapshot),
       },

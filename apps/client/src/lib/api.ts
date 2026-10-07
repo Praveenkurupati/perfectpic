@@ -10,10 +10,19 @@ class ApiError extends Error {
 async function fetcher<T>(endpoint: string, options?: RequestInit): Promise<T> {
   // Use /api for seamless backward compatibility and v1 routing
   const url = `${getApiBaseUrl()}/api${endpoint}`;
+  const correlationId = typeof window !== 'undefined'
+    ? (sessionStorage.getItem('pp_cid') || (() => {
+        const id = `client_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+        try { sessionStorage.setItem('pp_cid', id); } catch {}
+        return id;
+      })())
+    : `ssr_${Date.now()}`;
+
   const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'x-correlation-id': correlationId,
       ...options?.headers,
     },
   });

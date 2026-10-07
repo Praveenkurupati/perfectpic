@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import path from 'path';
 import fs from 'fs';
 import { env } from './config/env';
+import { correlationMiddleware } from './middlewares/correlation.middleware';
 import { requestLogger } from './middlewares/requestLogger';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 import { logger } from './utils/logger';
@@ -65,9 +66,13 @@ export function createApp(): Application {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-correlation-id', 'X-Correlation-Id', 'x-request-id'],
+      exposedHeaders: ['x-correlation-id'],
     })
   );
+
+  // Distributed correlation ID injection
+  app.use(correlationMiddleware);
 
   // Structured HTTP request logger with execution timer
   app.use(requestLogger);

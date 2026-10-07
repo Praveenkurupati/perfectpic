@@ -338,6 +338,10 @@ export class Worker<T = any, R = any> extends EventEmitter {
     this.isRunning = false;
   }
 
+  public async close(): Promise<void> {
+    await this.stop();
+  }
+
   public async checkNext() {
     if (!this.isRunning || this.activeCount >= this.concurrency) return;
 
@@ -439,6 +443,7 @@ export const printRenderQueue = QueueManager.getOrCreateQueue<{
   orderId: string;
   projectId?: string;
   customerEmail?: string;
+  correlationId?: string;
   options?: any;
 }>('print-render-queue');
 
@@ -447,10 +452,12 @@ export const preflightQueue = QueueManager.getOrCreateQueue<{
   photoUrls: string[];
   dimensions?: string;
   pageCount?: number;
+  correlationId?: string;
 }>('preflight-queue');
 
 export const notificationQueue = QueueManager.getOrCreateQueue<{
   type: 'order_confirmation' | 'otp' | 'shipping_update';
   recipient: string;
   payload: any;
+  correlationId?: string;
 }>('notification-queue');

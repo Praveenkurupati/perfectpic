@@ -243,7 +243,7 @@ export class PromoCodeService {
     userId?: string;
     discountAmount: number;
     orderTotal: number;
-  }) {
+  }, options?: { session?: any }) {
     if (!params.code) return null;
     const promo = await PromoCodeRepository.findByCode(params.code);
     if (!promo) return null;
@@ -258,7 +258,7 @@ export class PromoCodeService {
       orderNumber: params.orderNumber,
       discountAmount: params.discountAmount,
       orderTotal: params.orderTotal,
-    });
+    }, options);
   }
 
   public static async getInfluencerAnalytics() {

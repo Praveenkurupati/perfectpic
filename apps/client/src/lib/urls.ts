@@ -100,8 +100,13 @@ export function normalizeImageUrl(url: string | null | undefined): string {
     !trimmed.includes('localhost') &&
     !trimmed.includes('127.0.0.1')
   ) {
-    // If it's a known service supporting HTTPS, upgrade protocol
-    if (trimmed.includes('unsplash.com') || trimmed.includes('googleusercontent.com')) {
+    // If it's a known service supporting HTTPS (Unsplash, Google, AWS S3, CloudFront CDN), upgrade protocol directly
+    if (
+      trimmed.includes('unsplash.com') ||
+      trimmed.includes('googleusercontent.com') ||
+      trimmed.includes('amazonaws.com') ||
+      trimmed.includes('cloudfront.net')
+    ) {
       return trimmed.replace('http://', 'https://');
     }
     // Otherwise route through backend proxy

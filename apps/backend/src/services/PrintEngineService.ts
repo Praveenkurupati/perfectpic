@@ -118,6 +118,14 @@ export class PrintEngineService {
           page: p.pageNumber,
         });
       }
+      if (p.caption && p.caption.length > 500) {
+        issues.push({
+          severity: 'warning',
+          code: 'LONG_CAPTION_OVERFLOW',
+          message: `Page ${p.pageNumber} caption contains ${p.caption.length} characters, which exceeds single-paragraph layout guidelines.`,
+          page: p.pageNumber,
+        });
+      }
     });
 
     const errorCount = issues.filter((i) => i.severity === 'error').length;
@@ -189,20 +197,27 @@ export class PrintEngineService {
     doc.setDrawColor(212, 175, 55);
     doc.setLineWidth(0.2);
 
-    // Front Cover Title
-    const frontCoverCenterX = wrapTurnInMm + widthMm + spineMm + widthMm / 2;
+    const frontCoverCenterX = wrapTurnInMm + widthMm + spineMm + (widthMm / 2);
     const frontCoverCenterY = totalCoverHeightMm / 2;
 
+    // Front Cover Title with authoritative text wrapping
+    const maxTitleWidthMm = widthMm - 40; // 20mm margin from edge and spine
     doc.setFont('times', 'bold');
-    doc.setFontSize(24);
+    doc.setFontSize(22);
     doc.setTextColor(isDark ? 245 : 20, isDark ? 240 : 20, isDark ? 230 : 20);
-    doc.text(opts.coverTitle || title, frontCoverCenterX, frontCoverCenterY - 10, { align: 'center' });
+    const titleLines = doc.splitTextToSize(opts.coverTitle || title, maxTitleWidthMm);
+    const titleLineHeightMm = 22 * 0.352778 * 1.25;
+    const titleBlockHeightMm = titleLines.length * titleLineHeightMm;
+    const titleStartY = frontCoverCenterY - 10 - (titleBlockHeightMm / 2);
+    doc.text(titleLines, frontCoverCenterX, titleStartY, { align: 'center', lineHeightFactor: 1.25 });
 
     if (opts.coverSubtitle) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
       doc.setTextColor(180, 150, 60);
-      doc.text(opts.coverSubtitle.toUpperCase(), frontCoverCenterX, frontCoverCenterY + 4, { align: 'center' });
+      const subtitleLines = doc.splitTextToSize(opts.coverSubtitle.toUpperCase(), maxTitleWidthMm);
+      const subtitleStartY = titleStartY + titleBlockHeightMm + 6;
+      doc.text(subtitleLines, frontCoverCenterX, subtitleStartY, { align: 'center', lineHeightFactor: 1.3 });
     }
 
     // Spine Lettering (if spine width >= 5.5mm)
@@ -252,13 +267,28 @@ export class PrintEngineService {
         doc.text(String(pageNum), safeX + safeW - 2, safeY + safeH - 2, { align: 'right' });
       }
 
-      // Check if page data exists
+      // Check if page data exists with authoritative multiline wrapping (ENG-01)
       const pageData = opts.pages?.find((p) => p.pageNumber === pageNum);
-      if (pageData?.caption) {
+      if (pageData?.caption && pageData.caption.trim().length > 0) {
         doc.setFont('times', 'italic');
         doc.setFontSize(11);
         doc.setTextColor(50, 50, 50);
-        doc.text(pageData.caption, fullPageWidthMm / 2, fullPageHeightMm / 2 + 30, { align: 'center' });
+
+        const maxCaptionWidthMm = Math.min(safeW * 0.8, 140);
+        const wrappedCaption = doc.splitTextToSize(pageData.caption.trim(), maxCaptionWidthMm);
+        const captionLineHeightMm = 11 * 0.352778 * 1.35;
+        const captionBlockHeightMm = wrappedCaption.length * captionLineHeightMm;
+
+        // Ensure caption never truncates or collides with bottom margin
+        const captionY = Math.min(
+          fullPageHeightMm / 2 + 30,
+          safeY + safeH - captionBlockHeightMm - 8
+        );
+
+        doc.text(wrappedCaption, fullPageWidthMm / 2, captionY, {
+          align: 'center',
+          lineHeightFactor: 1.35,
+        });
       }
     }
 

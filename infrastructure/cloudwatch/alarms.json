@@ -1,0 +1,65 @@
+{
+  "Namespace": "PerfectPic/Production",
+  "Alarms": [
+    {
+      "AlarmName": "PerfectPic-High-5xx-ErrorRate",
+      "AlarmDescription": "Triggers when API 5xx errors exceed 1% over a 5-minute period",
+      "MetricName": "API_EXCEPTION",
+      "Namespace": "PerfectPic/Production",
+      "Statistic": "Sum",
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 5,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "PerfectPic-PrintWorker-Failures",
+      "AlarmDescription": "Triggers when 300 DPI print rendering worker encounters errors",
+      "MetricName": "WORKER_EXCEPTION",
+      "Namespace": "PerfectPic/Production",
+      "Statistic": "Sum",
+      "Period": 300,
+      "EvaluationPeriods": 1,
+      "Threshold": 2,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "PerfectPic-BullMQ-Queue-Backlog",
+      "AlarmDescription": "Triggers when render jobs in print-render-queue exceed 50 waiting jobs",
+      "MetricName": "QueueBacklog",
+      "Namespace": "PerfectPic/Production",
+      "Statistic": "Average",
+      "Period": 300,
+      "EvaluationPeriods": 2,
+      "Threshold": 50,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "PerfectPic-High-API-Latency-P99",
+      "AlarmDescription": "Triggers when P99 response latency exceeds 1200ms",
+      "MetricName": "LatencyP99",
+      "Namespace": "PerfectPic/Production",
+      "Statistic": "Average",
+      "Period": 300,
+      "EvaluationPeriods": 2,
+      "Threshold": 1200,
+      "ComparisonOperator": "GreaterThanThreshold",
+      "TreatMissingData": "notBreaching"
+    },
+    {
+      "AlarmName": "PerfectPic-PriceTamper-SecurityAlert",
+      "AlarmDescription": "Critical security alarm: triggers immediately if price tampering is detected",
+      "MetricName": "PriceTamperAttempt",
+      "Namespace": "PerfectPic/Production",
+      "Statistic": "Sum",
+      "Period": 60,
+      "EvaluationPeriods": 1,
+      "Threshold": 1,
+      "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+      "TreatMissingData": "notBreaching"
+    }
+  ]
+}

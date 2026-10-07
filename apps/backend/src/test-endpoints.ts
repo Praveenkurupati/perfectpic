@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import app from './app';
 import { env } from './config/env';
 import { PrintEngineService } from './services/PrintEngineService';
+import { OrderService } from './services/OrderService';
 
 interface TestResult {
   endpoint: string;
@@ -725,6 +726,80 @@ async function runTests() {
     expectedStatus: 200,
     passed: pruneRes.status === 200,
     details: `Pruner Active: ${pruneRes.body?.message || 'Pruning complete'}`,
+  });
+
+  // 36. Observability: Distributed Tracing & Correlation ID Propagation (OBS-01)
+  console.log('Testing: GET /api/health with custom x-correlation-id (OBS-01)');
+  const customCid = `cid_custom_${Date.now()}`;
+  const cidRes = await dispatchRequest('GET', '/api/health', undefined, { 'x-correlation-id': customCid });
+  const returnedCid = cidRes.headers['x-correlation-id'];
+  results.push({
+    endpoint: '/api/health (Correlation ID)',
+    method: 'GET',
+    status: cidRes.status,
+    expectedStatus: 200,
+    passed: cidRes.status === 200 && returnedCid === customCid,
+    details: `Propagated x-correlation-id: ${returnedCid}`,
+  });
+
+  // 37. Core Print Engine: Multiline Caption & Title Wrapping (ENG-01)
+  console.log('Testing: PrintEngineService.compilePressReadyPdf with Multiline Long Captions (ENG-01)');
+  const longCaptionBook = await PrintEngineService.compilePressReadyPdf(
+    'A Very Long Comprehensive Expedition Photobook Across The Entire Himalayan Mountain Range In Northern India And Nepal With Extreme Detail',
+    20,
+    {
+      dimensions: '8.25x8.25',
+      coverType: 'hardcover',
+      coverTitle: 'A Very Long Comprehensive Expedition Photobook Across The Entire Himalayan Mountain Range',
+      coverSubtitle: 'An Epic High-Altitude Journey Exploring Annapurna Base Camp And Surrounding Glacial Valleys In Unprecedented Detail',
+      pages: [
+        {
+          pageNumber: 1,
+          caption: 'Sunrise over Machapuchare peak casting golden reflections across the Annapurna sanctuary base camp at 4,130 meters elevation while prayer flags flutter in the morning breeze.',
+        },
+      ],
+    }
+  );
+  results.push({
+    endpoint: 'PrintEngine.compilePressReadyPdf (Wrapping)',
+    method: 'INTERNAL',
+    status: 200,
+    expectedStatus: 200,
+    passed: Buffer.isBuffer(longCaptionBook.pdfBuffer) && longCaptionBook.pdfBuffer.length > 5000,
+    details: `Compiled ${longCaptionBook.pdfBuffer.length} bytes with multiline wrapped captions & title`,
+  });
+
+  // 38. Business Logic: Atomic Order & Promo Code Lifecycle (BE-01)
+  console.log('Testing: OrderService.createOrder with Promo Code (BE-01)');
+  const promoOrder = await OrderService.createOrder({
+    items: [
+      {
+        templateSlug: 'travel-series-paris',
+        size: '8.25x8.25',
+        pageCount: 24,
+        quantity: 1,
+      },
+    ],
+    customerName: 'Transaction Test User',
+    customerEmail: 'tx-tester@perfectpic.in',
+    promoCode: 'LAUNCH20',
+    shippingAddress: {
+      fullName: 'Transaction Test User',
+      email: 'tx-tester@perfectpic.in',
+      phone: '+919999888877',
+      addressLine1: '42 Brigade Road',
+      city: 'Bangalore',
+      state: 'Karnataka',
+      pincode: '560001',
+    },
+  });
+  results.push({
+    endpoint: 'OrderService.createOrder (Transaction & Promo)',
+    method: 'INTERNAL',
+    status: 200,
+    expectedStatus: 200,
+    passed: !!promoOrder && !!promoOrder.orderNumber && promoOrder.total > 0,
+    details: `Created Order #${promoOrder.orderNumber} (Total: ₹${promoOrder.total}, Status: ${promoOrder.status})`,
   });
 
   // Print results
