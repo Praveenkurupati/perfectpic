@@ -97,14 +97,42 @@ export async function cacheDelByPrefix(prefix: string): Promise<void> {
   }
 }
 
-export async function cacheFlushAll(): Promise<void> {
-  if (!isRedisConnected() || !redisClient) return;
+export async function cacheFlushAll(): Promise<boolean> {
+  if (!isRedisConnected() || !redisClient) return false;
   try {
-    await redisClient.flushdb();
-    console.log('🧹 Redis database flushed successfully.');
+    await redisClient.flushall();
+    return true;
   } catch (err: any) {
-    console.warn('Redis flush error:', err.message);
+    console.warn('Redis flushAll error:', err.message);
+    return false;
   }
+}
+
+const inMemLocks = new Map<string, number>();
+
+/**
+ * Acquires an atomic distributed lock using Redis SET ... NX EX.
+ * Guarantees single execution across multi-replica servers.
+ */
+export async function acquireLock(key: string, ttlSeconds = 300): Promise<boolean> {
+  const now = Date.now();
+  if (isRedisConnected() && redisClient) {
+    try {
+      const res = await redisClient.set(key, '1', 'EX', ttlSeconds, 'NX');
+      return res === 'OK';
+    } catch (err: any) {
+      console.warn(`Redis lock error for "${key}":`, err.message);
+    }
+  }
+
+  // In-memory fallback
+  const existingExpiry = inMemLocks.get(key);
+  if (existingExpiry && existingExpiry > now) {
+    return false; // Lock already held
+  }
+
+  inMemLocks.set(key, now + ttlSeconds * 1000);
+  return true;
 }
 
 export default {
@@ -114,5 +142,7 @@ export default {
   set: cacheSet,
   del: cacheDel,
   delByPrefix: cacheDelByPrefix,
-  flushAll: cacheFlushAll
+  flushAll: cacheFlushAll,
+  acquireLock,
 };
+

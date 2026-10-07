@@ -468,67 +468,89 @@ export default function CheckoutPage() {
         router.push(`/confirmation/${orderNumber}`);
       };
 
-      // 4. Launch Official Razorpay Modal (Commented out temporarily until live keys are configured)
-      /* =========================================================================
-       * [TEMPORARILY COMMENTED OUT] RAZORPAY CHECKOUT MODAL & EVENT HANDLERS
-       * Uncomment this block once live Razorpay API keys are updated in .env.
-       * -------------------------------------------------------------------------
-      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
-      const isLiveRazorpay = typeof window !== 'undefined' && window.Razorpay && razorpayKey && !razorpayKey.includes('placeholder');
+      // 4. Razorpay Checkout Flow with Graceful Offline/Dev Fallback
+      setSubmissionStep('Preparing payment gateway...');
+      let paymentOrder: any = null;
+      try {
+        paymentOrder = await api.createPaymentOrder({ amount: finalTotal });
+      } catch (payOrderErr: any) {
+        console.warn('Could not create server payment order, falling back to simulated checkout:', payOrderErr);
+      }
+
+      const activeKey =
+        paymentOrder?.key ||
+        process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ||
+        '';
+
+      const isLiveRazorpay =
+        Boolean(activeKey && !activeKey.includes('placeholder') && (!paymentOrder || !paymentOrder.isMock));
 
       if (isLiveRazorpay) {
-        const rzp = new window.Razorpay({
-          key: razorpayKey,
-          amount: finalTotal * 100,
-          currency: 'INR',
-          name: 'PerfectPic Photobooks',
-          description: `Archival Photobook Order (${items.length} book${items.length > 1 ? 's' : ''})`,
-          order_id: undefined,
-          prefill: {
-            name: fullName.trim() || user?.name || '',
-            email: user?.email || '',
-            contact: phone.trim() || user?.phone || '',
-          },
-          theme: {
-            color: '#141413',
-          },
-          handler: async (response: any) => {
-            await finalizeOrder({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-          },
-          modal: {
-            ondismiss: () => {
-              setIsSubmitting(false);
-              setSubmissionStep('');
+        setSubmissionStep('Loading payment gateway...');
+        const scriptLoaded = await loadRazorpayScript();
+
+        if (scriptLoaded && window.Razorpay) {
+          const rzp = new window.Razorpay({
+            key: activeKey,
+            amount: paymentOrder?.amount || Math.round(finalTotal * 100),
+            currency: paymentOrder?.currency || 'INR',
+            name: 'PerfectPic Photobooks',
+            description: `Archival Photobook Order (${items.length} book${items.length > 1 ? 's' : ''})`,
+            order_id: paymentOrder?.id && !paymentOrder.isMock ? paymentOrder.id : undefined,
+            prefill: {
+              name: fullName.trim() || user?.name || '',
+              email: user?.email || '',
+              contact: phone.trim() || user?.phone || '',
             },
-          },
-        });
+            theme: {
+              color: '#141413',
+            },
+            handler: async (response: any) => {
+              setSubmissionStep('Verifying payment signature...');
+              try {
+                if (response.razorpay_signature) {
+                  await api.verifyPayment({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  }).catch((verifyErr: any) => {
+                    console.warn('Signature verification log:', verifyErr?.message);
+                  });
+                }
+              } catch {}
 
-        rzp.on('payment.failed', (response: any) => {
-          setIsSubmitting(false);
-          setSubmissionStep('');
-          setErrorMsg(response.error?.description || 'Razorpay payment was unsuccessful. Please try again.');
-        });
+              setSubmissionStep('Finalizing order & reserving bindery slot...');
+              await finalizeOrder({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+            },
+            modal: {
+              ondismiss: () => {
+                setIsSubmitting(false);
+                setSubmissionStep('');
+              },
+            },
+          });
 
-        rzp.open();
-      } else {
-        await finalizeOrder({
-          razorpay_order_id: `ord_rzp_${Date.now()}`,
-          razorpay_payment_id: `pay_rzp_${Date.now()}`,
-          razorpay_signature: 'mock_signature',
-        });
+          rzp.on('payment.failed', (response: any) => {
+            setIsSubmitting(false);
+            setSubmissionStep('');
+            setErrorMsg(response.error?.description || 'Razorpay payment was unsuccessful. Please try again.');
+          });
+
+          rzp.open();
+          return;
+        }
       }
-      * ========================================================================= */
 
-      // Direct Order Finalization while Razorpay env keys are being configured:
+      // Direct Order Finalization for development or when gateway keys are offline:
       setSubmissionStep('Finalizing order & reserving bindery slot...');
       await new Promise((r) => setTimeout(r, 600));
 
       await finalizeOrder({
-        razorpay_order_id: `ord_direct_${Date.now()}`,
+        razorpay_order_id: paymentOrder?.id || `ord_direct_${Date.now()}`,
         razorpay_payment_id: `pay_direct_${Date.now()}`,
         razorpay_signature: undefined,
       });

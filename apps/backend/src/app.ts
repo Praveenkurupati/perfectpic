@@ -72,7 +72,14 @@ export function createApp(): Application {
   app.use(requestLogger);
 
   // Body parsers with 50mb payload limit for high-res photo uploads and canvas JSON
-  app.use(express.json({ limit: '50mb' }));
+  app.use(
+    express.json({
+      limit: '50mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    })
+  );
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Static uploads directory serving with permissive cross-origin headers

@@ -1,6 +1,8 @@
 // apps/backend/src/test-endpoints.ts
 import { EventEmitter } from 'events';
+import crypto from 'crypto';
 import app from './app';
+import { env } from './config/env';
 
 interface TestResult {
   endpoint: string;
@@ -32,6 +34,7 @@ function dispatchRequest(
     req.query = {};
     req.params = {};
     req.body = body || {};
+    req.rawBody = Buffer.from(JSON.stringify(body || {}));
     req.connection = { remoteAddress: '127.0.0.1' };
     req.socket = { remoteAddress: '127.0.0.1' };
     req.ip = '127.0.0.1';
@@ -318,6 +321,89 @@ async function runTests() {
     expectedStatus: 200,
     passed: analytics.status === 200 && analytics.body?.success,
     details: `Dashboard metrics envelope OK`,
+  });
+
+  // 18. Payment Gateway: Create Razorpay Order
+  console.log('Testing: POST /api/v1/payments/create-order');
+  const createPayRes = await dispatchRequest('POST', '/api/v1/payments/create-order', {
+    amount: 1999,
+  });
+  results.push({
+    endpoint: '/api/v1/payments/create-order',
+    method: 'POST',
+    status: createPayRes.status,
+    expectedStatus: 200,
+    passed: createPayRes.status === 200 && (createPayRes.body?.id || createPayRes.body?.order_id),
+    details: `Order created: ${createPayRes.body?.id || 'OK'} (Amount: ₹${(createPayRes.body?.amount || 199900) / 100})`,
+  });
+
+  // 19. Payment Gateway: Verify Payment
+  console.log('Testing: POST /api/v1/payments/verify');
+  const testOrderId = createPayRes.body?.id || 'order_mock_test';
+  const testPaymentId = 'pay_mock_test_123';
+  const expectedSig = env.RAZORPAY_KEY_SECRET
+    ? crypto.createHmac('sha256', env.RAZORPAY_KEY_SECRET).update(`${testOrderId}|${testPaymentId}`).digest('hex')
+    : 'sig_mock_test';
+
+  const verifyPayRes = await dispatchRequest('POST', '/api/v1/payments/verify', {
+    razorpay_order_id: testOrderId,
+    razorpay_payment_id: testPaymentId,
+    razorpay_signature: expectedSig,
+  });
+  results.push({
+    endpoint: '/api/v1/payments/verify',
+    method: 'POST',
+    status: verifyPayRes.status,
+    expectedStatus: 200,
+    passed: verifyPayRes.status === 200,
+    details: verifyPayRes.body?.message || 'Payment verified',
+  });
+
+  // 20. Payment Gateway: Webhook Idempotency & Duplicate Rejection
+  console.log('Testing: POST /api/v1/payments/webhook (Idempotent Webhook Processing)');
+  const webhookEventId = `evt_test_${Date.now()}`;
+  const webhookPayload = {
+    event: 'payment.captured',
+    payload: {
+      payment: {
+        entity: {
+          id: `pay_webhook_${Date.now()}`,
+          amount: 199900,
+          currency: 'INR',
+          status: 'captured',
+          order_id: createPayRes.body?.id || 'order_mock_test',
+        },
+      },
+    },
+  };
+
+  const webhookBodyStr = JSON.stringify(webhookPayload);
+  const webhookHeaders: Record<string, string> = {
+    'x-razorpay-event-id': webhookEventId,
+  };
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || env.RAZORPAY_KEY_SECRET;
+  if (webhookSecret) {
+    webhookHeaders['x-razorpay-signature'] = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(webhookBodyStr)
+      .digest('hex');
+  }
+
+  const firstWebhookRes = await dispatchRequest('POST', '/api/v1/payments/webhook', webhookPayload, webhookHeaders);
+  // Duplicate delivery of the exact same event ID
+  const duplicateWebhookRes = await dispatchRequest('POST', '/api/v1/payments/webhook', webhookPayload, webhookHeaders);
+  const idempotencyPassed =
+    firstWebhookRes.status === 200 &&
+    duplicateWebhookRes.status === 200 &&
+    duplicateWebhookRes.body?.status === 'already_processed';
+
+  results.push({
+    endpoint: '/api/v1/payments/webhook (Idempotency)',
+    method: 'POST',
+    status: duplicateWebhookRes.status,
+    expectedStatus: 200,
+    passed: idempotencyPassed,
+    details: `First: ${firstWebhookRes.body?.status || 'ok'}, Duplicate: ${duplicateWebhookRes.body?.status} (Lock held)`,
   });
 
   // Print results
