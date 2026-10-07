@@ -673,27 +673,27 @@ export class OrderRepository {
 
     if (isDbConnected()) {
       try {
-        const count = await Order.countDocuments();
+        const count = await Order.countDocuments().read('secondaryPreferred');
         if (count > 0) totalOrders = count;
 
         const agg = await Order.aggregate([
           { $group: { _id: null, totalRevenue: { $sum: '$total' } } },
-        ]);
+        ]).read('secondaryPreferred');
         if (agg && agg.length > 0 && agg[0].totalRevenue) {
           totalRevenue = agg[0].totalRevenue;
         }
 
-        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing', 'qc'] } });
+        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing', 'qc'] } }).read('secondaryPreferred');
         pendingPrints = pending;
 
         // User count
-        const userCount = await User.countDocuments();
+        const userCount = await User.countDocuments().read('secondaryPreferred');
         if (userCount > 0) activeCustomers = userCount;
 
         // Pipeline aggregation
         const stageAgg = await Order.aggregate([
           { $group: { _id: '$status', count: { $sum: 1 } } }
-        ]);
+        ]).read('secondaryPreferred');
         stageAgg.forEach((s: any) => {
           if (s._id) pipelineCounts[s._id] = s.count;
         });
@@ -703,7 +703,7 @@ export class OrderRepository {
           { $group: { _id: '$title', units: { $sum: 1 }, revenue: { $sum: '$total' } } },
           { $sort: { revenue: -1 } },
           { $limit: 5 }
-        ]);
+        ]).read('secondaryPreferred');
         if (prodAgg && prodAgg.length > 0) {
           topProducts = prodAgg.map((p: any) => ({
             title: p._id || 'Custom Photobook Keepsake',
@@ -719,7 +719,7 @@ export class OrderRepository {
           { $group: { _id: '$shippingAddress.city', orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
           { $sort: { orders: -1 } },
           { $limit: 5 }
-        ]);
+        ]).read('secondaryPreferred');
         if (cityAgg && cityAgg.length > 0) {
           const totalCityOrders = cityAgg.reduce((acc: number, c: any) => acc + c.orders, 0) || 1;
           topCities = cityAgg.map((c: any) => ({

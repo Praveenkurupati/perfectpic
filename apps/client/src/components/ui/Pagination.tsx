@@ -68,12 +68,12 @@ export function Pagination({
         <span className="font-semibold text-neutral-900">{totalItems}</span> {itemLabel}
       </div>
 
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center space-x-1.5">
         <button
           onClick={() => onPageChange(1)}
           disabled={safeCurrentPage === 1}
           aria-label="First page"
-          className="p-1.5 rounded-full hover:bg-neutral-200/60 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed text-neutral-700"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronsLeft className="w-4 h-4" />
         </button>
@@ -82,7 +82,7 @@ export function Pagination({
           onClick={() => onPageChange(safeCurrentPage - 1)}
           disabled={safeCurrentPage === 1}
           aria-label="Previous page"
-          className="p-1.5 rounded-full hover:bg-neutral-200/60 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed text-neutral-700"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -91,7 +91,7 @@ export function Pagination({
           {pages.map((p, idx) => {
             if (p === "ellipsis") {
               return (
-                <span key={`ellipsis-${idx}`} className="px-2 py-1 text-neutral-400 select-none">
+                <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-neutral-400 select-none">
                   …
                 </span>
               );
@@ -104,7 +104,7 @@ export function Pagination({
                 aria-label={`Go to page ${p}`}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "min-w-8 h-8 px-2 text-xs font-semibold rounded-full transition-all cursor-pointer flex items-center justify-center",
+                  "min-w-8 h-8 px-2 text-xs font-semibold rounded-full transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900",
                   isActive
                     ? "bg-neutral-900 text-white shadow-xs"
                     : "text-neutral-700 hover:bg-neutral-200/70"
@@ -120,7 +120,7 @@ export function Pagination({
           onClick={() => onPageChange(safeCurrentPage + 1)}
           disabled={safeCurrentPage === safeTotalPages}
           aria-label="Next page"
-          className="p-1.5 rounded-full hover:bg-neutral-200/60 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed text-neutral-700"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -129,7 +129,7 @@ export function Pagination({
           onClick={() => onPageChange(safeTotalPages)}
           disabled={safeCurrentPage === safeTotalPages}
           aria-label="Last page"
-          className="p-1.5 rounded-full hover:bg-neutral-200/60 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed text-neutral-700"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronsRight className="w-4 h-4" />
         </button>

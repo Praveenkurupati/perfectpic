@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useCartStore } from '@/stores/useCartStore';
 import { 
   Download, 
   Star, 
@@ -12,7 +14,8 @@ import {
   Sparkles, 
   Loader2,
   PackageCheck,
-  Check
+  Check,
+  ShoppingBag
 } from 'lucide-react';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
 import { LazyImage } from '@/components/ui/LazyImage';
@@ -30,10 +33,13 @@ interface OrderReview {
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
+  const { addItem, setAccessory, setPackagingAddon, setIsGift } = useCartStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(5);
+  const [reorderNotification, setReorderNotification] = useState<string | null>(null);
 
   // Review modal state
   const [selectedOrderForReview, setSelectedOrderForReview] = useState<any | null>(null);
@@ -49,6 +55,48 @@ export default function OrdersPage() {
   const [packagingQuality, setPackagingQuality] = useState(5);
   const [feedback, setFeedback] = useState('');
   const [recommend, setRecommend] = useState(true);
+
+  const handleReorderOrder = (order: any) => {
+    const orderNum = order.orderNumber || order.id || 'order';
+    const primaryItem = order.items && order.items.length > 0 ? order.items[0] : null;
+
+    const title = primaryItem?.title || order.title || 'Curated Photobook Keepsake';
+    const dimensions = primaryItem?.dimensions || order.dimensions || '8.25" × 8.25"';
+    const pageCount = primaryItem?.pageCount || order.pageCount || 40;
+    const theme = primaryItem?.theme || order.theme || 'Minimal Modern';
+    const basePrice = primaryItem?.price || order.pricing?.subtotal || order.total || order.amount || 1999;
+    const thumbnail = primaryItem?.thumbnail || order.coverUrl || order.thumbnail || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=300&auto=format&fit=crop';
+
+    addItem({
+      id: `reorder-${orderNum}-${Date.now()}`,
+      projectId: order.projectId || `proj-${orderNum}`,
+      title,
+      dimensions,
+      pageCount,
+      theme,
+      basePrice,
+      extraPagesPrice: 0,
+      thumbnail,
+      quantity: 1,
+      projectSnapshot: order.projectSnapshot || undefined,
+    });
+
+    if (order.packaging) {
+      if (order.packaging.keepsakeBox !== undefined) setAccessory('keepsakeBox', !!order.packaging.keepsakeBox);
+      if (order.packaging.giftWrap !== undefined) setAccessory('giftWrap', !!order.packaging.giftWrap);
+      if (order.packaging.uvGlaze !== undefined) setAccessory('uvGlaze', !!order.packaging.uvGlaze);
+      if (order.packaging.miniPolaroids !== undefined) setAccessory('miniPolaroids', !!order.packaging.miniPolaroids);
+      setPackagingAddon(true);
+    }
+    if (order.isGift !== undefined) {
+      setIsGift(!!order.isGift);
+    }
+
+    setReorderNotification(`Added another copy of "${title}" to your cart! Redirecting to checkout...`);
+    setTimeout(() => {
+      router.push('/cart');
+    }, 500);
+  };
 
   useEffect(() => {
     api.getOrders()
@@ -204,6 +252,13 @@ export default function OrdersPage() {
         <span className="text-xs text-noir-500 uppercase tracking-wider">{orders.length} order(s) found</span>
       </div>
 
+      {reorderNotification && (
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-950 px-4 py-3 rounded-sm flex items-center gap-2 text-xs font-semibold animate-fade-in shadow-xs">
+          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+          <span>{reorderNotification}</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-4">
           {[1, 2].map(i => (
@@ -358,13 +413,25 @@ export default function OrdersPage() {
                           </button>
                         )}
 
-                        {/* Order Again / Track Order */}
-                        <a 
-                          href={isDelivered ? "/configure" : `/confirmation/${order.orderNumber || order.id}`}
-                          className="text-xs font-semibold uppercase tracking-wider border border-noir-900 px-3.5 py-2 rounded-sm hover:bg-noir-950 hover:text-cream-50 transition-colors"
+                        {/* One-Click Photobook Reorder Flow (PROD-02) */}
+                        <button
+                          onClick={() => handleReorderOrder(order)}
+                          className="text-xs font-semibold uppercase tracking-wider bg-noir-950 text-cream-50 hover:bg-noir-900 px-3.5 py-2 rounded-sm transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                          title="Add an exact duplicate copy of this keepsake directly to cart"
                         >
-                          {isDelivered ? 'Order Again' : 'Track Order'}
-                        </a>
+                          <ShoppingBag size={13} className="text-foil-gold" />
+                          <span>Order Another Copy</span>
+                        </button>
+
+                        {/* Track Order for in-flight orders */}
+                        {!isDelivered && (
+                          <a 
+                            href={`/confirmation/${order.orderNumber || order.id}`}
+                            className="text-xs font-semibold uppercase tracking-wider border border-noir-900 px-3.5 py-2 rounded-sm hover:bg-noir-950 hover:text-cream-50 transition-colors"
+                          >
+                            Track Order
+                          </a>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -103,16 +103,16 @@ export function Pagination({
       </div>
 
       {/* Right: Page Navigation Buttons */}
-      <div className="flex items-center space-x-1">
+      <div className="flex items-center space-x-1.5">
         {/* First page button */}
         <button
           onClick={() => onPageChange(1)}
           disabled={safeCurrentPage === 1}
           title="First page"
           aria-label="Go to first page"
-          className="p-1.5 rounded-sm hover:bg-cream-100 border border-transparent disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
-          <ChevronsLeft className="w-3.5 h-3.5" />
+          <ChevronsLeft className="w-4 h-4" />
         </button>
 
         {/* Previous page button */}
@@ -121,9 +121,9 @@ export function Pagination({
           disabled={safeCurrentPage === 1}
           title="Previous page"
           aria-label="Go to previous page"
-          className="p-1.5 rounded-sm hover:bg-cream-100 border border-transparent disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
-          <ChevronLeft className="w-3.5 h-3.5" />
+          <ChevronLeft className="w-4 h-4" />
         </button>
 
         {/* Page pills */}
@@ -131,7 +131,7 @@ export function Pagination({
           {pages.map((p, idx) => {
             if (p === "ellipsis") {
               return (
-                <span key={`ellipsis-${idx}`} className="px-2 py-1 text-noir-400 select-none">
+                <span key={`ellipsis-${idx}`} className="w-8 h-8 flex items-center justify-center text-noir-500 font-bold select-none">
                   …
                 </span>
               );
@@ -144,10 +144,10 @@ export function Pagination({
                 aria-label={`Go to page ${p}`}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "min-w-7 h-7 px-2 text-xs font-medium rounded-sm transition-all cursor-pointer flex items-center justify-center",
+                  "min-w-8 h-8 px-2.5 text-xs font-medium rounded-sm transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1",
                   isActive
-                    ? "bg-noir-950 text-cream-50 font-semibold shadow-xs"
-                    : "text-noir-700 hover:bg-cream-100 hover:text-noir-950 border border-transparent"
+                    ? "bg-noir-950 text-cream-50 font-semibold shadow-xs border border-noir-950"
+                    : "bg-white text-noir-800 hover:bg-cream-100 hover:text-noir-950 border border-cream-300"
                 )}
               >
                 {p}
@@ -162,9 +162,9 @@ export function Pagination({
           disabled={safeCurrentPage === safeTotalPages}
           title="Next page"
           aria-label="Go to next page"
-          className="p-1.5 rounded-sm hover:bg-cream-100 border border-transparent disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
-          <ChevronRight className="w-3.5 h-3.5" />
+          <ChevronRight className="w-4 h-4" />
         </button>
 
         {/* Last page button */}
@@ -173,9 +173,9 @@ export function Pagination({
           disabled={safeCurrentPage === safeTotalPages}
           title="Last page"
           aria-label="Go to last page"
-          className="p-1.5 rounded-sm hover:bg-cream-100 border border-transparent disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer disabled:cursor-not-allowed"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
-          <ChevronsRight className="w-3.5 h-3.5" />
+          <ChevronsRight className="w-4 h-4" />
         </button>
       </div>
     </div>

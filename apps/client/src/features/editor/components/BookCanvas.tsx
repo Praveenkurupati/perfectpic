@@ -87,8 +87,11 @@ const PhotoSlot = React.memo(function PhotoSlot({
           onSelect(slotId);
         }
       }}
-      style={{ backgroundColor: isSelected ? undefined : BINDERY_CANVAS_PALETTE.pageBackgroundLight }}
-      className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center focus-visible:ring-2 focus-visible:ring-foil-gold focus-visible:border-foil-gold focus-visible:outline-none focus:outline-none ${
+      style={{ 
+        backgroundColor: isSelected ? undefined : BINDERY_CANVAS_PALETTE.pageBackgroundLight,
+        touchAction: 'manipulation',
+      }}
+      className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center touch-manipulation focus-visible:ring-2 focus-visible:ring-foil-gold focus-visible:border-foil-gold focus-visible:outline-none focus:outline-none ${
         isSelected
           ? 'border-foil-gold ring-2 ring-foil-gold bg-amber-50/50 shadow-sm'
           : 'border-cream-300 hover:border-noir-900'

@@ -56,7 +56,7 @@ export default function PortionCutModal({
     setFocalY(y);
   };
 
-  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handlePointerSelect = (e: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = Math.round(((e.clientX - rect.left) / rect.width) * 100);
     const clickY = Math.round(((e.clientY - rect.top) / rect.height) * 100);
@@ -144,8 +144,10 @@ export default function PortionCutModal({
 
             {/* Interactive Image Frame with 3x3 Grid Overlay */}
             <div
-              onClick={handleImageClick}
-              className="relative max-w-full max-h-[360px] rounded-sm overflow-hidden border border-white/20 shadow-2xl cursor-crosshair group flex items-center justify-center bg-black/40"
+              onPointerDown={handlePointerSelect}
+              onClick={handlePointerSelect}
+              style={{ touchAction: 'none' }}
+              className="relative max-w-full max-h-[360px] rounded-sm overflow-hidden border border-white/20 shadow-2xl cursor-crosshair group flex items-center justify-center bg-black/40 touch-none select-none"
             >
               <img
                 src={photo.url}
