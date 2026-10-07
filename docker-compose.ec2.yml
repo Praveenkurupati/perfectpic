@@ -5,6 +5,11 @@ services:
       context: .
       dockerfile: docker/backend.Dockerfile
 
+  worker:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+
   admin:
     build:
       context: .

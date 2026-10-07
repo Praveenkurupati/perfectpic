@@ -36,8 +36,8 @@ if [ ! -f .env ]; then
 fi
 
 # 3. Build services sequentially to avoid CPU/memory contention on t3.micro
-echo "🔨 1/3: Building Backend (TypeScript API)..."
-sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.ec2.yml build backend
+echo "🔨 1/3: Building Backend (TypeScript API & Worker)..."
+sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.ec2.yml build backend worker
 
 echo "🔨 2/3: Building Admin (Next.js Dashboard)..."
 sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.ec2.yml build admin

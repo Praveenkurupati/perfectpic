@@ -43,13 +43,28 @@ services:
         max-size: "20m"
         max-file: "5"
 
+  worker:
+    image: ${BACKEND_IMAGE:-ghcr.io/praveenkurupati/perfectpic-backend:latest}
+    restart: always
+    volumes:
+      - uploads_data:/app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
   mongodb:
     restart: always
     ports: !override []
     deploy:
       resources:
         limits:
-          memory: 350M
+          memory: 500M
     logging:
       driver: "json-file"
       options:
@@ -62,7 +77,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100M
+          memory: 150M
     logging:
       driver: "json-file"
       options:
