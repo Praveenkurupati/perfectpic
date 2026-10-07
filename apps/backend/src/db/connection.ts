@@ -134,7 +134,7 @@ async function seedDefaultData() {
     const adminUser = await User.findOne({ role: 'admin' });
     if (!adminUser) {
       const bcrypt = (await import('bcryptjs')).default;
-      const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123!Secure';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
       const hashedPassword = await bcrypt.hash(adminPassword, 10);
       await User.create({
         name: 'PerfectPic Administrator',
