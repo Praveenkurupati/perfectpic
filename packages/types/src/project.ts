@@ -126,15 +126,27 @@ export const ProjectSchema = z.object({
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
-// ─── Create Project Input ───────────────────────────────────────────────────
+// ─── Create & Update Project Schemas ─────────────────────────────────────────
 
 export const CreateProjectSchema = z.object({
-  title: z.string().min(1).max(100).default("My Photobook"),
+  title: z.string().min(1, "Title is required").max(200, "Title is too long").default("My Photobook"),
+  template: z.string().optional(),
   category: z.string().optional(),
-  bookSize: BookSizeEnum,
-  coverType: CoverTypeEnum,
-  theme: ThemeEnum,
-  coverColor: CoverColorEnum,
-  packaging: PackagingEnum.default("standard"),
+  bookSize: z.string().optional().default("8.25x8.25"),
+  coverType: z.string().optional().default("cov-1"),
+  theme: z.string().optional().default("theme-1"),
+  color: z.string().optional(),
+  coverColor: z.string().optional().default("col-1"),
+  packaging: z.string().optional().default("pack-1"),
+  pageCount: z.number().int().min(12).max(120).optional().default(32),
+  coverImage: z.string().optional(),
+  coverUrl: z.string().optional(),
+  photos: z.array(z.any()).optional().default([]),
+  pages: z.array(z.any()).optional().default([]),
+  guestSessionId: z.string().optional(),
 });
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
+
+export const UpdateProjectSchema = CreateProjectSchema.partial();
+export type UpdateProjectInput = z.infer<typeof UpdateProjectSchema>;
+
