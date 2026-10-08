@@ -12,6 +12,24 @@ import { mailService } from '../services/MailService';
 import { PricingService, AuthoritativePricingResult } from '../services/PricingService';
 
 export class PaymentController {
+  public static async getConfig(req: Request, res: Response, next: NextFunction) {
+    try {
+      const isConfigured = Boolean(
+        env.RAZORPAY_KEY_ID &&
+        env.RAZORPAY_KEY_ID !== 'dummy' &&
+        env.RAZORPAY_KEY_ID !== 'dummy_key' &&
+        env.RAZORPAY_KEY_ID !== 'test_key'
+      );
+
+      return res.status(200).json({
+        configured: isConfigured,
+        keyId: isConfigured ? env.RAZORPAY_KEY_ID : null,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async createOrder(req: Request, res: Response, next: NextFunction) {
     try {
       let finalRupeeAmount: number;

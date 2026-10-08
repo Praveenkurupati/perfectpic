@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { getImageProxyUrl } from "@/lib/urls";
 
 export interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -56,6 +57,9 @@ export function LazyImage({
           if (!isError && fallbackSrc && currentSrc !== fallbackSrc) {
             setIsError(true);
             setCurrentSrc(fallbackSrc);
+          } else if (!isError && currentSrc && !currentSrc.includes('/api/v1/upload/proxy') && !currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
+            setIsError(true);
+            setCurrentSrc(getImageProxyUrl(currentSrc));
           } else {
             setIsLoaded(true);
           }

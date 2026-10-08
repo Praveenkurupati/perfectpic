@@ -256,6 +256,8 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     }),
+  getPaymentConfig: () =>
+    fetcher<{ configured: boolean; keyId: string | null }>('/payments/config'),
   createPaymentOrder: (data: {
     amount?: number;
     items?: any[];

@@ -22,7 +22,7 @@ import {
 import { api } from '@/lib/api';
 import { useEditorStore, getMinPhotosRequired } from '@/stores/useEditorStore';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
-import { normalizeImageUrl } from '@/lib/urls';
+import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 import { trackEvent } from '@/lib/analytics';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 
@@ -557,7 +557,12 @@ function UploadContent() {
                       key={photo.id} 
                       className="group relative aspect-square bg-cream-100 rounded-sm overflow-hidden border border-cream-200 shadow-xs"
                     >
-                      <img src={normalizeImageUrl(photo.url)} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img 
+                        src={normalizeImageUrl(photo.url)} 
+                        alt={`Photo ${idx + 1}`} 
+                        className="w-full h-full object-cover" 
+                        onError={handleImageError} 
+                      />
                       
                       {/* Photo number indicator */}
                       <span className="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-[2px] font-mono">

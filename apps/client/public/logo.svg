@@ -1,32 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 80" width="100%" height="100%">
-  <defs>
-    <!-- Deep Indigo to Purple Gradient (Back Page/Frame) -->
-    <linearGradient id="ppGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366F1" />
-      <stop offset="100%" stop-color="#A855F7" />
-    </linearGradient>
-    <!-- Vibrant Pink to Rose Gradient (Front Page/Frame) -->
-    <linearGradient id="ppGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#EC4899" />
-      <stop offset="100%" stop-color="#F43F5E" />
-    </linearGradient>
-  </defs>
-  
-  <!-- Icon Mark: Overlapping Frames/Pages with Lens -->
-  <g transform="translate(10, 12)">
-    <!-- Back Photo/Page -->
-    <rect x="0" y="12" width="44" height="44" rx="12" fill="url(#ppGrad1)" />
-    <!-- Front Photo/Page -->
-    <rect x="18" y="0" width="44" height="44" rx="12" fill="url(#ppGrad2)" opacity="0.95" />
-    <!-- Camera Lens / Focus -->
-    <circle cx="40" cy="22" r="12" fill="#ffffff" />
-    <circle cx="40" cy="22" r="4" fill="url(#ppGrad1)" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 76" width="100%" height="100%">
+  <!-- Icon Mark: Open Photobook Squircle -->
+  <g transform="translate(6, 12)">
+    <rect width="52" height="52" rx="13" fill="#000000" />
+    <circle cx="26" cy="10.5" r="4.3" fill="#FFFFFF" />
+    <rect x="10" y="18.5" width="13.7" height="21.6" rx="2.6" fill="#FFFFFF" />
+    <rect x="28" y="18.5" width="13.7" height="21.6" rx="2.6" fill="#FFFFFF" />
   </g>
 
   <!-- Brand Typography -->
-  <text x="90" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="900" fill="#1F2937" letter-spacing="-0.5">PERFECT</text>
-  <text x="250" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="900" fill="url(#ppGrad2)" letter-spacing="-0.5">PIC</text>
+  <text x="74" y="46" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="900" fill="#1F2937" letter-spacing="-0.5">PERFECT</text>
+  <text x="216" y="46" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="32" font-weight="900" fill="#1F2937" letter-spacing="-0.5">PIC</text>
   
   <!-- Subtitle -->
-  <text x="92" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#6B7280" letter-spacing="4.5">PREMIUM PHOTOBOOKS</text>
+  <text x="76" y="64" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#6B7280" letter-spacing="4">PREMIUM PHOTOBOOKS</text>
 </svg>

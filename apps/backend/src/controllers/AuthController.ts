@@ -9,6 +9,7 @@ import { env } from '../config/env';
 import { signToken } from '../utils/jwt';
 import { ApiResponse } from '../utils/apiResponse';
 import { ApiError } from '../utils/apiError';
+import { logger } from '../utils/logger';
 
 export class AuthController {
   public static async login(req: Request, res: Response, next: NextFunction) {
@@ -242,8 +243,9 @@ export class AuthController {
 
   private static getCallbackUrl(req: Request, provider: 'google' | 'apple'): string {
     const envCallback = provider === 'google' ? env.GOOGLE_CALLBACK_URL : env.APPLE_CALLBACK_URL;
-    if (envCallback && !envCallback.includes('localhost') && !envCallback.includes('127.0.0.1')) {
-      return envCallback;
+    // When defined in environment (.env), ALWAYS use the authoritative configured callback URL
+    if (envCallback && envCallback.trim().length > 0) {
+      return envCallback.trim();
     }
 
     const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
@@ -254,13 +256,14 @@ export class AuthController {
       return `${proto}://${host}/api/v1/auth/${provider}/callback`;
     }
 
-    return envCallback || `http://localhost:4000/api/v1/auth/${provider}/callback`;
+    return `http://localhost:4000/api/v1/auth/${provider}/callback`;
   }
 
   public static async googleInit(req: Request, res: Response, next: NextFunction) {
     try {
       const redirect = (req.query.redirect as string) || '/';
       const callbackUrl = AuthController.getCallbackUrl(req, 'google');
+      logger.info(`[OAuth] Initiating Google login. Client ID: ${env.GOOGLE_CLIENT_ID?.slice(0, 16)}..., Callback: ${callbackUrl}`);
       const authUrl = OAuthService.getGoogleAuthUrl(redirect, callbackUrl);
       return res.redirect(authUrl);
     } catch (err) {
@@ -269,8 +272,8 @@ export class AuthController {
   }
 
   private static getFrontendUrl(req: Request): string {
-    if (process.env.FRONTEND_URL && !process.env.FRONTEND_URL.includes('localhost')) {
-      return process.env.FRONTEND_URL.replace(/\/+$/, '');
+    if (env.FRONTEND_URL && env.FRONTEND_URL.trim().length > 0) {
+      return env.FRONTEND_URL.trim().replace(/\/+$/, '');
     }
     const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
     const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');

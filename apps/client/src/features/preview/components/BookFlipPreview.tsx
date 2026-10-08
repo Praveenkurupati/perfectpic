@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, BookOpen, Sparkles, Layers } from 'lucide-react';
 import { Photo, PageLayout, CoverConfig, SlotCropConfig } from '@/stores/useEditorStore';
-import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
+import { normalizeImageUrl, getImageProxyUrl, handleImageError } from '@/lib/urls';
 
 interface BookFlipPreviewProps {
   currentSpread: number; // 0 = Cover, 1 = Pages 1-2, ..., totalSpreads + 1 = Back
@@ -335,6 +335,7 @@ export default function BookFlipPreview({
                 <img
                   src={normalizeImageUrl(effectiveCover)}
                   alt={displayTitle}
+                  onError={handleImageError}
                   style={{
                     objectFit: 'cover',
                     objectPosition: `${slotCrops['0']?.x ?? 50}% ${slotCrops['0']?.y ?? 50}%`,
@@ -392,6 +393,7 @@ export default function BookFlipPreview({
                   <img
                     src={normalizeImageUrl(getPanoramicPhotoUrl(currentSpread, leftPageNumber))}
                     alt={`Panoramic Spread ${leftPageNumber}-${rightPageNumber}`}
+                    onError={handleImageError}
                     style={{
                       objectFit: 'cover',
                       objectPosition: `${(slotCrops[`spread_${currentSpread}`]?.x ?? slotCrops[`${leftPageNumber}_0`]?.x ?? slotCrops[`${leftPageNumber}`]?.x ?? 50)}% ${(slotCrops[`spread_${currentSpread}`]?.y ?? slotCrops[`${leftPageNumber}_0`]?.y ?? slotCrops[`${leftPageNumber}`]?.y ?? 50)}%`,

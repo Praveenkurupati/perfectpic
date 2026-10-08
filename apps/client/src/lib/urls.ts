@@ -115,3 +115,32 @@ export function normalizeImageUrl(url: string | null | undefined): string {
 
   return trimmed;
 }
+
+/**
+ * Universal error handler for <img> elements.
+ * Automatically falls back to backend image proxy if direct access
+ * (e.g. direct AWS S3 with private bucket or CORS restriction) returns 403/404/CORS block.
+ * Uses dataset.retried to guard against infinite retry loops.
+ */
+export function handleImageError(
+  e: React.SyntheticEvent<HTMLImageElement, Event>,
+  fallbackUrl?: string
+): void {
+  const target = e.currentTarget;
+  if (!target || target.dataset.retried === 'true') {
+    return;
+  }
+  target.dataset.retried = 'true';
+
+  const currentSrc = target.currentSrc || target.src;
+  if (fallbackUrl) {
+    target.src = fallbackUrl;
+    return;
+  }
+
+  if (currentSrc && !currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
+    if (!currentSrc.includes('/api/v1/upload/proxy')) {
+      target.src = getImageProxyUrl(currentSrc);
+    }
+  }
+}

@@ -56,3 +56,37 @@ export function getApiBaseUrl(): string {
   }
   return 'http://localhost:4000';
 }
+
+/**
+ * Returns a proxy URL for an external or private S3 image.
+ */
+export function getImageProxyUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  return `${getApiBaseUrl()}/api/v1/upload/proxy?url=${encodeURIComponent(rawUrl)}`;
+}
+
+/**
+ * Universal error handler for <img> elements in Admin portal.
+ */
+export function handleImageError(
+  e: React.SyntheticEvent<HTMLImageElement, Event>,
+  fallbackUrl?: string
+): void {
+  const target = e.currentTarget;
+  if (!target || target.dataset.retried === 'true') {
+    return;
+  }
+  target.dataset.retried = 'true';
+
+  const currentSrc = target.currentSrc || target.src;
+  if (fallbackUrl) {
+    target.src = fallbackUrl;
+    return;
+  }
+
+  if (currentSrc && !currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
+    if (!currentSrc.includes('/api/v1/upload/proxy')) {
+      target.src = getImageProxyUrl(currentSrc);
+    }
+  }
+}

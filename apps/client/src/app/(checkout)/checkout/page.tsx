@@ -200,16 +200,166 @@ export default function CheckoutPage() {
         process.env.NODE_ENV === 'production' ||
         process.env.NEXT_PUBLIC_APP_ENV === 'production';
 
-      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      let razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
+      // Dynamically fetch payment gateway config if not bundled at build time
+      if (!razorpayKey || razorpayKey === 'dummy_key' || razorpayKey === 'test_key') {
+        try {
+          const cfg = await api.getPaymentConfig();
+          if (cfg?.configured && cfg.keyId) {
+            razorpayKey = cfg.keyId;
+          }
+        } catch (e) {
+          console.warn('Could not query payment config from backend:', e);
+        }
+      }
+
+      const hasValidRazorpay = Boolean(
+        razorpayKey &&
+        razorpayKey !== 'dummy_key' &&
+        razorpayKey !== 'test_key' &&
+        (razorpayKey.startsWith('rzp_live_') || razorpayKey.startsWith('rzp_test_'))
+      );
 
       // In production, require configured payment credentials
-      if (isProduction && (!razorpayKey || razorpayKey === 'dummy_key' || razorpayKey === 'test_key')) {
+      if (isProduction && !hasValidRazorpay) {
         throw new Error(
           'Production payment gateway is currently undergoing maintenance. Please try again shortly or contact support.'
         );
       }
 
-      // Directive 4: Submit lightweight JSON manifest with order; backend compiles PDF in worker queue
+      // If Razorpay gateway is active and loaded, open official Razorpay checkout modal
+      if (hasValidRazorpay && typeof window !== 'undefined') {
+        await loadRazorpayScript();
+        setSubmissionStep('Preparing secure payment checkout...');
+
+        const rzpOrder = await api.createPaymentOrder({
+          items: items.map((it) => ({
+            templateId: (it as any).templateId || it.id,
+            size: it.dimensions,
+            pageCount: it.pageCount,
+            quantity: it.quantity || 1,
+            price: it.basePrice,
+            projectId: it.projectId,
+            projectSnapshot: it.projectSnapshot,
+          })),
+          accessories,
+          promoCode: promoCode || null,
+          deliveryOption,
+          amount: finalTotal,
+        });
+
+        if (window.Razorpay && !rzpOrder.isMock) {
+          await new Promise<void>((resolve, reject) => {
+            const options = {
+              key: rzpOrder.key || razorpayKey,
+              amount: rzpOrder.amount,
+              currency: rzpOrder.currency || 'INR',
+              name: 'PerfectPic Photobooks',
+              description: primaryItem?.title || 'Custom Photobook Order',
+              order_id: rzpOrder.id,
+              prefill: {
+                name: shippingForm.fullName,
+                email: user?.email || '',
+                contact: shippingForm.phone,
+              },
+              theme: {
+                color: '#121212',
+              },
+              modal: {
+                ondismiss: () => {
+                  setIsSubmitting(false);
+                  setSubmissionStep('');
+                  reject(new Error('Payment window was dismissed before completion.'));
+                },
+              },
+              handler: async (response: any) => {
+                try {
+                  setSubmissionStep('Verifying payment signature...');
+                  await api.verifyPayment({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  });
+
+                  setSubmissionStep('Submitting order & enqueuing print worker...');
+                  const orderPayload = {
+                    title: primaryItem?.title || 'Heirloom Custom Photobook',
+                    items: items.map((it) => ({
+                      templateId: (it as any).templateId || it.id,
+                      size: it.dimensions,
+                      pageCount: it.pageCount,
+                      quantity: it.quantity || 1,
+                      projectId: it.projectId,
+                      projectSnapshot: it.projectSnapshot,
+                    })),
+                    projectManifest: snapshot,
+                    projectId: primaryItem?.projectId,
+                    customerName: shippingForm.fullName,
+                    customerEmail: user?.email || 'guest@perfectpic.in',
+                    customerPhone: shippingForm.phone,
+                    userId: user?.id,
+                    shippingAddress: {
+                      fullName: shippingForm.fullName,
+                      phone: shippingForm.phone,
+                      email: user?.email || 'guest@perfectpic.in',
+                      addressLine1: shippingForm.addressLine1,
+                      landmark: shippingForm.landmark,
+                      city,
+                      state,
+                      postalCode: shippingForm.pincode,
+                      pincode: shippingForm.pincode,
+                      country: 'India',
+                    },
+                    deliveryOption,
+                    accessories,
+                    isGift: isGift || recipients.length > 0,
+                    recipients: recipients.length > 0 ? recipients : undefined,
+                    promoCode: promoCode || undefined,
+                    paymentDetails: {
+                      paymentMethod: 'razorpay',
+                      razorpayOrderId: response.razorpay_order_id,
+                      razorpayPaymentId: response.razorpay_payment_id,
+                      razorpaySignature: response.razorpay_signature,
+                      transactionId: response.razorpay_payment_id,
+                      status: 'completed',
+                    },
+                  };
+
+                  const result = await api.createOrder(orderPayload);
+                  const orderId = result.orderNumber || result.id || (result as any).order?.orderNumber;
+                  const guestToken = (result as any).guestToken || (result as any).order?.guestToken;
+
+                  trackMetaPurchase({
+                    orderId: String(orderId),
+                    total: finalTotal,
+                    items: items.map((it) => ({ id: it.id, title: it.title, price: it.basePrice })),
+                  });
+
+                  clearCart();
+
+                  const tokenQuery = guestToken ? `?token=${encodeURIComponent(guestToken)}` : '';
+                  router.push(`/confirmation/${orderId}${tokenQuery}`);
+                  resolve();
+                } catch (postPayErr: any) {
+                  reject(postPayErr);
+                }
+              },
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', (failRes: any) => {
+              setIsSubmitting(false);
+              setSubmissionStep('');
+              reject(new Error(failRes?.error?.description || 'Payment transaction failed.'));
+            });
+            rzp.open();
+          });
+          return;
+        }
+      }
+
+      // Offline dev mode fallback or mock order submission
       setSubmissionStep('Submitting order & enqueuing print worker...');
 
       const orderPayload = {

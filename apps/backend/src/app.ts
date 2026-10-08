@@ -16,6 +16,9 @@ import apiRouter from './routes';
 export function createApp(): Application {
   const app = express();
 
+  // Trust first proxy hop (Nginx, CloudFront, ALB) for secure cookies & proto/host headers
+  app.set('trust proxy', 1);
+
   // Security headers: Clickjacking defense, MIME sniffing prevention, hide X-Powered-By
   app.use(
     helmet({

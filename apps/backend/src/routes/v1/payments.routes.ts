@@ -5,6 +5,7 @@ import { orderRateLimiter } from '../../middlewares/rateLimiter';
 
 const router = Router();
 
+router.get('/config', PaymentController.getConfig);
 router.post('/create-order', orderRateLimiter, optionalAuth, PaymentController.createOrder);
 router.post('/verify', orderRateLimiter, optionalAuth, PaymentController.verify);
 router.post('/webhook', PaymentController.webhook);

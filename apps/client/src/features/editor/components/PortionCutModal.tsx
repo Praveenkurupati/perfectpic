@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Photo, SlotCropConfig, PhotoCropPosition } from '@/stores/useEditorStore';
+import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 
 interface PortionCutModalProps {
   isOpen: boolean;
@@ -150,9 +151,10 @@ export default function PortionCutModal({
               className="relative max-w-full max-h-[360px] rounded-sm overflow-hidden border border-white/20 shadow-2xl cursor-crosshair group flex items-center justify-center bg-black/40 touch-none select-none"
             >
               <img
-                src={photo.url}
+                src={normalizeImageUrl(photo.url)}
                 alt={label || 'Photo'}
                 className="max-w-full max-h-[360px] object-contain pointer-events-none block"
+                onError={handleImageError}
               />
 
               {/* 3x3 Rule-of-Thirds Grid Overlay */}
@@ -350,8 +352,9 @@ export default function PortionCutModal({
               </div>
               <div className="w-full h-36 rounded-xs overflow-hidden border border-noir-300/60 bg-cream-100 shadow-inner relative flex items-center justify-center">
                 <img
-                  src={photo.url}
+                  src={normalizeImageUrl(photo.url)}
                   alt="Cropped Preview"
+                  onError={handleImageError}
                   style={{
                     objectFit: 'cover',
                     objectPosition: `${focalX}% ${focalY}%`,

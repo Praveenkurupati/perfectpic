@@ -6,7 +6,7 @@ import { UploadCloud, Check, Plus, ArrowLeftRight, Image as ImageIcon, Cloud, Lo
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
 import { api } from '@/lib/api';
-import { normalizeImageUrl } from '@/lib/urls';
+import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 
 
 export default function PhotoTray() {
@@ -174,6 +174,7 @@ export default function PhotoTray() {
                   src={normalizeImageUrl(photo.url)} 
                   alt={photo.name || 'Photo'} 
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                  onError={handleImageError}
                 />
                 
                 {/* Placed badge */}

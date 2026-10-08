@@ -28,6 +28,7 @@ import {
   History
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
+import { handleImageError } from "@/lib/urls";
 import { generateAdminProductionPdf } from "@/lib/pdfGenerator";
 import { generateGstInvoicePdf } from "@/lib/invoiceGenerator";
 import { generateShippingLabelPdf } from "@/lib/shippingLabelGenerator";
@@ -654,7 +655,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             <div className="flex flex-col sm:flex-row gap-6">
               <div className="w-36 h-36 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200">
                 {(order?.coverUrl || order?.thumbnail) ? (
-                  <img src={order?.coverUrl || order?.thumbnail} alt="Cover" className="w-full h-full object-cover" />
+                  <img 
+                    src={order?.coverUrl || order?.thumbnail} 
+                    alt="Cover" 
+                    className="w-full h-full object-cover" 
+                    onError={handleImageError}
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-noir-400">
                     <Printer className="w-8 h-8 opacity-40 mb-1" />

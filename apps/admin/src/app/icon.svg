@@ -1,18 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62 62" width="100%" height="100%">
-  <defs>
-    <linearGradient id="favGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366F1" />
-      <stop offset="100%" stop-color="#A855F7" />
-    </linearGradient>
-    <linearGradient id="favGrad2" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#EC4899" />
-      <stop offset="100%" stop-color="#F43F5E" />
-    </linearGradient>
-  </defs>
-  <g transform="translate(0, 3)">
-    <rect x="0" y="12" width="44" height="44" rx="12" fill="url(#favGrad1)" />
-    <rect x="18" y="0" width="44" height="44" rx="12" fill="url(#favGrad2)" opacity="0.95" />
-    <circle cx="40" cy="22" r="12" fill="#ffffff" />
-    <circle cx="40" cy="22" r="4" fill="url(#favGrad1)" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" width="100%" height="100%">
+  <rect width="36" height="36" rx="9" fill="#000000" />
+  <circle cx="18" cy="7" r="3" fill="#FFFFFF" />
+  <rect x="7" y="12.5" width="9.5" height="15" rx="1.8" fill="#FFFFFF" />
+  <rect x="19.5" y="12.5" width="9.5" height="15" rx="1.8" fill="#FFFFFF" />
 </svg>

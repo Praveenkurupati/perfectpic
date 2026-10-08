@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useId } from "react";
+import React from "react";
 
 export interface BrandLogoProps {
   variant?: "light" | "dark";
@@ -19,26 +19,14 @@ export function BrandLogo({
   width,
   height,
 }: BrandLogoProps) {
-  const rawId = useId();
-  const idPrefix = rawId.replace(/[^a-zA-Z0-9-_]/g, "");
-  const grad1Id = `ppGrad1_${idPrefix}`;
-  const grad2Id = `ppGrad2_${idPrefix}`;
-
   const isDark = variant === "dark";
-
-  const grad1Start = isDark ? "#818CF8" : "#6366F1";
-  const grad1End = isDark ? "#C084FC" : "#A855F7";
-
-  const grad2Start = isDark ? "#F472B6" : "#EC4899";
-  const grad2End = isDark ? "#FB7185" : "#F43F5E";
-
   const textColor = isDark ? "#FFFFFF" : "#1F2937";
   const subtitleColor = isDark ? "#9CA3AF" : "#6B7280";
 
   if (iconOnly) {
     return (
       <svg
-        viewBox="0 0 62 62"
+        viewBox="0 0 36 36"
         width={width || 36}
         height={height || 36}
         className={className}
@@ -47,22 +35,10 @@ export function BrandLogo({
         role="img"
         aria-label="PerfectPic Mark"
       >
-        <defs>
-          <linearGradient id={grad1Id} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={grad1Start} />
-            <stop offset="100%" stopColor={grad1End} />
-          </linearGradient>
-          <linearGradient id={grad2Id} x1="0%" y1="100%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={grad2Start} />
-            <stop offset="100%" stopColor={grad2End} />
-          </linearGradient>
-        </defs>
-        <g transform="translate(0, 3)">
-          <rect x="0" y="12" width="44" height="44" rx="12" fill={`url(#${grad1Id})`} />
-          <rect x="18" y="0" width="44" height="44" rx="12" fill={`url(#${grad2Id})`} opacity="0.95" />
-          <circle cx="40" cy="22" r="12" fill="#ffffff" />
-          <circle cx="40" cy="22" r="4" fill={`url(#${grad1Id})`} />
-        </g>
+        <rect width="36" height="36" rx="9" fill={isDark ? "#FFFFFF" : "#000000"} />
+        <circle cx="18" cy="7" r="3" fill={isDark ? "#000000" : "#FFFFFF"} />
+        <rect x="7" y="12.5" width="9.5" height="15" rx="1.8" fill={isDark ? "#000000" : "#FFFFFF"} />
+        <rect x="19.5" y="12.5" width="9.5" height="15" rx="1.8" fill={isDark ? "#000000" : "#FFFFFF"} />
       </svg>
     );
   }
@@ -79,33 +55,22 @@ export function BrandLogo({
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       role="img"
-      aria-label="PerfectPic - Premium Photobooks"
+      aria-label="PerfectPic - Admin Portal"
     >
-      <defs>
-        <linearGradient id={grad1Id} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={grad1Start} />
-          <stop offset="100%" stopColor={grad1End} />
-        </linearGradient>
-        <linearGradient id={grad2Id} x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor={grad2Start} />
-          <stop offset="100%" stopColor={grad2End} />
-        </linearGradient>
-      </defs>
-
-      {/* Icon Mark */}
-      <g transform="translate(6, 10)">
-        <rect x="0" y="12" width="44" height="44" rx="12" fill={`url(#${grad1Id})`} />
-        <rect x="18" y="0" width="44" height="44" rx="12" fill={`url(#${grad2Id})`} opacity="0.95" />
-        <circle cx="40" cy="22" r="12" fill="#ffffff" />
-        <circle cx="40" cy="22" r="4" fill={`url(#${grad1Id})`} />
+      {/* Brand Icon Mark: Open Photobook Squircle */}
+      <g transform="translate(6, 12)">
+        <rect width="52" height="52" rx="13" fill={isDark ? "#FFFFFF" : "#000000"} />
+        <circle cx="26" cy="10.5" r="4.3" fill={isDark ? "#000000" : "#FFFFFF"} />
+        <rect x="10" y="18.5" width="13.7" height="21.6" rx="2.6" fill={isDark ? "#000000" : "#FFFFFF"} />
+        <rect x="28" y="18.5" width="13.7" height="21.6" rx="2.6" fill={isDark ? "#000000" : "#FFFFFF"} />
       </g>
 
       {/* Brand Typography */}
       <text
-        x="84"
+        x="74"
         y="47"
         fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        fontSize="34"
+        fontSize="33"
         fontWeight="900"
         fill={textColor}
         letterSpacing="-0.5"
@@ -113,12 +78,12 @@ export function BrandLogo({
         PERFECT
       </text>
       <text
-        x="234"
+        x="220"
         y="47"
         fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        fontSize="34"
+        fontSize="33"
         fontWeight="900"
-        fill={`url(#${grad2Id})`}
+        fill={textColor}
         letterSpacing="-0.5"
       >
         PIC
@@ -127,15 +92,15 @@ export function BrandLogo({
       {/* Subtitle */}
       {showSubtitle && (
         <text
-          x="86"
-          y="66"
+          x="76"
+          y="65"
           fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
           fontSize="10.5"
           fontWeight="700"
           fill={subtitleColor}
           letterSpacing="4.5"
         >
-          PREMIUM PHOTOBOOKS
+          ADMIN PORTAL
         </text>
       )}
     </svg>
