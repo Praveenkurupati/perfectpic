@@ -94,7 +94,7 @@ export class AnalyticsRepository {
     // Auto-seed if database is connected and collection has sparse data
     if (dbConnected) {
       try {
-        const count = await AnalyticsEvent.countDocuments();
+        const count = await AnalyticsEvent.countDocuments().read('secondaryPreferred');
         if (count < 30) {
           const seeds = await generateRealisticEvents(160);
           await AnalyticsEvent.insertMany(seeds, { ordered: false });
@@ -240,7 +240,7 @@ export class AnalyticsRepository {
           },
         },
       },
-    ]);
+    ]).read('secondaryPreferred');
 
     // 2. Editor layout preferences
     const layoutDocs = await AnalyticsEvent.aggregate([
@@ -253,7 +253,7 @@ export class AnalyticsRepository {
       },
       { $group: { _id: '$metadata.layout', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
-    ]);
+    ]).read('secondaryPreferred');
 
     // 3. Editor foil preferences
     const foilDocs = await AnalyticsEvent.aggregate([
@@ -266,7 +266,7 @@ export class AnalyticsRepository {
       },
       { $group: { _id: '$metadata.foilColor', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
-    ]);
+    ]).read('secondaryPreferred');
 
     // 4. Live journeys: last 20 sessions sorted
     const recentSessionIds = sessionDocs
@@ -276,7 +276,7 @@ export class AnalyticsRepository {
 
     const recentEvents = await AnalyticsEvent.find({
       sessionId: { $in: recentSessionIds },
-    }).sort({ timestamp: 1 });
+    }).sort({ timestamp: 1 }).read('secondaryPreferred');
 
     const journeys = this.formatJourneysFromEvents(recentEvents, sessionDocs);
 

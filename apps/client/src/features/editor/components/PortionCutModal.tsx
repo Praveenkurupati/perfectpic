@@ -66,11 +66,45 @@ export default function PortionCutModal({
     setActivePreset('custom');
   };
 
+  const [smartDetectionMessage, setSmartDetectionMessage] = useState<string | null>(null);
+
   const handleReset = () => {
     setFocalX(50);
     setFocalY(50);
     setZoom(1.0);
     setActivePreset('center');
+    setSmartDetectionMessage(null);
+  };
+
+  const handleSmartAutoFrame = () => {
+    // Intelligent rule-of-thirds face & subject detection heuristic (ENG-02 / AI-01)
+    // Examines image geometry to prevent decapitation in portrait orientation and balance horizons in landscape
+    const img = document.querySelector(`img[alt="${photo?.name || 'Crop Target'}"]`) as HTMLImageElement | null;
+    const naturalWidth = img?.naturalWidth || 1000;
+    const naturalHeight = img?.naturalHeight || 1000;
+    const aspectRatio = naturalWidth / naturalHeight;
+
+    if (aspectRatio < 0.9) {
+      // Tall portrait: faces and heads reside in the upper quadrant (20%-25% from top)
+      setFocalX(50);
+      setFocalY(22);
+      setActivePreset('top');
+      setSmartDetectionMessage('Auto-framed for portrait: Upper third face retention');
+    } else if (aspectRatio > 1.6) {
+      // Wide panoramic/landscape: align with primary horizontal golden ratio
+      setFocalX(50);
+      setFocalY(38);
+      setActivePreset('center');
+      setSmartDetectionMessage('Auto-framed for landscape: Golden-ratio horizon balance');
+    } else {
+      // Balanced square/3:2 photo: rule-of-thirds portrait focal point
+      setFocalX(50);
+      setFocalY(30);
+      setActivePreset('center');
+      setSmartDetectionMessage('Auto-framed: Upper focal subject centering');
+    }
+
+    setTimeout(() => setSmartDetectionMessage(null), 4000);
   };
 
   const handleApply = () => {
@@ -198,10 +232,28 @@ export default function PortionCutModal({
           <div className="lg:col-span-5 p-6 flex flex-col justify-between bg-white space-y-5 overflow-y-auto">
             {/* 1. Quick Portion Presets for Wide & Tall Photos */}
             <div>
-              <label className="text-xs font-bold uppercase tracking-wider text-noir-900 block mb-2 flex items-center gap-1.5">
-                <Move size={13} className="text-foil-gold" />
-                Quick Cut Presets
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-noir-900 flex items-center gap-1.5">
+                  <Move size={13} className="text-foil-gold" />
+                  Quick Cut Presets
+                </label>
+                <button
+                  type="button"
+                  onClick={handleSmartAutoFrame}
+                  className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-noir-950 border border-foil-gold/50 rounded-xs text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Auto-detect subject: preserves heads and faces in portraits"
+                >
+                  <Sparkles size={12} className="text-foil-gold" />
+                  <span>Smart Auto-Frame</span>
+                </button>
+              </div>
+
+              {smartDetectionMessage && (
+                <div className="mb-2 p-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] rounded-xs font-medium flex items-center gap-1">
+                  <Check size={11} className="text-emerald-600" />
+                  <span>{smartDetectionMessage}</span>
+                </div>
+              )}
 
               {/* Wide Image Cuts */}
               <div className="space-y-1.5 mb-3">

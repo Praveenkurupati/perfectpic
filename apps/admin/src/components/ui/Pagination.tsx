@@ -110,7 +110,7 @@ export function Pagination({
           disabled={safeCurrentPage === 1}
           title="First page"
           aria-label="Go to first page"
-          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-200 disabled:border-cream-300 disabled:text-noir-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
           <ChevronsLeft className="w-4 h-4" />
         </button>
@@ -121,7 +121,7 @@ export function Pagination({
           disabled={safeCurrentPage === 1}
           title="Previous page"
           aria-label="Go to previous page"
-          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-200 disabled:border-cream-300 disabled:text-noir-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -162,7 +162,7 @@ export function Pagination({
           disabled={safeCurrentPage === safeTotalPages}
           title="Next page"
           aria-label="Go to next page"
-          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-200 disabled:border-cream-300 disabled:text-noir-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -173,7 +173,7 @@ export function Pagination({
           disabled={safeCurrentPage === safeTotalPages}
           title="Last page"
           aria-label="Go to last page"
-          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-100/60 disabled:border-cream-200 disabled:text-noir-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
+          className="w-8 h-8 rounded-sm border border-cream-300 bg-white text-noir-700 hover:bg-cream-100 hover:text-noir-950 disabled:bg-cream-200 disabled:border-cream-300 disabled:text-noir-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-noir-900 focus-visible:ring-offset-1"
         >
           <ChevronsRight className="w-4 h-4" />
         </button>

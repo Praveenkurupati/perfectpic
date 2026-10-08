@@ -73,7 +73,7 @@ export function Pagination({
           onClick={() => onPageChange(1)}
           disabled={safeCurrentPage === 1}
           aria-label="First page"
-          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:border-neutral-300 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronsLeft className="w-4 h-4" />
         </button>
@@ -82,7 +82,7 @@ export function Pagination({
           onClick={() => onPageChange(safeCurrentPage - 1)}
           disabled={safeCurrentPage === 1}
           aria-label="Previous page"
-          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:border-neutral-300 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronLeft className="w-4 h-4" />
         </button>
@@ -120,7 +120,7 @@ export function Pagination({
           onClick={() => onPageChange(safeCurrentPage + 1)}
           disabled={safeCurrentPage === safeTotalPages}
           aria-label="Next page"
-          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:border-neutral-300 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronRight className="w-4 h-4" />
         </button>
@@ -129,7 +129,7 @@ export function Pagination({
           onClick={() => onPageChange(safeTotalPages)}
           disabled={safeCurrentPage === safeTotalPages}
           aria-label="Last page"
-          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-100/70 disabled:border-neutral-200 disabled:text-neutral-300 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+          className="w-8 h-8 rounded-full border border-neutral-300 bg-white hover:bg-neutral-100 disabled:bg-neutral-200 disabled:border-neutral-300 disabled:text-neutral-400 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center justify-center text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
         >
           <ChevronsRight className="w-4 h-4" />
         </button>
