@@ -74,25 +74,35 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   if (!url) return '';
   const trimmed = url.trim();
 
-  // Data URLs or active Blob URLs
+  // 1. Data URLs or active Blob URLs
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
     return trimmed;
   }
 
   const apiBase = getApiBaseUrl();
 
-  // If URL contains /uploads/ pointing to localhost:4000 or 127.0.0.1:4000
-  if (trimmed.includes('/uploads/')) {
+  // 2. Only rewrite localhost:4000 or 127.0.0.1:4000 local disk uploads
+  if (
+    trimmed.startsWith('http://localhost:4000/uploads/') ||
+    trimmed.startsWith('http://127.0.0.1:4000/uploads/') ||
+    trimmed.startsWith('https://localhost:4000/uploads/') ||
+    trimmed.startsWith('https://127.0.0.1:4000/uploads/')
+  ) {
     const relativePath = trimmed.substring(trimmed.indexOf('/uploads/'));
     return `${apiBase}${relativePath}`;
   }
 
-  // If relative path
+  // 3. Local relative path starting with /uploads/
+  if (trimmed.startsWith('/uploads/')) {
+    return `${apiBase}${trimmed}`;
+  }
+
+  // 4. Other relative paths starting with /
   if (trimmed.startsWith('/')) {
     return `${apiBase}${trimmed}`;
   }
 
-  // Handle mixed-content: if browser is on HTTPS and image is HTTP
+  // 5. Handle mixed-content: if browser is on HTTPS and image is HTTP
   if (
     typeof window !== 'undefined' &&
     window.location.protocol === 'https:' &&
@@ -113,6 +123,7 @@ export function normalizeImageUrl(url: string | null | undefined): string {
     return getImageProxyUrl(trimmed);
   }
 
+  // 6. Return remote URL as-is (S3 https://...amazonaws.com/uploads/..., CloudFront, Unsplash, Google, etc.)
   return trimmed;
 }
 
@@ -132,15 +143,16 @@ export function handleImageError(
   }
   target.dataset.retried = 'true';
 
-  const currentSrc = target.currentSrc || target.src;
   if (fallbackUrl) {
     target.src = fallbackUrl;
     return;
   }
 
-  if (currentSrc && !currentSrc.startsWith('data:') && !currentSrc.startsWith('blob:')) {
-    if (!currentSrc.includes('/api/v1/upload/proxy')) {
-      target.src = getImageProxyUrl(currentSrc);
+  // Prefer original candidate URL from data-original-url if set, otherwise currentSrc / src
+  const candidateUrl = target.dataset.originalUrl || target.currentSrc || target.src;
+  if (candidateUrl && !candidateUrl.startsWith('data:') && !candidateUrl.startsWith('blob:')) {
+    if (!candidateUrl.includes('/api/v1/upload/proxy')) {
+      target.src = getImageProxyUrl(candidateUrl);
     }
   }
 }

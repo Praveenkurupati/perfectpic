@@ -187,6 +187,7 @@ export default function PortionCutModal({
               <img
                 src={normalizeImageUrl(photo.url)}
                 alt={label || 'Photo'}
+                data-original-url={photo.url}
                 className="max-w-full max-h-[360px] object-contain pointer-events-none block"
                 onError={handleImageError}
               />

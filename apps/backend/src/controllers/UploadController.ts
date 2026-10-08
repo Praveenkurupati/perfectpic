@@ -86,23 +86,30 @@ export class UploadController {
         }
       }
 
+      // Extract prospective storage key
+      let key = imageUrl;
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        try {
+          const u = new URL(imageUrl);
+          key = u.pathname.replace(/^\/+/, '');
+        } catch {}
+      } else if (imageUrl.startsWith('/')) {
+        key = imageUrl.replace(/^\/+/, '');
+      }
+
       // 2. If it's an S3 object (either full S3 URL or relative key)
       const isS3 = isS3Configured() && (
-        (env.S3_BUCKET && imageUrl.includes(env.S3_BUCKET)) ||
+        (Boolean(env.S3_BUCKET) && imageUrl.includes(env.S3_BUCKET)) ||
+        imageUrl.includes('.amazonaws.com') ||
         imageUrl.startsWith('photos/') ||
         imageUrl.startsWith('photobooks/') ||
-        imageUrl.startsWith('uploads/')
+        imageUrl.startsWith('uploads/') ||
+        key.startsWith('photos/') ||
+        key.startsWith('photobooks/') ||
+        key.startsWith('uploads/')
       );
 
       if (isS3) {
-        let key = imageUrl;
-        if (imageUrl.startsWith('http')) {
-          try {
-            const u = new URL(imageUrl);
-            key = u.pathname.replace(/^\/+/, '');
-          } catch {}
-        }
-
         // Direct CloudFront / CDN distribution redirect (EA-01)
         const cdnDomain = process.env.CLOUDFRONT_URL || process.env.CDN_URL;
         if (cdnDomain) {

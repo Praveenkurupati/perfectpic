@@ -2,6 +2,7 @@
 
 import { useEditorStore } from '@/stores/useEditorStore';
 import { Sparkles } from 'lucide-react';
+import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 
 export default function SpreadFilmstrip() {
   const { 
@@ -109,7 +110,13 @@ export default function SpreadFilmstrip() {
                 {spread.isCover && (
                   <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
                     {coverPhoto ? (
-                      <img src={coverPhoto.url} alt="Cover" className="w-full h-full object-cover" />
+                      <img 
+                        src={normalizeImageUrl(coverPhoto.url)} 
+                        alt="Cover" 
+                        data-original-url={coverPhoto.url}
+                        className="w-full h-full object-cover" 
+                        onError={handleImageError}
+                      />
                     ) : (
                       <span className="text-[9px] font-bold text-white uppercase tracking-wider">Cover</span>
                     )}
@@ -129,7 +136,13 @@ export default function SpreadFilmstrip() {
                     {/* Left half */}
                     <div className="flex-1 h-full border-r border-cream-200 bg-cream-50 p-1 flex items-center justify-center overflow-hidden">
                       {leftPhoto ? (
-                        <img src={leftPhoto.url} alt={`p${spread.leftNum}`} className="w-full h-full object-cover rounded-[1px]" />
+                        <img 
+                          src={normalizeImageUrl(leftPhoto.url)} 
+                          alt={`p${spread.leftNum}`} 
+                          data-original-url={leftPhoto.url}
+                          className="w-full h-full object-cover rounded-[1px]" 
+                          onError={handleImageError}
+                        />
                       ) : (
                         <span className="text-[8px] text-cream-400 font-mono">{spread.leftNum}</span>
                       )}
@@ -137,7 +150,13 @@ export default function SpreadFilmstrip() {
                     {/* Right half */}
                     <div className="flex-1 h-full bg-cream-50 p-1 flex items-center justify-center overflow-hidden">
                       {rightPhoto ? (
-                        <img src={rightPhoto.url} alt={`p${spread.rightNum}`} className="w-full h-full object-cover rounded-[1px]" />
+                        <img 
+                          src={normalizeImageUrl(rightPhoto.url)} 
+                          alt={`p${spread.rightNum}`} 
+                          data-original-url={rightPhoto.url}
+                          className="w-full h-full object-cover rounded-[1px]" 
+                          onError={handleImageError}
+                        />
                       ) : (
                         <span className="text-[8px] text-cream-400 font-mono">{spread.rightNum}</span>
                       )}

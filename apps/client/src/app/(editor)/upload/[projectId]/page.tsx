@@ -560,6 +560,7 @@ function UploadContent() {
                       <img 
                         src={normalizeImageUrl(photo.url)} 
                         alt={`Photo ${idx + 1}`} 
+                        data-original-url={photo.url}
                         className="w-full h-full object-cover" 
                         onError={handleImageError} 
                       />

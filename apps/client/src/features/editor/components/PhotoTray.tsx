@@ -173,6 +173,7 @@ export default function PhotoTray() {
                 <img 
                   src={normalizeImageUrl(photo.url)} 
                   alt={photo.name || 'Photo'} 
+                  data-original-url={photo.url}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
                   onError={handleImageError}
                 />
