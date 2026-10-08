@@ -43,8 +43,8 @@ export function BrandLogo({
     );
   }
 
-  const viewBox = showSubtitle ? "0 0 380 76" : "0 0 380 62";
-  const defaultHeight = showSubtitle ? 40 : 34;
+  const viewBox = "0 0 250 64";
+  const defaultHeight = 36;
 
   return (
     <svg
@@ -65,44 +65,18 @@ export function BrandLogo({
         <rect x="28" y="18.5" width="13.7" height="21.6" rx="2.6" fill={isDark ? "#000000" : "#FFFFFF"} />
       </g>
 
-      {/* Brand Typography */}
+      {/* Brand Typography: Lowercase Inter */}
       <text
-        x="74"
-        y="47"
-        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        fontSize="33"
-        fontWeight="900"
+        x="70"
+        y="48"
+        fontFamily="Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        fontSize="34"
+        fontWeight="800"
         fill={textColor}
-        letterSpacing="-0.5"
+        letterSpacing="-0.04em"
       >
-        PERFECT
+        perfectpic
       </text>
-      <text
-        x="220"
-        y="47"
-        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        fontSize="33"
-        fontWeight="900"
-        fill={textColor}
-        letterSpacing="-0.5"
-      >
-        PIC
-      </text>
-
-      {/* Subtitle */}
-      {showSubtitle && (
-        <text
-          x="76"
-          y="65"
-          fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-          fontSize="10.5"
-          fontWeight="700"
-          fill={subtitleColor}
-          letterSpacing="4.5"
-        >
-          PREMIUM PHOTOBOOKS
-        </text>
-      )}
     </svg>
   );
 }

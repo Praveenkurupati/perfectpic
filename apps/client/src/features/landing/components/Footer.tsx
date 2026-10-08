@@ -4,67 +4,67 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export function Footer() {
   return (
-    <footer className="bg-noir-950 text-cream-50 pt-16 pb-8">
+    <footer className="bg-[#F4F2ED] text-[#0A0A0A] border-t border-[#D9D6CF] pt-16 pb-8">
       <div className="container mx-auto px-4 md:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
           <div className="lg:col-span-2">
-            <Link href="/" aria-label="PerfectPic Homepage" className="inline-block mb-4">
-              <BrandLogo variant="dark" height={36} className="h-8 md:h-9 w-auto" />
+            <Link href="/" aria-label="perfectpic homepage" className="inline-block mb-4">
+              <BrandLogo variant="light" height={36} className="h-8 md:h-9 w-auto" />
             </Link>
-            <p className="text-cream-50/70 font-sans text-sm max-w-sm leading-relaxed mb-8">
-              Premium Custom Photo Books That Last Generations. Printed on archival non-tearable paper with lay-flat binding for memories that deserve more than a phone gallery. Built with love on perfectpic.in.
+            <p className="text-[#5C5A55] font-sans text-sm max-w-sm leading-relaxed mb-8 lowercase">
+              lay-flat photobooks on archival, non-tearable paper. design online in minutes and get it delivered across india.
             </p>
             <a 
               href="https://wa.me/919999999999?text=Hi%20PerfectPic%20Team%2C%20I%20need%20help%20with%20my%20photobook" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="inline-flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors"
+              className="inline-flex items-center space-x-2 bg-[#0A0A0A] hover:bg-[#2A2926] text-white px-4 py-2 rounded-full text-xs font-medium transition-colors"
             >
-              <MessageCircle size={18} />
-              <span className="text-sm font-medium">WhatsApp Desk</span>
+              <MessageCircle size={16} />
+              <span className="lowercase">whatsapp support</span>
             </a>
           </div>
 
           <div>
-            <h4 className="font-serif text-lg font-semibold mb-6">Products</h4>
-            <ul className="space-y-4">
-              <li><Link href="/configure" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Hardcover Photobooks</Link></li>
-              <li><Link href="/configure" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Lay-flat Albums</Link></li>
-              <li><Link href="/pricing" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Pricing & Specs</Link></li>
-              <li><Link href="/configure" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Bulk Bundles</Link></li>
+            <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#0A0A0A] mb-6">products</h4>
+            <ul className="space-y-3">
+              <li><Link href="/configure" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">hardcover photobooks</Link></li>
+              <li><Link href="/configure" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">lay-flat albums</Link></li>
+              <li><Link href="/pricing" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">pricing & specs</Link></li>
+              <li><Link href="/configure" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">bulk bundles</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-serif text-lg font-semibold mb-6">Company</h4>
-            <ul className="space-y-4">
-              <li><Link href="/pricing" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Our Quality & Specs</Link></li>
-              <li><Link href="/faq" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">How It Works</Link></li>
-              <li><Link href="/faq" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Privacy & Photos</Link></li>
-              <li><Link href="/faq" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Contact Support</Link></li>
+            <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#0A0A0A] mb-6">company</h4>
+            <ul className="space-y-3">
+              <li><Link href="/pricing" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">quality & specs</Link></li>
+              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">how it works</Link></li>
+              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">privacy policy</Link></li>
+              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">contact support</Link></li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-serif text-lg font-semibold mb-6">Support & Account</h4>
-            <ul className="space-y-4">
-              <li><Link href="/faq" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">FAQs</Link></li>
-              <li><Link href="/orders" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Track Order</Link></li>
-              <li><Link href="/projects" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">My Saved Projects</Link></li>
-              <li><Link href="/settings" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">Account Settings</Link></li>
-              <li><Link href="/faq" className="text-cream-50/70 hover:text-foil-gold transition-colors text-sm">100% Reprint Policy</Link></li>
+            <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#0A0A0A] mb-6">support</h4>
+            <ul className="space-y-3">
+              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">faqs</Link></li>
+              <li><Link href="/orders" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">track orders</Link></li>
+              <li><Link href="/projects" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">saved projects</Link></li>
+              <li><Link href="/settings" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">account settings</Link></li>
+              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">100% reprint policy</Link></li>
             </ul>
           </div>
         </div>
 
-        <div className="pt-8 border-t border-cream-50/20 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          <p className="text-cream-50/50 text-xs">
-            © {new Date().getFullYear()} PerfectPic (perfectpic.in). All rights reserved. | Made with ❤️ in India
+        <div className="pt-8 border-t border-[#D9D6CF] flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <p className="text-[#5C5A55] text-xs lowercase">
+            © {new Date().getFullYear()} perfectpic. all rights reserved. • crafted in india
           </p>
-          <div className="flex space-x-6">
-            <a href="#" className="text-cream-50/50 hover:text-foil-gold transition-colors"><Instagram size={20} /></a>
-            <a href="#" className="text-cream-50/50 hover:text-foil-gold transition-colors"><Facebook size={20} /></a>
-            <a href="#" className="text-cream-50/50 hover:text-foil-gold transition-colors"><Twitter size={20} /></a>
+          <div className="flex space-x-6 text-[#5C5A55]">
+            <a href="#" className="hover:text-[#0A0A0A] transition-colors" aria-label="Instagram"><Instagram size={18} /></a>
+            <a href="#" className="hover:text-[#0A0A0A] transition-colors" aria-label="Facebook"><Facebook size={18} /></a>
+            <a href="#" className="hover:text-[#0A0A0A] transition-colors" aria-label="Twitter"><Twitter size={18} /></a>
           </div>
         </div>
       </div>
