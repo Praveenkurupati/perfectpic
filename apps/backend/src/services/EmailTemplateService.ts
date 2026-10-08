@@ -186,6 +186,10 @@ export class EmailTemplateService {
   ): IRenderEmailResult {
     this.loadPartials();
 
+    if (context.otpCode && typeof context.otpCode === 'string' && !context.digits) {
+      context.digits = context.otpCode.split('');
+    }
+
     const mergedContext = {
       frontendUrl: env.FRONTEND_URL || 'https://perfectpic.in',
       adminUrl: env.ADMIN_URL || 'https://admin.perfectpic.in',

@@ -143,7 +143,7 @@ class MailService {
 
     if (this.isConfigured && transporter) {
       try {
-        const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
+        const fromAddress = env.SMTP_FROM || `"PerfectPic" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
 
         // 3-second timeout guard using Promise.race (SRE-01)
         const sendPromise = transporter.sendMail({
@@ -180,15 +180,17 @@ class MailService {
     userName = 'Valued Collector',
     purpose: OtpPurpose | string = 'login'
   ): Promise<boolean> {
-    let subject = 'Your Login OTP - PerfectPic';
+    let subject = 'Verify Your Identity';
 
     if (purpose === 'signup') {
-      subject = 'Verify Your Email - PerfectPic Registration';
+      subject = 'Verify Your Identity — PerfectPic';
     } else if (purpose === 'password_reset') {
-      subject = 'Password Reset Code - PerfectPic';
+      subject = 'Verify Your Identity — Reset Password';
     } else if (purpose === 'order_verification') {
-      subject = 'Order Verification Code - PerfectPic';
+      subject = 'Verify Your Identity — Order Confirmation';
     }
+
+    const digits = otpCode ? otpCode.split('') : [];
 
     // Render Handlebars template with layout & partials
     const { html, text } = emailTemplateService.renderEmail('auth/otp', {
@@ -197,13 +199,14 @@ class MailService {
       purpose,
       name: userName,
       otpCode,
+      digits,
       expiryMinutes: 10,
     });
 
     const transporter = this.ensureTransporter();
     if (this.isConfigured && transporter) {
       try {
-        const fromAddress = env.SMTP_FROM || `"PerfectPic Security" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
+        const fromAddress = env.SMTP_FROM || `"PerfectPic" <${env.SMTP_USER || 'noreply@perfectpic.in'}>`;
         const mailOptions = {
           from: fromAddress,
           to: recipientEmail,

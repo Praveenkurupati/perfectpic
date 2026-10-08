@@ -1,56 +1,72 @@
-<div style="text-align: left;">
-  <!-- Greeting -->
-  <p style="font-size: 15px; color: #444444; margin: 0 0 16px 0;">
-    Hello {{#if name}}<strong>{{name}}</strong>{{else}}Valued Collector{{/if}},
-  </p>
+<!-- Schema.org JSON-LD Email Markup for Google / Gmail Smart OTP Parsing -->
+<script type="application/ld+json">
+{
+  "@context": "http://schema.org",
+  "@type": "EmailMessage",
+  "description": "One-time verification code from PerfectPic"
+}
+</script>
 
-  <!-- Title & Description based on Purpose -->
-  <h1 style="font-family: 'Playfair Display', Georgia, serif; font-size: 24px; font-weight: 700; color: #111111; margin: 0 0 12px 0; line-height: 1.3;">
+<div style="text-align: center;">
+  <!-- Main Title matching standard verification format -->
+  <h1 style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 26px; font-weight: 800; color: #111111; margin: 0 0 12px 0; text-align: center; line-height: 1.3; letter-spacing: -0.5px;">
     {{#if (eq purpose "signup")}}
-      Verify Your Email Address
+      Verify your email for PerfectPic
     {{else if (eq purpose "password_reset")}}
-      Reset Your Account Password
+      Password reset code from PerfectPic
     {{else if (eq purpose "order_verification")}}
-      Verify Your Photobook Order
+      Confirm your order with PerfectPic
     {{else}}
-      Your Verification Code
+      One-time login code from PerfectPic
     {{/if}}
   </h1>
 
-  <p style="font-size: 14px; color: #555555; margin: 0 0 24px 0; line-height: 1.6;">
-    {{#if (eq purpose "signup")}}
-      Thank you for choosing PerfectPic. Please use the verification code below to activate your account and begin your archival photobook journey:
-    {{else if (eq purpose "password_reset")}}
-      We received a request to reset your password. Enter the code below to securely set up a new password:
-    {{else if (eq purpose "order_verification")}}
-      Please enter this verification code to confirm and lock in your custom photobook order:
-    {{else}}
-      Use the one-time verification code below to securely authenticate your session:
-    {{/if}}
+  <p style="font-size: 14px; color: #555555; margin: 0 0 20px 0; text-align: center; line-height: 1.5;">
+    Hello {{#if name}}<strong>{{name}}</strong>{{else}}Valued Collector{{/if}}, use this one-time code to verify your identity and access your account:
   </p>
 
-  <!-- OTP Code Display Card -->
-  <div style="background-color: #faf8f5; border: 1px solid #e8e2d5; border-left: 4px solid #b89355; border-radius: 4px; padding: 22px 20px; text-align: center; margin: 28px 0;">
-    <div style="font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #8c734b; margin-bottom: 8px;">
-      One-Time Password (OTP)
+  <!-- OTP Code Requested Card (Gmail & Modern Webmail Style) -->
+  <div style="background-color: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 8px; padding: 22px 18px; text-align: center; margin: 20px 0 24px 0;">
+    <div style="font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: #57606a; margin-bottom: 14px;">
+      Code Requested
     </div>
-    <div class="otp-code" style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 38px; font-weight: 700; letter-spacing: 8px; color: #111111; padding: 4px 0;">
-      {{otpCode}}
+
+    <!-- Individual Digit Boxes -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 0 auto 16px auto;">
+      <tr>
+        {{#each digits}}
+        <td align="center" valign="middle" style="padding: 0 4px;">
+          <div style="width: 44px; height: 52px; line-height: 52px; text-align: center; background-color: #ffffff; border: 1px solid #d0d7de; border-radius: 6px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, monospace; font-size: 26px; font-weight: 700; color: #1f2328; box-shadow: 0 1px 2px rgba(0,0,0,0.05); user-select: all; -webkit-user-select: all;">
+            {{this}}
+          </div>
+        </td>
+        {{/each}}
+      </tr>
+    </table>
+
+    <!-- Copy Code Action Button -->
+    <div style="text-align: center; margin: 14px 0 8px 0;">
+      <a href="javascript:void(0)" 
+         onclick="if(navigator.clipboard){navigator.clipboard.writeText('{{otpCode}}');alert('Verification code copied: {{otpCode}}');}return false;" 
+         title="Click to copy code"
+         style="display: inline-block; background-color: #00629b; color: #ffffff !important; text-decoration: none; font-size: 13px; font-weight: 600; padding: 9px 24px; border-radius: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; letter-spacing: 0.2px; box-shadow: 0 1px 3px rgba(0, 98, 155, 0.3);">
+        Copy code
+      </a>
     </div>
-    <div style="font-size: 12px; color: #777777; margin-top: 8px;">
-      Valid for the next <strong>{{#if expiryMinutes}}{{expiryMinutes}}{{else}}10{{/if}} minutes</strong>. Never share this code with anyone.
+
+    <div style="font-size: 12px; color: #6e7781; margin-top: 10px;">
+      Valid for <strong>{{#if expiryMinutes}}{{expiryMinutes}}{{else}}10{{/if}} minutes</strong>. Never share this code with anyone.
     </div>
   </div>
 
-  <!-- Security Advice -->
-  <div style="background-color: #ffffff; border: 1px solid #f0eee6; border-radius: 4px; padding: 14px 16px; margin: 24px 0 16px 0;">
+  <!-- Security Information -->
+  <div style="background-color: #ffffff; border: 1px solid #ebebeb; border-radius: 6px; padding: 12px 16px; margin: 20px 0; text-align: left;">
     <p style="font-size: 12px; color: #666666; margin: 0; line-height: 1.5;">
-      🔒 <strong>Security Notice:</strong> PerfectPic staff will never ask you for your verification code or password over email, phone, or message. If you did not make this request, you can safely disregard this email.
+      🔒 <strong>Security Tip:</strong> PerfectPic will never contact you asking for your verification code. If you did not request this code, no action is needed and your account remains secure.
     </p>
   </div>
 
-  <p style="font-size: 14px; color: #444444; margin: 24px 0 0 0;">
-    Warm regards,<br>
-    <strong>The PerfectPic Team</strong>
+  <p style="font-size: 13px; color: #555555; margin: 20px 0 0 0; text-align: center;">
+    Thank you for choosing <strong>PerfectPic</strong>
   </p>
 </div>

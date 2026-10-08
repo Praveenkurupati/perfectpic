@@ -31,7 +31,7 @@ const port = Number(process.env.SMTP_PORT) || 465;
 const secure = Number(port) === 465 || process.env.SMTP_SECURE === 'true';
 const user = process.env.SMTP_USER || 'noreply@perfectpic.in';
 const pass = process.env.SMTP_PASS || '';
-const from = process.env.SMTP_FROM || `"PerfectPic Security" <${user}>`;
+const from = process.env.SMTP_FROM || `"PerfectPic" <${user}>`;
 
 const maskedPass = !pass
   ? '(UNSET)'

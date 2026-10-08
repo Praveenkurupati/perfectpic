@@ -45,7 +45,7 @@ export const env = {
   SMTP_USER: process.env.SMTP_USER || 'noreply@perfectpic.in',
   SMTP_PASS: process.env.SMTP_PASS || '',
   SMTP_SECURE: process.env.SMTP_SECURE ? process.env.SMTP_SECURE === 'true' : true,
-  SMTP_FROM: process.env.SMTP_FROM || (process.env.SMTP_USER ? `"PerfectPic Security" <${process.env.SMTP_USER}>` : 'PerfectPic Security <noreply@perfectpic.in>'),
+  SMTP_FROM: process.env.SMTP_FROM || (process.env.SMTP_USER ? `"PerfectPic" <${process.env.SMTP_USER}>` : 'PerfectPic <noreply@perfectpic.in>'),
   
   // Razorpay
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || '',
