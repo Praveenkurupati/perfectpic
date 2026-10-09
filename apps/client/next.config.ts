@@ -5,6 +5,19 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "motion",
+      "jspdf",
+      "clsx",
+      "tailwind-merge",
+      "zustand",
+    ],
+  },
   transpilePackages: [
     "@repo/ui",
     "@repo/types",

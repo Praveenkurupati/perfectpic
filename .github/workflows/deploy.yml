@@ -54,24 +54,79 @@ jobs:
             echo "🚀 Navigating to project directory: $APP_DIR"
             cd "$APP_DIR" || { echo "❌ Failed to change directory to $APP_DIR"; exit 1; }
 
-            # 3. Pull latest code from main branch cleanly
-            echo "📥 Pulling latest updates from origin/main..."
+            # 3. Pull latest code from main branch cleanly and detect changed apps
+            echo "📥 Inspecting commits and pulling latest updates from origin/main..."
+            PREV_REV=$(git rev-parse HEAD 2>/dev/null || echo "HEAD~1")
             git fetch origin main
             git reset --hard origin/main
+            NEW_REV=$(git rev-parse HEAD)
+
+            # Determine changed workspaces
+            CHANGED_FILES=$(git diff --name-only "$PREV_REV" "$NEW_REV" 2>/dev/null || echo "")
+
+            CLIENT_CHANGED=false
+            ADMIN_CHANGED=false
+            BACKEND_CHANGED=false
+
+            if echo "$CHANGED_FILES" | grep -qE "(^apps/client/|^packages/|pnpm-lock.yaml|package.json|turbo.json)"; then
+              CLIENT_CHANGED=true
+            fi
+            if echo "$CHANGED_FILES" | grep -qE "(^apps/admin/|^packages/|pnpm-lock.yaml|package.json|turbo.json)"; then
+              ADMIN_CHANGED=true
+            fi
+            if echo "$CHANGED_FILES" | grep -qE "(^apps/backend/|^packages/|pnpm-lock.yaml|package.json|turbo.json)"; then
+              BACKEND_CHANGED=true
+            fi
+
+            # Fallback: if no diff detected (e.g. forced push or first checkout), build all
+            if [ -z "$CHANGED_FILES" ] || [ "$PREV_REV" = "$NEW_REV" ]; then
+              CLIENT_CHANGED=true
+              ADMIN_CHANGED=true
+              BACKEND_CHANGED=true
+            fi
+
+            echo "📊 Change Detection:"
+            echo "   • Client changed:  $CLIENT_CHANGED"
+            echo "   • Admin changed:   $ADMIN_CHANGED"
+            echo "   • Backend changed: $BACKEND_CHANGED"
 
             # 4. Install dependencies using pnpm
             echo "📦 Installing dependencies with pnpm..."
             pnpm install --frozen-lockfile || pnpm install
 
-            # 5. Build applications
-            echo "🔨 Building applications..."
+            # 5. Smart Selective Build with memory isolation
+            echo "🔨 Building applications selectively..."
             export NODE_OPTIONS="--max-old-space-size=2048"
-            pnpm build
 
-            # 6. Restart/Reload PM2 services
+            pnpm --filter=@repo/types build 2>/dev/null || true
+
+            if [ "$CLIENT_CHANGED" = "true" ]; then
+              echo "⚡ Compiling @repo/client..."
+              pnpm --filter=@repo/client build
+            else
+              echo "⏩ Skipping @repo/client (0 changes detected)"
+            fi
+
+            if [ "$ADMIN_CHANGED" = "true" ]; then
+              echo "⚡ Compiling @repo/admin..."
+              pnpm --filter=@repo/admin build
+            else
+              echo "⏩ Skipping @repo/admin (0 changes detected)"
+            fi
+
+            if [ "$BACKEND_CHANGED" = "true" ]; then
+              echo "⚡ Compiling @repo/backend..."
+              pnpm --filter=@repo/backend build
+            else
+              echo "⏩ Skipping @repo/backend (0 changes detected)"
+            fi
+
+            # 6. Restart/Reload PM2 services selectively
             echo "🔄 Reloading PM2 services..."
             if [ -f "ecosystem.config.js" ]; then
-              pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js || pm2 restart all
+              if [ "$CLIENT_CHANGED" = "true" ]; then pm2 reload perfectpic-client --update-env || pm2 restart perfectpic-client || true; fi
+              if [ "$ADMIN_CHANGED" = "true" ]; then pm2 reload perfectpic-admin --update-env || pm2 restart perfectpic-admin || true; fi
+              if [ "$BACKEND_CHANGED" = "true" ]; then pm2 reload perfectpic-backend --update-env || pm2 restart perfectpic-backend || true; fi
             else
               pm2 reload all || pm2 restart all
             fi

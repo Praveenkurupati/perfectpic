@@ -15,17 +15,57 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push:
-    name: Build & Push Images to GHCR
+  # ── 1. Detect Changes to Avoid Redundant Builds ──────────────────────────────
+  detect-changes:
+    name: Detect Changed Applications
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      admin: ${{ steps.filter.outputs.admin }}
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
+      - name: Check for file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'apps/backend/**'
+              - 'packages/**'
+              - 'docker/backend.Dockerfile'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'turbo.json'
+            admin:
+              - 'apps/admin/**'
+              - 'packages/**'
+              - 'docker/admin.Dockerfile'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'turbo.json'
+            client:
+              - 'apps/client/**'
+              - 'packages/**'
+              - 'docker/client.Dockerfile'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'turbo.json'
+
+  # ── 2. Parallel Independent Build Jobs ───────────────────────────────────────
+  build-backend:
+    name: Build & Push Backend
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Compute Lowercase Registry Names
-        id: repo_names
         run: |
           OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
           REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
@@ -42,7 +82,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 1. Build and Push Backend Image
       - name: Build and Push Backend
         uses: docker/build-push-action@v6
         with:
@@ -57,7 +96,33 @@ jobs:
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
-      # 2. Build and Push Admin Image
+  build-admin:
+    name: Build & Push Admin
+    needs: detect-changes
+    if: needs.detect-changes.outputs.admin == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Compute Lowercase Registry Names
+        run: |
+          OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_PREFIX=ghcr.io/${OWNER_LOWER}" >> $GITHUB_ENV
+          echo "REPO_PREFIX=ghcr.io/${REPO_LOWER}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and Push Admin
         uses: docker/build-push-action@v6
         with:
@@ -72,7 +137,33 @@ jobs:
           cache-from: type=gha,scope=admin
           cache-to: type=gha,mode=max,scope=admin
 
-      # 3. Build and Push Client Image
+  build-client:
+    name: Build & Push Client
+    needs: detect-changes
+    if: needs.detect-changes.outputs.client == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Compute Lowercase Registry Names
+        run: |
+          OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_PREFIX=ghcr.io/${OWNER_LOWER}" >> $GITHUB_ENV
+          echo "REPO_PREFIX=ghcr.io/${REPO_LOWER}" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and Push Client
         uses: docker/build-push-action@v6
         with:
@@ -87,11 +178,18 @@ jobs:
           cache-from: type=gha,scope=client
           cache-to: type=gha,mode=max,scope=client
 
+  # ── 3. Deployment Step ───────────────────────────────────────────────────────
   deploy-ec2:
     name: Deploy Containers to AWS EC2
-    needs: build-and-push
+    needs: [detect-changes, build-backend, build-admin, build-client]
     runs-on: ubuntu-latest
-    if: "${{ vars.ENABLE_AUTO_DEPLOY == 'true' || secrets.EC2_HOST != '' }}"
+    if: |
+      always() &&
+      (vars.ENABLE_AUTO_DEPLOY == 'true' || secrets.EC2_HOST != '') &&
+      (needs.build-backend.result == 'success' || needs.build-backend.result == 'skipped') &&
+      (needs.build-admin.result == 'success' || needs.build-admin.result == 'skipped') &&
+      (needs.build-client.result == 'success' || needs.build-client.result == 'skipped') &&
+      !(needs.build-backend.result == 'skipped' && needs.build-admin.result == 'skipped' && needs.build-client.result == 'skipped')
     steps:
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.2.0

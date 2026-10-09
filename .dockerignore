@@ -48,6 +48,7 @@ apps/*/.env
 
 # Temporary & Editor
 scratch
+backups
 docker
 coverage
 .vscode

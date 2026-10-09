@@ -5,7 +5,26 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "dist/**"]
+    },
+    "@repo/types#build": {
+      "inputs": ["src/**", "tsconfig.json", "package.json"],
+      "outputs": ["dist/**"]
+    },
+    "@repo/backend#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig.json", "package.json"],
+      "outputs": ["dist/**"]
+    },
+    "@repo/admin#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "public/**", "next.config.ts", "tsconfig.json", "package.json", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "@repo/client#build": {
+      "dependsOn": ["^build"],
+      "inputs": ["src/**", "public/**", "next.config.ts", "tsconfig.json", "package.json", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]

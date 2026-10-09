@@ -3,8 +3,18 @@ name: Playwright E2E & Production Readiness CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'backups/**'
+      - 'scripts/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'backups/**'
+      - 'scripts/**'
 
 jobs:
   e2e-tests:
