@@ -13,6 +13,21 @@ import {
 import { OrderRepository } from '../repositories/OrderRepository';
 import { logger } from '../utils/logger';
 
+async function fetchBase64Image(url?: string): Promise<string | null> {
+  if (!url || typeof url !== 'string') return null;
+  if (url.startsWith('data:image/')) return url;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'PerfectPic-PrintEngine/1.0' } });
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const base64 = Buffer.from(buf).toString('base64');
+    return `data:${contentType};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}
+
 export interface PreflightIssue {
   severity: 'error' | 'warning' | 'info';
   code: string;
@@ -38,6 +53,10 @@ export interface PrintEngineCompileOptions {
   coverSubtitle?: string;
   spineText?: string;
   coverColor?: string;
+  coverImage?: string;
+  photos?: string[];
+  slotPhotos?: Record<string, { url: string } | null>;
+  pagePhotos?: Record<number, { url: string } | null>;
   foilColor?: 'gold' | 'silver' | 'rose-gold' | 'black';
   pages?: Array<{
     pageNumber: number;
@@ -221,6 +240,25 @@ export class PrintEngineService {
       doc.text(subtitleLines, frontCoverCenterX, subtitleStartY, { align: 'center', lineHeightFactor: 1.3 });
     }
 
+    // Front Cover Photo
+    const coverPhotoUrl = opts.coverImage || opts.slotPhotos?.['0']?.url || opts.photos?.[0];
+    if (coverPhotoUrl) {
+      const base64 = await fetchBase64Image(coverPhotoUrl);
+      if (base64) {
+        try {
+          const photoW = Math.min(widthMm - 60, 130);
+          const photoH = (photoW * 3) / 4;
+          const photoX = frontCoverCenterX - photoW / 2;
+          const photoY = (opts.coverSubtitle ? titleStartY + titleBlockHeightMm + 14 : titleStartY + titleBlockHeightMm + 8);
+          if (photoY + photoH < totalCoverHeightMm - wrapTurnInMm - 10) {
+            doc.addImage(base64, 'JPEG', photoX, photoY, photoW, photoH);
+          }
+        } catch (imgErr) {
+          logger.warn(`Could not embed cover photo: ${imgErr}`);
+        }
+      }
+    }
+
     // Spine Lettering (if spine width >= 5.5mm)
     if (preflight.spineMetrics.isSpinePrintable && (opts.spineText || title)) {
       const spineCenterX = wrapTurnInMm + widthMm + spineMm / 2;
@@ -254,6 +292,31 @@ export class PrintEngineService {
       doc.setLineWidth(0.1);
       doc.rect(safeX, safeY, safeW, safeH);
 
+      // Render interior spread photo
+      const pageData = opts.pages?.find((p) => p.pageNumber === pageNum);
+      const pagePhotoUrl =
+        pageData?.photoUrl ||
+        opts.slotPhotos?.[`${pageNum}_0`]?.url ||
+        opts.slotPhotos?.[String(pageNum)]?.url ||
+        opts.pagePhotos?.[pageNum]?.url ||
+        (opts.photos && opts.photos.length > 0 ? opts.photos[(pageNum - 1) % opts.photos.length] : undefined);
+
+      if (pagePhotoUrl) {
+        const base64 = await fetchBase64Image(pagePhotoUrl);
+        if (base64) {
+          try {
+            const photoMargin = 8;
+            const pX = safeX + photoMargin;
+            const pY = safeY + photoMargin;
+            const pW = safeW - photoMargin * 2;
+            const pH = safeH - photoMargin * 2 - (pageData?.caption ? 20 : 0);
+            doc.addImage(base64, 'JPEG', pX, pY, pW, pH);
+          } catch (imgErr) {
+            logger.warn(`Could not embed interior photo on page ${pageNum}: ${imgErr}`);
+          }
+        }
+      }
+
       // Page Header / Running Folio
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
@@ -268,8 +331,7 @@ export class PrintEngineService {
         doc.text(String(pageNum), safeX + safeW - 2, safeY + safeH - 2, { align: 'right' });
       }
 
-      // Check if page data exists with authoritative multiline wrapping (ENG-01)
-      const pageData = opts.pages?.find((p) => p.pageNumber === pageNum);
+      // Check if caption exists with authoritative multiline wrapping (ENG-01)
       if (pageData?.caption && pageData.caption.trim().length > 0) {
         doc.setFont('times', 'italic');
         doc.setFontSize(11);
@@ -310,16 +372,31 @@ export class PrintEngineService {
       throw new Error(`Order ${orderId} not found`);
     }
 
-    const title = (order as any).title || 'Custom Photobook Keepsake';
-    const pageCount = (order as any).pageCount || 40;
-    const dimensions = (order as any).dimensions || '8.25x8.25';
+    const snapshot = (order as any).projectSnapshot || (order as any).projectManifest || (order as any).items?.[0]?.projectSnapshot || {};
+    const title = snapshot.title || (order as any).title || 'Custom Photobook Keepsake';
+    const pageCount = snapshot.pageCount || (order as any).pageCount || 40;
+    const dimensions = snapshot.dimensions || (order as any).dimensions || '8.25x8.25';
     const coverType: BinderyCoverType = ((order as any).coverType as BinderyCoverType) || 'hardcover';
+    const coverTitle = snapshot.coverConfig?.title || snapshot.title || title;
+    const coverSubtitle = snapshot.coverConfig?.subtitle || snapshot.subtitle;
+    const spineText = snapshot.coverConfig?.spineText || title;
+    const coverColor = snapshot.coverConfig?.backgroundColor || snapshot.coverColor;
+    const coverImage = snapshot.coverImage || (order as any).coverUrl || (order as any).thumbnail;
+    const photos: string[] = snapshot.photos || (order as any).photos || [];
+    const slotPhotos = snapshot.slotPhotos || (order as any).slotPhotos || {};
+    const pagePhotos = snapshot.pagePhotos || (order as any).pagePhotos || {};
 
     return await this.compilePressReadyPdf(title, pageCount, {
       dimensions,
       coverType,
-      coverTitle: title,
-      spineText: title,
+      coverTitle,
+      coverSubtitle,
+      spineText,
+      coverColor,
+      coverImage,
+      photos,
+      slotPhotos,
+      pagePhotos,
     });
   }
 }

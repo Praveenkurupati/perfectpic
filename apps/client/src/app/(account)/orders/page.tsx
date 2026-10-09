@@ -18,6 +18,7 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
+import { generateBookProofPdf, generateBookPdfBlob } from '@/lib/pdfGenerator';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { Pagination } from '@/components/ui/Pagination';
 
@@ -55,6 +56,106 @@ export default function OrdersPage() {
   const [packagingQuality, setPackagingQuality] = useState(5);
   const [feedback, setFeedback] = useState('');
   const [recommend, setRecommend] = useState(true);
+  const [generatingPdfOrderId, setGeneratingPdfOrderId] = useState<string | null>(null);
+
+  const handleDownloadOrderPhotobookPdf = async (order: any) => {
+    const orderId = order.orderNumber || order.id;
+    setGeneratingPdfOrderId(orderId);
+
+    try {
+      // 1. Check if snapshot exists in order object or in localStorage
+      let snapshot = order.projectSnapshot || order.projectManifest;
+      if (!snapshot && typeof window !== 'undefined') {
+        try {
+          snapshot = JSON.parse(
+            localStorage.getItem(`pp_snapshot_${order.projectId}`) ||
+            localStorage.getItem(`pp_snapshot_${orderId}`) ||
+            'null'
+          );
+        } catch {}
+      }
+
+      // If snapshot is available, generate the high-res photobook with all photos (exact match to 3D Preview)
+      if (snapshot) {
+        await generateBookProofPdf({
+          title: snapshot.title || order.title || 'Curated Photobook',
+          subtitle: snapshot.subtitle,
+          seriesLabel: snapshot.seriesLabel,
+          dimensions: snapshot.dimensions || order.dimensions || '8.25" × 8.25"',
+          pageCount: snapshot.pageCount || order.pageCount || 32,
+          theme: snapshot.theme || order.theme || 'Minimal Modern',
+          coverImage: snapshot.coverImage || order.coverUrl || order.thumbnail,
+          coverColor: snapshot.coverColor,
+          coverConfig: snapshot.coverConfig,
+          photos: snapshot.photos,
+          pagePhotos: snapshot.pagePhotos,
+          slotPhotos: snapshot.slotPhotos,
+          slotCrops: snapshot.slotCrops,
+          pageLayouts: snapshot.pageLayouts,
+          pageBackgrounds: snapshot.pageBackgrounds,
+          projectId: snapshot.projectId || order.projectId || orderId,
+        });
+
+        // Background sync to S3 so subsequent downloads have verified file
+        try {
+          const blob = await generateBookPdfBlob({
+            title: snapshot.title || order.title || 'Curated Photobook',
+            subtitle: snapshot.subtitle,
+            seriesLabel: snapshot.seriesLabel,
+            dimensions: snapshot.dimensions || order.dimensions || '8.25" × 8.25"',
+            pageCount: snapshot.pageCount || order.pageCount || 32,
+            theme: snapshot.theme || order.theme || 'Minimal Modern',
+            coverImage: snapshot.coverImage || order.coverUrl || order.thumbnail,
+            coverColor: snapshot.coverColor,
+            coverConfig: snapshot.coverConfig,
+            photos: snapshot.photos,
+            pagePhotos: snapshot.pagePhotos,
+            slotPhotos: snapshot.slotPhotos,
+            slotCrops: snapshot.slotCrops,
+            pageLayouts: snapshot.pageLayouts,
+            pageBackgrounds: snapshot.pageBackgrounds,
+            projectId: snapshot.projectId || order.projectId || orderId,
+          });
+
+          const uploadRes = await api.uploadPdf(blob, `Photobook-${orderId}.pdf`, orderId);
+          if (uploadRes?.url) {
+            await api.updateOrderPdf(orderId, uploadRes.url).catch(() => {});
+            setOrders(prev => prev.map(o => (o.orderNumber || o.id) === orderId ? { ...o, pdfUrl: uploadRes.url } : o));
+          }
+        } catch (uploadErr) {
+          console.warn('Background S3 upload notice:', uploadErr);
+        }
+        return;
+      }
+
+      // 2. If no client snapshot, check if order.pdfUrl exists and trigger download
+      if (order.pdfUrl) {
+        const link = document.createElement('a');
+        link.href = order.pdfUrl;
+        link.target = '_blank';
+        link.download = `Photobook-${orderId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
+      }
+
+      // 3. Fallback: generate high-res proof with available order photos
+      await generateBookProofPdf({
+        title: order.title || 'Curated Photobook',
+        dimensions: order.dimensions || '8.25" × 8.25"',
+        pageCount: order.pageCount || 32,
+        coverImage: order.coverUrl || order.thumbnail,
+        photos: order.photos || (order.thumbnail ? [order.thumbnail] : []),
+        projectId: order.projectId || orderId,
+      });
+    } catch (err: any) {
+      console.error('Failed to generate photobook PDF:', err);
+      alert('Could not download photobook PDF. Please try again.');
+    } finally {
+      setGeneratingPdfOrderId(null);
+    }
+  };
 
   const handleReorderOrder = (order: any) => {
     const orderNum = order.orderNumber || order.id || 'order';
@@ -388,19 +489,24 @@ export default function OrdersPage() {
                         </button>
 
                         {/* Ultra-HD Photobook PDF Button */}
-                        {order.pdfUrl && (
-                          <a
-                            href={order.pdfUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            download={`Photobook-${order.orderNumber || order.id}.pdf`}
-                            className="text-xs font-medium border border-amber-300 bg-amber-50/60 hover:bg-amber-100 text-noir-900 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm"
-                            title="Download Ultra-HD Photobook PDF from AWS S3"
-                          >
-                            <Download size={13} className="text-foil-gold" />
-                            <span>Photobook PDF</span>
-                          </a>
-                        )}
+                        <button
+                          onClick={() => handleDownloadOrderPhotobookPdf(order)}
+                          disabled={generatingPdfOrderId === (order.orderNumber || order.id)}
+                          className="text-xs font-medium border border-amber-300 bg-amber-50/60 hover:bg-amber-100 disabled:opacity-60 text-noir-900 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                          title="Download Ultra-HD Photobook PDF with high-resolution photos"
+                        >
+                          {generatingPdfOrderId === (order.orderNumber || order.id) ? (
+                            <>
+                              <Loader2 size={13} className="text-foil-gold animate-spin" />
+                              <span>Generating PDF...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download size={13} className="text-foil-gold" />
+                              <span>Photobook PDF</span>
+                            </>
+                          )}
+                        </button>
 
                         {/* Rate & Review Button for Delivered Orders */}
                         {isDelivered && (

@@ -72,6 +72,32 @@ export const adminApi = {
       headers: authHeaders(),
       body: JSON.stringify({ shippingAddress }),
     }),
+  uploadPdf: async (blobOrFile: Blob | File, filename?: string, orderId?: string) => {
+    const formData = new FormData();
+    const fname = filename || `photobook-${Date.now()}.pdf`;
+    const file = blobOrFile instanceof File ? blobOrFile : new File([blobOrFile], fname, { type: 'application/pdf' });
+    formData.append('file', file);
+    formData.append('folder', 'photobooks');
+    if (orderId) formData.append('orderId', orderId);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to upload photobook PDF to S3');
+    }
+    return res.json() as Promise<{ url: string; filename: string; originalName: string; size: number }>;
+  },
+  updateOrderPdf: (orderId: string, pdfUrl: string) =>
+    fetcher<{ message: string; order: any }>(`/orders/${orderId}/pdf`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ pdfUrl }),
+    }),
   
   // Products & Templates
   getProducts: (param?: string | { category?: string; page?: number; limit?: number; search?: string }) => {

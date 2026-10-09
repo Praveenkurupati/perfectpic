@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { handleImageError } from "@/lib/urls";
-import { generateAdminProductionPdf } from "@/lib/pdfGenerator";
+import { generateAdminProductionPdf, generateAdminProductionPdfBlob } from "@/lib/pdfGenerator";
 import { generateGstInvoicePdf } from "@/lib/invoiceGenerator";
 import { generateShippingLabelPdf } from "@/lib/shippingLabelGenerator";
 import { cn } from "@/lib/utils";
@@ -326,13 +326,30 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
   const handleRenderPrintPdf = async () => {
     try {
       setIsRenderingPdf(true);
-      await generateAdminProductionPdf({
-        orderNumber: order?.orderNumber || orderId,
-        title: order?.title || 'Heirloom Photobook Edition',
+      const snapshot = order?.projectSnapshot || order?.projectManifest || order?.items?.[0]?.projectSnapshot || {};
+
+      const resolvedPhotos: string[] = (
+        snapshot.photos && snapshot.photos.length > 0
+          ? snapshot.photos
+          : (order?.photos && order.photos.length > 0 ? order.photos : [])
+      );
+
+      const resolvedSlotPhotos = snapshot.slotPhotos || order?.slotPhotos || {};
+      const resolvedPagePhotos = snapshot.pagePhotos || order?.pagePhotos || {};
+      const resolvedSlotCrops = snapshot.slotCrops || order?.slotCrops || {};
+      const resolvedPageLayouts = snapshot.pageLayouts || order?.pageLayouts || {};
+      const resolvedPageBackgrounds = snapshot.pageBackgrounds || order?.pageBackgrounds || {};
+      const resolvedCoverImage = snapshot.coverImage || order?.coverUrl || order?.thumbnail || resolvedPhotos[0];
+      const resolvedCoverConfig = snapshot.coverConfig || order?.coverConfig;
+      const orderNum = order?.orderNumber || orderId;
+
+      const pdfPayload = {
+        orderNumber: orderNum,
+        title: snapshot.title || order?.title || 'Heirloom Photobook Edition',
         customerName: order?.customerName || order?.shippingAddress?.fullName || 'Customer',
         customerEmail: order?.customerEmail,
-        dimensions: order?.dimensions || '8.25" × 8.25"',
-        pages: order?.pageCount || 40,
+        dimensions: snapshot.dimensions || order?.dimensions || '8.25" × 8.25"',
+        pages: snapshot.pageCount || order?.pageCount || 40,
         status: order?.status || 'Production',
         packaging: {
           keepsakeBox: hasKeepsakeBox,
@@ -340,17 +357,36 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
           uvGlaze: hasUvGlaze,
           miniPolaroids: hasMiniPolaroids,
         },
-        coverImage: order?.coverUrl || order?.thumbnail,
-        coverConfig: order?.coverConfig,
-        photos: order?.photos || [],
-        slotPhotos: order?.slotPhotos,
-        slotCrops: order?.slotCrops,
-        pageLayouts: order?.pageLayouts,
-        pageBackgrounds: order?.pageBackgrounds,
+        coverImage: resolvedCoverImage,
+        coverConfig: resolvedCoverConfig,
+        photos: resolvedPhotos,
+        slotPhotos: resolvedSlotPhotos,
+        pagePhotos: resolvedPagePhotos,
+        slotCrops: resolvedSlotCrops,
+        pageLayouts: resolvedPageLayouts,
+        pageBackgrounds: resolvedPageBackgrounds,
         dueDate: 'Immediate Print Run',
-      });
-    } catch (err) {
+      };
+
+      // 1. Generate full production PDF and trigger local download
+      await generateAdminProductionPdf(pdfPayload);
+
+      // 2. Generate PDF Blob and sync to AWS S3 in background, updating order.pdfUrl in DB
+      try {
+        const blob = await generateAdminProductionPdfBlob(pdfPayload);
+        const uploadRes = await adminApi.uploadPdf(blob, `PerfectPic-Print-${orderNum}.pdf`, orderId);
+        if (uploadRes?.url) {
+          await adminApi.updateOrderPdf(orderId, uploadRes.url);
+          setOrder((prev: any) => prev ? { ...prev, pdfUrl: uploadRes.url, printPdfUrl: uploadRes.url } : prev);
+          setFeedbackToast(`High-resolution print PDF compiled, downloaded, and synced to S3!`);
+          setTimeout(() => setFeedbackToast(null), 5000);
+        }
+      } catch (uploadErr) {
+        console.warn('Background S3 upload sync note:', uploadErr);
+      }
+    } catch (err: any) {
       console.error("Print Run PDF generation error:", err);
+      alert(err.message || "Failed to render print PDF");
     } finally {
       setIsRenderingPdf(false);
     }
@@ -417,29 +453,29 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             <span>Shipping Label</span>
           </button>
           
-          {order?.pdfUrl ? (
+          {order?.pdfUrl && (
             <a
               href={order.pdfUrl}
               target="_blank"
               rel="noreferrer"
               download={`PerfectPic-Print-${order?.orderNumber || orderId}.pdf`}
-              className="px-3.5 py-2 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-noir-900 transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-3.5 py-2 bg-cream-100 text-noir-900 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-cream-200 transition-colors flex items-center gap-1.5 border border-amber-300 shadow-xs"
               title="Download Commercial Print-Ready PDF from AWS S3"
             >
               <Download className="w-3.5 h-3.5 text-foil-gold" />
-              <span>Print PDF (S3)</span>
+              <span>S3 Print PDF</span>
             </a>
-          ) : (
-            <button 
-              onClick={handleRenderPrintPdf}
-              disabled={isRenderingPdf}
-              className="px-3.5 py-2 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-noir-900 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-              title="Compile and Download High-Res Print PDF"
-            >
-              {isRenderingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" /> : <Printer className="w-3.5 h-3.5 text-foil-gold" />}
-              <span>Render Print PDF</span>
-            </button>
           )}
+
+          <button 
+            onClick={handleRenderPrintPdf}
+            disabled={isRenderingPdf}
+            className="px-3.5 py-2 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-noir-900 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+            title="Compile Ultra-HD Print PDF with photos & sync to S3"
+          >
+            {isRenderingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" /> : <Printer className="w-3.5 h-3.5 text-foil-gold" />}
+            <span>{order?.pdfUrl ? 'Re-render & Sync S3' : 'Render Print PDF'}</span>
+          </button>
         </div>
       </div>
 

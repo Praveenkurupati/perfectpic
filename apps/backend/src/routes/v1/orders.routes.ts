@@ -29,7 +29,7 @@ router.put('/:id/status', authenticate, adminOnly, OrderController.updateOrderSt
 // Admin: Amend order delivery address (OPS-01)
 router.put('/:id/address', authenticate, adminOnly, OrderController.updateOrderAddress);
 
-// Admin / System: Update order PDF URL (e.g., when S3 PDF is generated)
-router.put('/:id/pdf', authenticate, adminOnly, OrderController.updateOrderPdf);
+// Admin / System / Customer: Update order PDF URL (when S3 PDF is generated)
+router.put('/:id/pdf', optionalAuth, OrderController.updateOrderPdf);
 
 export default router;

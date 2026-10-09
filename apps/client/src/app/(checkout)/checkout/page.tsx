@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { useAddressStore } from '@/stores/useAddressStore';
 import { api } from '@/lib/api';
 import { trackMetaInitiateCheckout, trackMetaPurchase } from '@/lib/metaPixel';
+import { generateBookPdfBlob } from '@/lib/pdfGenerator';
 import PackagingUpsellModal from '@/features/checkout/components/PackagingUpsellModal';
 
 // Modular Step Components
@@ -39,6 +40,39 @@ function loadRazorpayScript(): Promise<boolean> {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
+}
+
+async function renderAndUploadPhotobookPdf(snapshot: any, primaryItem: any): Promise<string> {
+  if (!snapshot) return '';
+  try {
+    const pdfBlob = await generateBookPdfBlob({
+      title: snapshot.title || primaryItem?.title || 'Heirloom Custom Photobook',
+      subtitle: snapshot.subtitle,
+      seriesLabel: snapshot.seriesLabel,
+      dimensions: snapshot.dimensions || primaryItem?.dimensions,
+      pageCount: snapshot.pageCount || primaryItem?.pageCount || 32,
+      theme: snapshot.theme || 'Minimal Modern',
+      coverImage: snapshot.coverImage || primaryItem?.thumbnail,
+      coverColor: snapshot.coverColor,
+      coverConfig: snapshot.coverConfig,
+      photos: snapshot.photos,
+      pagePhotos: snapshot.pagePhotos,
+      slotPhotos: snapshot.slotPhotos,
+      slotCrops: snapshot.slotCrops,
+      pageLayouts: snapshot.pageLayouts,
+      pageBackgrounds: snapshot.pageBackgrounds,
+      projectId: snapshot.projectId || primaryItem?.projectId,
+    });
+
+    const fname = `Photobook-${snapshot.projectId || primaryItem?.projectId || Date.now()}.pdf`;
+    const uploadRes = await api.uploadPdf(pdfBlob, fname);
+    if (uploadRes?.url) {
+      return uploadRes.url;
+    }
+  } catch (err) {
+    console.warn('Could not pre-render and upload photobook PDF at checkout:', err);
+  }
+  return '';
 }
 
 export default function CheckoutPage() {
@@ -282,6 +316,9 @@ export default function CheckoutPage() {
                     razorpay_signature: response.razorpay_signature,
                   });
 
+                  setSubmissionStep('Rendering print-ready Photobook PDF with photos & uploading to S3...');
+                  const uploadedPdfUrl = await renderAndUploadPhotobookPdf(snapshot, primaryItem);
+
                   setSubmissionStep('Submitting order & enqueuing print worker...');
                   const orderPayload = {
                     title: primaryItem?.title || 'Heirloom Custom Photobook',
@@ -293,7 +330,10 @@ export default function CheckoutPage() {
                       projectId: it.projectId,
                       projectSnapshot: it.projectSnapshot,
                     })),
+                    projectSnapshot: snapshot,
                     projectManifest: snapshot,
+                    pdfUrl: uploadedPdfUrl || undefined,
+                    printPdfUrl: uploadedPdfUrl || undefined,
                     projectId: primaryItem?.projectId,
                     customerName: shippingForm.fullName,
                     customerEmail: user?.email || 'guest@perfectpic.in',
@@ -330,6 +370,16 @@ export default function CheckoutPage() {
                   const orderId = result.orderNumber || result.id || (result as any).order?.orderNumber;
                   const guestToken = (result as any).guestToken || (result as any).order?.guestToken;
 
+                  if (uploadedPdfUrl && orderId) {
+                    await api.updateOrderPdf(orderId, uploadedPdfUrl).catch(() => {});
+                  }
+                  if (typeof window !== 'undefined' && orderId) {
+                    try {
+                      if (snapshot) localStorage.setItem(`pp_snapshot_${orderId}`, JSON.stringify(snapshot));
+                      if (uploadedPdfUrl) localStorage.setItem(`pp_pdf_${orderId}`, uploadedPdfUrl);
+                    } catch {}
+                  }
+
                   trackMetaPurchase({
                     orderId: String(orderId),
                     total: finalTotal,
@@ -360,6 +410,9 @@ export default function CheckoutPage() {
       }
 
       // Offline dev mode fallback or mock order submission
+      setSubmissionStep('Rendering print-ready Photobook PDF with photos & uploading to S3...');
+      const uploadedPdfUrl = await renderAndUploadPhotobookPdf(snapshot, primaryItem);
+
       setSubmissionStep('Submitting order & enqueuing print worker...');
 
       const orderPayload = {
@@ -372,7 +425,10 @@ export default function CheckoutPage() {
           projectId: it.projectId,
           projectSnapshot: it.projectSnapshot,
         })),
+        projectSnapshot: snapshot,
         projectManifest: snapshot,
+        pdfUrl: uploadedPdfUrl || undefined,
+        printPdfUrl: uploadedPdfUrl || undefined,
         projectId: primaryItem?.projectId,
         customerName: shippingForm.fullName,
         customerEmail: user?.email || 'guest@perfectpic.in',
@@ -405,6 +461,16 @@ export default function CheckoutPage() {
       const result = await api.createOrder(orderPayload);
       const orderId = result.orderNumber || result.id || (result as any).order?.orderNumber;
       const guestToken = (result as any).guestToken || (result as any).order?.guestToken;
+
+      if (uploadedPdfUrl && orderId) {
+        await api.updateOrderPdf(orderId, uploadedPdfUrl).catch(() => {});
+      }
+      if (typeof window !== 'undefined' && orderId) {
+        try {
+          if (snapshot) localStorage.setItem(`pp_snapshot_${orderId}`, JSON.stringify(snapshot));
+          if (uploadedPdfUrl) localStorage.setItem(`pp_pdf_${orderId}`, uploadedPdfUrl);
+        } catch {}
+      }
 
       trackMetaPurchase({
         orderId: String(orderId),

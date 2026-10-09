@@ -434,7 +434,7 @@ async function drawPageLayoutSlots(
  * Generates an HP Indigo Production Print Run PDF for admin bindery queue.
  * Covers Front Plate + True 420mm × 210mm Layflat Spreads + Back Cover.
  */
-export async function generateAdminProductionPdf(options: AdminPrintPdfOptions): Promise<void> {
+export async function buildAdminProductionPdfDocument(options: AdminPrintPdfOptions): Promise<jsPDF> {
   const {
     orderNumber,
     title,
@@ -709,7 +709,23 @@ export async function generateAdminProductionPdf(options: AdminPrintPdfOptions):
   doc.text('HP INDIGO 12000 DIGITAL PRESS • ARCHIVAL PUR-MELT LAY-FLAT BINDING', 105, 88, { align: 'center' });
   doc.text(`ORDER NO: ${orderNumber} • BENGALURU BINDERY FACILITY`, 105, 95, { align: 'center' });
 
-  doc.save(`Production_Print_Run_${orderNumber}.pdf`);
+  return doc;
+}
+
+/**
+ * Generates and triggers browser download of the production print run PDF.
+ */
+export async function generateAdminProductionPdf(options: AdminPrintPdfOptions): Promise<void> {
+  const doc = await buildAdminProductionPdfDocument(options);
+  doc.save(`Production_Print_Run_${options.orderNumber}.pdf`);
+}
+
+/**
+ * Generates the production print run PDF as a Blob for S3 upload.
+ */
+export async function generateAdminProductionPdfBlob(options: AdminPrintPdfOptions): Promise<Blob> {
+  const doc = await buildAdminProductionPdfDocument(options);
+  return doc.output('blob');
 }
 
 /**
