@@ -1,57 +1,57 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { 
-  UploadCloud, 
+  Plus, 
   Check, 
   Trash2, 
-  Plus, 
-  Sparkles, 
-  ArrowRight, 
-  ArrowLeft, 
-  Loader2, 
   AlertCircle, 
-  CheckCircle2, 
-  Layers, 
-  Wand2,
-  Lock,
-  Image as ImageIcon
+  Loader2 
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useEditorStore, getMinPhotosRequired } from '@/stores/useEditorStore';
+import { useEditorStore } from '@/stores/useEditorStore';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
 import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 import { trackEvent } from '@/lib/analytics';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import { getFallbackProduct } from '@/features/catalog/data/catalogFallback';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
-
-
 
 function UploadContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const projectId = (params?.projectId as string) || 'new-project';
-  const templateSlug = searchParams.get('template');
+  const templateSlug = searchParams.get('template') || 'travel-series-kerala';
+  const sizeParam = searchParams.get('size') || '8.25';
   const pagesParam = searchParams.get('pages') || '32';
   const initialPageCount = parseInt(pagesParam, 10) || 32;
 
-  const [currentPageCount, setCurrentPageCount] = useState<number>(initialPageCount);
-  const { photos, setPhotos, addPhoto, removePhoto, setTemplate, setPageCount, initProject } = useEditorStore();
-  const [loadingTemplate, setLoadingTemplate] = useState(false);
-  const [templateName, setTemplateName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const { photos, addPhoto, removePhoto, setTemplate, setPageCount, initProject } = useEditorStore();
+  
+  // Selected photos for batch operations
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Template resolution
+  const fallbackBook = useMemo(() => getFallbackProduct(templateSlug), [templateSlug]);
+  const [templateData, setTemplateData] = useState<any>(fallbackBook || null);
+
+  // Upload progress state
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadTotal, setUploadTotal] = useState<number>(0);
   const [uploadCurrent, setUploadCurrent] = useState<number>(0);
   const [uploadPercent, setUploadPercent] = useState<number>(0);
-  const [currentUploadingName, setCurrentUploadingName] = useState<string>('');
   const [isDragging, setIsDragging] = useState(false);
   const [validationAlert, setValidationAlert] = useState<string | null>(null);
+
+  // Cloud pickers & modals
   const [pickerModalOpen, setPickerModalOpen] = useState(false);
   const [pickerInitialTab, setPickerInitialTab] = useState<'photos' | 'drive'>('photos');
-  const [cloudImportToast, setCloudImportToast] = useState<string | null>(null);
+  const [cloudToast, setCloudToast] = useState<string | null>(null);
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
   const [pendingNavigationUrl, setPendingNavigationUrl] = useState<string | null>(null);
 
@@ -71,54 +71,41 @@ function UploadContent() {
     };
   }, [photos.length]);
 
-  // Initialize or restore project state scoped to this specific project ID
+  // Initialize project state
   useEffect(() => {
     if (projectId) {
       initProject(projectId, {
         pages: initialPageCount,
       });
+      setPageCount(initialPageCount);
     }
-  }, [projectId, initProject, initialPageCount]);
+  }, [projectId, initProject, initialPageCount, setPageCount]);
 
-  // Dynamic minimum photos calculation based on selected pages
-  const minRequired = getMinPhotosRequired(currentPageCount);
-  const uploadedCount = photos.length;
-  const isRequirementMet = uploadedCount >= minRequired;
-  const remainingCount = Math.max(0, minRequired - uploadedCount);
-  const progressPercent = Math.min(100, Math.round((uploadedCount / minRequired) * 100));
-
-  // Sync page count with store
-  useEffect(() => {
-    if (currentPageCount) {
-      setPageCount(currentPageCount);
-    }
-  }, [currentPageCount, setPageCount]);
-
-  // Load template info if templateSlug is provided (do not prefill photos)
+  // Fetch product template from API if available
   useEffect(() => {
     if (templateSlug) {
-      setLoadingTemplate(true);
       api.getProduct(templateSlug)
         .then((res) => {
           if (res) {
             setTemplate(res);
-            setTemplateName(res.displayName || res.title);
-            // Notice: We intentionally do not prefill template photos. User must upload starting from photo #1.
+            setTemplateData(res);
           }
         })
-        .catch((err) => {
-          console.warn('Could not fetch template for upload page:', err);
-        })
-        .finally(() => {
-          setLoadingTemplate(false);
+        .catch(() => {
+          // Graceful fallback to static catalog
+          if (fallbackBook) {
+            setTemplate(fallbackBook);
+            setTemplateData(fallbackBook);
+          }
         });
     }
-  }, [templateSlug, setTemplate]);
+  }, [templateSlug, setTemplate, fallbackBook]);
 
+  // File upload processor
   const processFiles = async (files: FileList | File[]) => {
     const fileArray = Array.from(files).filter(isImageFile);
     if (fileArray.length === 0) {
-      setValidationAlert('No supported image files detected. We accept JPEG, PNG, WebP, HEIC, TIFF, RAW, and BMP photos.');
+      setValidationAlert('No supported image files detected. We accept JPEG, PNG, HEIC, WebP, TIFF, and RAW photos.');
       return;
     }
 
@@ -131,11 +118,9 @@ function UploadContent() {
 
     for (let i = 0; i < total; i++) {
       const file = fileArray[i]!;
-      setCurrentUploadingName(file.name);
       setUploadCurrent(i + 1);
       const pct = Math.round(((i + 1) / total) * 100);
       setUploadPercent(pct);
-      setUploadStatus(`Optimizing photo ${i + 1} of ${total} (${file.name})...`);
 
       try {
         const compressed = await compressImage(file, { maxDimension: 2400, quality: 0.85 });
@@ -145,7 +130,7 @@ function UploadContent() {
           const res = await api.uploadPhoto(compressed);
           photoUrl = res.url;
         } catch (uploadErr) {
-          console.warn('API photo upload failed, converting to permanent data URL:', uploadErr);
+          console.warn('API upload fallback to data URL:', uploadErr);
           photoUrl = await fileToDataUrl(compressed);
         }
 
@@ -162,11 +147,9 @@ function UploadContent() {
     }
 
     setIsUploading(false);
-    setUploadStatus('');
     setUploadTotal(0);
     setUploadCurrent(0);
     setUploadPercent(0);
-    setCurrentUploadingName('');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -196,6 +179,10 @@ function UploadContent() {
     }
   };
 
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
   const handleNavigationAttempt = (targetUrl: string) => {
     if (photos.length > 0) {
       setPendingNavigationUrl(targetUrl);
@@ -206,622 +193,485 @@ function UploadContent() {
   };
 
   const handleContinue = () => {
-    if (!isRequirementMet) {
-      setValidationAlert(
-        `Upload requirement not met: A ${currentPageCount}-page photobook requires at least ${minRequired} photos before you can proceed to layout design. Please upload ${remainingCount} more photo${remainingCount > 1 ? 's' : ''}.`
-      );
-      window.scrollTo({ top: 140, behavior: 'smooth' });
+    if (photos.length === 0) {
+      setValidationAlert('Please add at least 1 photo before proceeding to customise.');
+      window.scrollTo({ top: 120, behavior: 'smooth' });
       return;
     }
 
-    trackEvent('photo_upload', `Uploaded ${photos.length} Photos (Target: ${currentPageCount} Pages, Min: ${minRequired})`, {
+    trackEvent('photo_upload', `Uploaded ${photos.length} Photos (Target: ${initialPageCount} Pages)`, {
       photosCount: photos.length,
       projectId,
-      pages: currentPageCount,
-      minRequired,
+      pages: initialPageCount,
       template: templateSlug || 'custom',
     });
-    router.push(`/processing/${projectId}?pages=${currentPageCount}`);
+
+    const targetUrl = `/processing/${projectId}?pages=${initialPageCount}&template=${encodeURIComponent(templateSlug)}&size=${encodeURIComponent(sizeParam)}`;
+    router.push(targetUrl);
   };
 
+  const handleAddMoreLater = () => {
+    trackEvent('photo_upload', 'Add More Later Clicked', {
+      photosCount: photos.length,
+      projectId,
+    });
+    const targetUrl = `/studio/${projectId}?pages=${initialPageCount}&template=${encodeURIComponent(templateSlug)}&size=${encodeURIComponent(sizeParam)}`;
+    router.push(targetUrl);
+  };
+
+  // Selection handlers
+  const toggleSelectPhoto = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.length === photos.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(photos.map(p => p.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    selectedIds.forEach(id => removePhoto(id));
+    setSelectedIds([]);
+  };
+
+  // Book metadata
+  const displayTitle = (templateData?.shortTitle || fallbackBook?.shortTitle || templateData?.displayName || 'kerala').toLowerCase();
+  const seriesLabel = (templateData?.seriesLabel || fallbackBook?.seriesLabel || 'travel series').toLowerCase();
+  const bookCoverImage = templateData?.coverImage || fallbackBook?.coverImage || 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop';
+  const displayDimensions = sizeParam === '10' ? '10" × 10"' : '8.25" × 8.25"';
+
   return (
-    <div className="min-h-screen bg-cream-50 font-sans text-noir-900 py-8 px-4 md:px-8 pb-48 scroll-smooth">
-      <div className="max-w-6xl mx-auto space-y-6">
-        
-        {/* Navigation Breadcrumb / Back button */}
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => handleNavigationAttempt(`/configure${templateSlug ? `?template=${templateSlug}` : ''}`)}
-            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-noir-600 hover:text-noir-950 transition-colors"
+    <div className="min-h-screen bg-[#F4F2EC] font-sans text-black scroll-smooth">
+      {/* 1. Header with Logo, Step Indicator, and Save & Exit */}
+      <header className="bg-white border-b border-[#ECEAE4] sticky top-0 z-40 px-4 md:px-8 py-3.5">
+        <div className="max-w-[1240px] mx-auto flex items-center justify-between">
+          {/* Left: Brand Logo */}
+          <button 
+            type="button" 
+            onClick={() => handleNavigationAttempt('/')}
+            className="flex items-center select-none"
+            title="Return to Home"
           >
-            <ArrowLeft size={16} />
-            <span>Back to Configuration</span>
+            <BrandLogo variant="light" showSubtitle={false} height={26} className="h-6.5 w-auto" />
           </button>
-          <div className="text-xs text-noir-500 font-medium">
-            <span className="font-semibold text-noir-950">Step 2:</span> Photo Selection & Dynamic Validation
-          </div>
-        </div>
 
-        {/* Page Title & Real-time Validation Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between pb-5 border-b border-cream-200 gap-4">
+          {/* Center: Stepper (upload · customise · review · checkout) */}
+          <nav aria-label="Creation Progress" className="flex items-center gap-4 sm:gap-6 md:gap-8">
+            {/* Step 1: upload (Active) */}
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <span className="w-5 h-5 rounded-full bg-black text-white text-[11px] font-bold flex items-center justify-center">
+                1
+              </span>
+              <span className="text-xs font-bold text-black lowercase">
+                upload
+              </span>
+            </div>
+
+            {/* Step 2: customise */}
+            <div className="flex items-center gap-1.5 md:gap-2 text-[#8A8780]">
+              <span className="w-5 h-5 rounded-full bg-[#D4D1CA] text-white text-[11px] font-medium flex items-center justify-center">
+                2
+              </span>
+              <span className="text-xs font-medium lowercase hidden sm:inline">
+                customise
+              </span>
+            </div>
+
+            {/* Step 3: review */}
+            <div className="flex items-center gap-1.5 md:gap-2 text-[#8A8780]">
+              <span className="w-5 h-5 rounded-full bg-[#D4D1CA] text-white text-[11px] font-medium flex items-center justify-center">
+                3
+              </span>
+              <span className="text-xs font-medium lowercase hidden sm:inline">
+                review
+              </span>
+            </div>
+
+            {/* Step 4: checkout */}
+            <div className="flex items-center gap-1.5 md:gap-2 text-[#8A8780]">
+              <span className="w-5 h-5 rounded-full bg-[#D4D1CA] text-white text-[11px] font-medium flex items-center justify-center">
+                4
+              </span>
+              <span className="text-xs font-medium lowercase hidden sm:inline">
+                checkout
+              </span>
+            </div>
+          </nav>
+
+          {/* Right: Save & Exit */}
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs uppercase tracking-widest text-foil-gold font-semibold mb-1">
-              <Sparkles size={14} />
-              <span>Smart Curation & Layout Validation</span>
-            </div>
-            <h1 className="font-serif text-3xl md:text-5xl text-noir-950 font-medium">
-              Upload Your Photos
-            </h1>
-            <p className="text-sm text-noir-600 mt-1 max-w-xl">
-              {templateName 
-                ? `Customizing "${templateName}". Review template photos and add your own memories.` 
-                : `Upload high-resolution photographs for your ${currentPageCount}-page edition. Our validation engine ensures full layout coverage before designing.`}
-            </p>
-          </div>
-
-          {/* Target & Minimum Requirements Card */}
-          <div className="bg-white p-4 rounded-sm border border-cream-300 shadow-xs text-right min-w-[240px]">
-            <div className="flex items-baseline justify-end gap-1.5">
-              <span className="text-2xl font-serif font-bold text-noir-950">{uploadedCount}</span>
-              <span className="text-xs text-noir-500 font-mono">/ {minRequired} Minimum</span>
-              <span className="text-xs text-noir-400 font-mono">({currentPageCount} Pages)</span>
-            </div>
-            <div className="mt-1 flex items-center justify-end gap-1.5">
-              {isRequirementMet ? (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <CheckCircle2 size={12} /> Requirement Met
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  <AlertCircle size={12} /> {remainingCount} More Needed
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Cloud Import Feedback Banner */}
-        {cloudImportToast && (
-          <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-sm text-xs text-emerald-900 flex items-center justify-between gap-3 shadow-xs animate-fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-              <span className="font-semibold">{cloudImportToast}</span>
-            </div>
             <button
               type="button"
-              onClick={() => setCloudImportToast(null)}
-              className="text-emerald-700 hover:text-emerald-950 font-bold text-xs"
+              onClick={() => handleNavigationAttempt('/projects')}
+              className="text-xs font-medium text-black hover:opacity-70 transition-opacity lowercase"
             >
-              Dismiss
+              save & exit
             </button>
-          </div>
-        )}
-
-        {/* Page Count Format Selector Pills */}
-        <div className="bg-white p-4 rounded-sm border border-cream-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-noir-700 font-medium">
-            <Layers size={15} className="text-foil-gold shrink-0" />
-            <span>Photobook Edition Format:</span>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {[12, 24, 32, 60, 120].map((count) => {
-              const req = getMinPhotosRequired(count);
-              const isSelected = currentPageCount === count;
-              return (
-                <button
-                  key={count}
-                  type="button"
-                  onClick={() => setCurrentPageCount(count)}
-                  className={`px-3 py-1.5 rounded-sm text-[11px] font-medium transition-all ${
-                    isSelected
-                      ? 'bg-noir-950 text-cream-50 font-bold shadow-xs'
-                      : 'bg-cream-100 text-noir-700 hover:bg-cream-200'
-                  }`}
-                >
-                  {count} Pages (Min {req})
-                </button>
-              );
-            })}
           </div>
         </div>
+      </header>
 
-        {/* Dynamic Validation Status Banner */}
-        {!isRequirementMet ? (
-          <div className="bg-amber-50 border border-amber-300 p-5 rounded-sm shadow-xs space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
-                <AlertCircle size={18} />
-              </div>
-              <div className="flex-1 space-y-1">
-                <h3 className="text-sm font-bold text-amber-950">
-                  Minimum Photo Upload Requirement: {minRequired} Photos for {currentPageCount}-Page Edition
-                </h3>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  To ensure every page spread has rich archival photo coverage, please upload at least{' '}
-                  <strong>{minRequired} photos</strong> before proceeding to the Studio Editor. You have uploaded{' '}
-                  <strong>{uploadedCount}</strong>, so <strong>{remainingCount} more photo{remainingCount > 1 ? 's are' : ' is'} required</strong>.
-                </p>
-              </div>
-            </div>
-
-            {/* Visual Progress Bar */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex justify-between text-[11px] font-semibold text-amber-900 font-mono">
-                <span>Upload Progress: {uploadedCount} of {minRequired} Photos</span>
-                <span>{progressPercent}% Complete</span>
-              </div>
-              <div className="h-2.5 w-full bg-amber-200/70 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-amber-600 transition-all duration-300 rounded-full" 
-                  style={{ width: `${progressPercent}%` }} 
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-sm shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                <CheckCircle2 size={18} />
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
-                  ✓ Photo Requirement Met ({uploadedCount} Photos Ready)
-                </h3>
-                <p className="text-xs text-emerald-800">
-                  Minimum of {minRequired} photos satisfied for your {currentPageCount}-page edition. You can proceed to design or add more photos.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleContinue}
-              className="px-5 py-2.5 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs shrink-0"
-            >
-              <span>Design Photobook</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* Validation Error Toast Alert if user tried to proceed */}
-        {validationAlert && (
-          <div className="bg-red-50 border border-red-300 p-4 rounded-sm text-xs text-red-900 flex items-start justify-between gap-3">
-            <div className="flex items-start gap-2">
-              <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
-              <span>{validationAlert}</span>
-            </div>
-            <button 
-              onClick={() => setValidationAlert(null)}
-              className="text-red-700 hover:text-red-900 font-bold text-xs"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Real-time Upload Progress Banner */}
-        {isUploading && (
-          <div className="p-5 bg-gradient-to-r from-noir-950 via-noir-900 to-noir-950 text-cream-50 rounded-sm border border-foil-gold/50 shadow-luxury-md animate-in fade-in duration-300">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-foil-gold/20 flex items-center justify-center border border-foil-gold/40 shrink-0">
-                  <Loader2 size={20} className="text-foil-gold animate-spin" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-serif font-semibold text-base tracking-wide text-cream-50">
-                      Uploading & Optimizing Photos
-                    </span>
-                    <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-foil-gold/20 text-foil-gold font-mono font-bold">
-                      {uploadCurrent} of {uploadTotal}
-                    </span>
-                  </div>
-                  <p className="text-xs text-cream-200/80 mt-0.5 truncate max-w-md font-mono">
-                    {currentUploadingName ? `Processing: ${currentUploadingName}` : 'Calibrating high-resolution photo...'}
-                  </p>
-                </div>
-              </div>
-              <div className="sm:text-right shrink-0">
-                <span className="font-serif text-2xl font-bold text-foil-gold font-mono">
-                  {uploadPercent}%
-                </span>
-              </div>
-            </div>
-
-            {/* Real-time Progress Bar */}
-            <div className="w-full bg-noir-800 rounded-full h-3 overflow-hidden p-0.5 border border-white/10">
-              <div 
-                className="bg-gradient-to-r from-foil-gold via-amber-300 to-foil-gold h-full rounded-full transition-all duration-300 ease-out shadow-xs"
-                style={{ width: `${Math.max(5, uploadPercent)}%` }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between mt-2.5 text-[11px] text-cream-300/80">
-              <span className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-foil-gold" />
-                Archival compression preserving 300+ DPI press quality
-              </span>
-              <span className="font-mono text-cream-200/90 hidden sm:inline">
-                Uploaded photos appear below dynamically
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Main Grid: Upload Dropzone & Collection */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3 space-y-8">
+      {/* 2. Main Page Layout */}
+      <main className="max-w-[1240px] mx-auto px-4 sm:px-6 md:px-8 py-8 md:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* Left Column (8 cols): Title, Drag Box, Uploaded Grid */}
+          <div className="lg:col-span-8 space-y-6">
             
-            {/* Drag & Drop Upload Zone */}
-            <label
+            {/* Title & Description */}
+            <div>
+              <span className="text-xs text-[#7A7873] font-normal lowercase block mb-1.5">
+                step 1 of 4
+              </span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-black lowercase mb-2">
+                add your photos.
+              </h1>
+              <p className="text-xs sm:text-sm text-[#5C5A55] leading-relaxed max-w-2xl lowercase">
+                add up to 120 photos. we'll arrange them into spreads in about 60 seconds, and you can change anything.
+              </p>
+            </div>
+
+            {/* Validation Banner if present */}
+            {validationAlert && (
+              <div className="bg-red-50 border border-red-200 text-red-800 text-xs rounded-2xl p-4 flex items-center justify-between gap-3 animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={15} className="shrink-0 text-red-600" />
+                  <span>{validationAlert}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setValidationAlert(null)}
+                  className="text-red-900 font-bold hover:underline shrink-0"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {/* Cloud Toast if present */}
+            {cloudToast && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs rounded-2xl p-4 flex items-center justify-between gap-3 animate-fade-in">
+                <span>{cloudToast}</span>
+                <button
+                  type="button"
+                  onClick={() => setCloudToast(null)}
+                  className="text-emerald-950 font-bold hover:underline shrink-0"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {/* Drag & Drop Photos Zone */}
+            <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`border-2 border-dashed ${
-                isDragging ? 'border-foil-gold bg-cream-100 scale-[1.01]' : 'border-cream-400 bg-white'
-              } p-8 md:p-12 rounded-sm flex flex-col items-center justify-center text-center cursor-pointer hover:border-noir-950 hover:bg-cream-100/60 transition-all group`}
+              className={`border border-dashed ${
+                isDragging ? 'border-black bg-black/[0.03]' : 'border-[#B8B4AA] bg-transparent'
+              } rounded-3xl p-8 md:p-12 flex flex-col items-center justify-center text-center transition-all`}
             >
-              {isUploading ? (
-                <div 
-                  className="flex flex-col items-center w-full max-w-md mx-auto py-2"
-                  aria-live="polite"
-                  aria-atomic="true"
+              <button
+                type="button"
+                onClick={triggerFileInput}
+                className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center mb-3.5 shadow-xs hover:scale-105 transition-transform"
+                aria-label="Add photos"
+              >
+                <Plus size={22} className="stroke-[2.5]" />
+              </button>
+
+              <h3 className="text-lg md:text-xl font-bold text-black tracking-tight mb-1 lowercase">
+                drag photos here
+              </h3>
+
+              <p className="text-xs md:text-sm text-[#7A7873] mb-4.5 lowercase">
+                or choose from your device — jpg, png or heic
+              </p>
+
+              <button
+                type="button"
+                onClick={triggerFileInput}
+                disabled={isUploading}
+                className="bg-black hover:bg-neutral-800 text-white text-xs md:text-sm font-semibold px-7 py-3 rounded-full transition-colors shadow-xs lowercase"
+              >
+                choose from device
+              </button>
+
+              {/* Cloud photo picker shortcuts */}
+              <div className="flex items-center gap-3.5 mt-4 pt-3 border-t border-black/5 text-[11px] text-[#7A7873]">
+                <span>or import from:</span>
+                <button
+                  type="button"
+                  onClick={() => { setPickerInitialTab('photos'); setPickerModalOpen(true); }}
+                  className="inline-flex items-center gap-1.5 hover:text-black transition-colors font-medium lowercase"
                 >
-                  <div className="w-14 h-14 bg-foil-gold/15 rounded-full flex items-center justify-center mb-3 border border-foil-gold/40">
-                    <Loader2 size={26} className="text-foil-gold animate-spin" />
-                  </div>
-                  <span className="text-base font-serif font-semibold text-noir-950 mb-1">
-                    Processing Photos ({uploadCurrent} / {uploadTotal})
-                  </span>
-                  <div className="w-full mt-3 mb-2">
-                    <div className="flex justify-between items-center text-xs font-mono mb-1.5">
-                      <span className="text-noir-600 font-medium">Photo {uploadCurrent} of {uploadTotal}</span>
-                      <span className="font-bold text-foil-gold">{uploadPercent}%</span>
-                    </div>
-                    <div 
-                      role="progressbar"
-                      aria-valuenow={uploadPercent}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-label={`Photo upload progress: ${uploadPercent}% (${uploadCurrent} of ${uploadTotal} processed)`}
-                      className="w-full bg-cream-200 h-2.5 rounded-full overflow-hidden border border-cream-300"
+                  <GooglePhotosLogo className="w-3.5 h-3.5" />
+                  <span>google photos</span>
+                </button>
+                <span className="text-black/20">·</span>
+                <button
+                  type="button"
+                  onClick={() => { setPickerInitialTab('drive'); setPickerModalOpen(true); }}
+                  className="inline-flex items-center gap-1.5 hover:text-black transition-colors font-medium lowercase"
+                >
+                  <GoogleDriveLogo className="w-3.5 h-3.5" />
+                  <span>google drive</span>
+                </button>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                className="hidden"
+              />
+            </div>
+
+            {/* Uploaded Photos Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-sm md:text-base text-black lowercase">
+                    uploaded · {photos.length} photo{photos.length === 1 ? '' : 's'}
+                  </h3>
+                  {selectedIds.length > 0 && (
+                    <span className="text-xs text-[#7A7873]">
+                      ({selectedIds.length} selected)
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {selectedIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteSelected}
+                      className="text-xs text-red-600 hover:text-red-700 font-medium transition-colors lowercase cursor-pointer"
                     >
-                      <div 
-                        className="bg-gradient-to-r from-foil-gold to-amber-500 h-full rounded-full transition-all duration-300 ease-out"
-                        style={{ width: `${Math.max(5, uploadPercent)}%` }}
+                      delete selected
+                    </button>
+                  )}
+                  {photos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleToggleSelectAll}
+                      className="text-xs text-[#7A7873] hover:text-black font-medium transition-colors lowercase cursor-pointer"
+                    >
+                      {selectedIds.length === photos.length ? 'deselect all' : 'select all'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 6-Column Responsive Photo Grid */}
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 md:gap-3.5">
+                {/* 1. Uploaded Photos */}
+                {photos.map((photo, idx) => {
+                  const isSelected = selectedIds.includes(photo.id);
+                  return (
+                    <div
+                      key={photo.id}
+                      onClick={() => toggleSelectPhoto(photo.id)}
+                      className={`aspect-square rounded-2xl overflow-hidden relative group bg-[#D8D4CC] cursor-pointer transition-all ${
+                        isSelected ? 'ring-2 ring-black ring-offset-2' : 'hover:opacity-95'
+                      }`}
+                    >
+                      <img
+                        src={normalizeImageUrl(photo.url)}
+                        alt={photo.name || `Photo ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={handleImageError}
+                      />
+
+                      {/* Selection circle indicator */}
+                      <div className={`absolute top-2 left-2 w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                        isSelected ? 'bg-black text-white' : 'bg-black/30 backdrop-blur-xs text-transparent opacity-0 group-hover:opacity-100'
+                      }`}>
+                        <Check size={12} className="stroke-[3]" />
+                      </div>
+
+                      {/* Delete button on hover */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removePhoto(photo.id);
+                          setSelectedIds(prev => prev.filter(id => id !== photo.id));
+                        }}
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/90 text-red-600 hover:bg-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
+                        title="Remove photo"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* 2. Active Uploading State Tile (Matches design mockup exactly) */}
+                {isUploading && (
+                  <div className="aspect-square rounded-2xl bg-[#484642] flex flex-col items-center justify-center p-3 text-center text-white relative overflow-hidden shadow-xs animate-pulse">
+                    <span className="text-[11px] md:text-xs font-medium text-white/90 lowercase">
+                      uploading
+                    </span>
+                    <span className="text-xs md:text-sm font-bold text-white font-mono mt-0.5">
+                      {uploadPercent}%
+                    </span>
+                    <div className="w-3/4 h-1 bg-white/20 rounded-full mt-3 overflow-hidden">
+                      <div
+                        className="h-full bg-white rounded-full transition-all duration-300"
+                        style={{ width: `${Math.max(10, uploadPercent)}%` }}
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-noir-500 font-mono truncate max-w-sm">
-                    {currentUploadingName || uploadStatus}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <div className="w-16 h-16 bg-cream-100 group-hover:bg-cream-200 rounded-full flex items-center justify-center mb-4 transition-colors">
-                    <UploadCloud size={28} className="text-noir-900" />
-                  </div>
-                  <span className="bg-noir-950 text-cream-50 px-6 py-2.5 rounded-sm text-sm font-medium mb-3 shadow-xs group-hover:bg-noir-900 transition-colors">
-                    Browse Files from Device
-                  </span>
-                  <p className="text-noir-800 text-sm font-medium">Or drag and drop photos directly here</p>
-                  <p className="text-xs text-noir-500 mt-2">
-                    Minimum requirement: <strong>{minRequired} photos</strong> for {currentPageCount} pages • High-res JPEG, PNG, HEIC, TIFF, RAW, WebP
-                  </p>
-                </>
-              )}
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" 
-                onChange={handleFileUpload} 
-                disabled={isUploading}
-                className="hidden" 
-              />
-            </label>
+                )}
 
-            {/* Uploaded Photos Collection */}
-            <div className="bg-white p-6 border border-cream-300 rounded-sm">
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h3 className="font-serif text-2xl font-medium text-noir-950">
-                    Photo Collection ({photos.length})
-                  </h3>
-                  <p className="text-xs text-noir-500">
-                    {photos.length < minRequired
-                      ? `Upload at least ${minRequired - photos.length} more photo${minRequired - photos.length > 1 ? 's' : ''} to reach the ${minRequired} minimum.`
-                      : `All ${photos.length} photos ready. Tap trash icon to remove any unwanted take.`}
-                  </p>
-                </div>
-                {photos.length > 0 && (
-                  <button 
-                    onClick={() => setPhotos([])} 
-                    className="text-xs text-red-600 hover:text-red-700 font-semibold"
-                  >
-                    Clear All
-                  </button>
+                {/* 3. Empty Placeholders if 0 photos and not uploading */}
+                {photos.length === 0 && !isUploading && (
+                  <>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        onClick={triggerFileInput}
+                        className="aspect-square rounded-2xl bg-[#E6E2D8]/70 border border-dashed border-[#D2CDC3] flex items-center justify-center cursor-pointer hover:bg-[#E0DBD0] transition-colors"
+                        title="Click to add photos"
+                      >
+                        <span className="text-[#9E9A90] text-lg font-light">+</span>
+                      </div>
+                    ))}
+                  </>
                 )}
               </div>
-
-              {loadingTemplate ? (
-                <div className="py-16 text-center text-noir-600 flex flex-col items-center">
-                  <div className="w-8 h-8 border-2 border-noir-950 border-t-transparent rounded-full animate-spin mb-3"></div>
-                  <p className="text-sm">Loading template photos...</p>
-                </div>
-              ) : photos.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {photos.map((photo, idx) => (
-                    <div 
-                      key={photo.id} 
-                      className="group relative aspect-square bg-cream-100 rounded-sm overflow-hidden border border-cream-200 shadow-xs"
-                    >
-                      <img 
-                        src={normalizeImageUrl(photo.url)} 
-                        alt={`Photo ${idx + 1}`} 
-                        data-original-url={photo.url}
-                        className="w-full h-full object-cover" 
-                        onError={handleImageError} 
-                      />
-                      
-                      {/* Photo number indicator */}
-                      <span className="absolute top-1.5 left-1.5 bg-black/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded-[2px] font-mono">
-                        #{idx + 1}
-                      </span>
-
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <button 
-                          onClick={() => removePhoto(photo.id)}
-                          className="w-8 h-8 bg-white text-red-600 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors shadow-xs"
-                          title="Remove photo"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Plus card */}
-                  <label className="aspect-square border border-dashed border-cream-400 bg-cream-50 hover:bg-cream-100 rounded-sm flex flex-col items-center justify-center cursor-pointer transition-colors text-noir-600">
-                    <Plus size={24} className="mb-1" />
-                    <span className="text-xs font-semibold">Add More</span>
-                    <input type="file" multiple accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" onChange={handleFileUpload} className="hidden" />
-                  </label>
-                </div>
-              ) : (
-                <div className="text-center py-16 text-noir-500 border border-dashed border-cream-300 rounded-sm space-y-4">
-                  <div className="w-12 h-12 rounded-full bg-cream-200 text-noir-600 flex items-center justify-center mx-auto">
-                    <ImageIcon size={24} />
-                  </div>
-                  <div>
-                    <p className="font-serif text-xl text-noir-800 mb-1">No photos added yet</p>
-                    <p className="text-xs text-noir-500 max-w-sm mx-auto">
-                      Upload at least {minRequired} photos above to unlock layout design for your {currentPageCount}-page photobook.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-semibold transition-colors cursor-pointer shadow-xs">
-                      <UploadCloud size={14} />
-                      <span>Choose Photos from Device</span>
-                      <input 
-                        type="file" 
-                        multiple 
-                        accept="image/*,.heic,.heif,.dng,.cr2,.nef,.arw,.tiff,.tif,.bmp,.webp,.avif" 
-                        onChange={handleFileUpload} 
-                        className="hidden" 
-                      />
-                    </label>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1 space-y-4">
-            {/* Validation Summary Box */}
-            <div className="bg-white p-5 border border-cream-300 rounded-sm space-y-3">
-              <h3 className="font-serif text-lg font-medium text-noir-950 border-b border-cream-200 pb-2">
-                Validation Rules
-              </h3>
-              <div className="space-y-2 text-xs text-noir-700">
-                <div className="flex justify-between items-center py-1 border-b border-cream-100">
-                  <span className="text-noir-500">Selected Pages:</span>
-                  <span className="font-bold text-noir-950 font-mono">{currentPageCount} Pages</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-cream-100">
-                  <span className="text-noir-500">Minimum Required:</span>
-                  <span className="font-bold text-foil-gold font-mono">{minRequired} Photos</span>
-                </div>
-                <div className="flex justify-between items-center py-1 border-b border-cream-100">
-                  <span className="text-noir-500">Uploaded Count:</span>
-                  <span className="font-bold font-mono">{uploadedCount} Photos</span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-noir-500">Design Status:</span>
-                  <span className={`font-bold ${isRequirementMet ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {isRequirementMet ? 'UNLOCKED' : `LOCKED (-${remainingCount})`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cloud Sources */}
-            <div className="bg-white p-5 border border-cream-300 rounded-sm">
-              <h3 className="font-serif text-lg font-medium mb-1 text-noir-950">Cloud Photo Sources</h3>
-              <p className="text-xs text-noir-600 mb-3">Connect external accounts to import albums seamlessly:</p>
+          {/* Right Column (4 cols): Sticky Book Summary Card */}
+          <div className="lg:col-span-4 sticky top-24">
+            <div className="bg-white rounded-3xl p-6 md:p-7 shadow-xs border border-black/5">
               
-              <div className="space-y-2.5">
-                {/* Google Photos */}
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setPickerInitialTab('photos');
-                    setPickerModalOpen(true);
-                  }}
-                  className="w-full bg-cream-50 hover:bg-cream-100/80 border border-cream-200 hover:border-noir-950 p-2.5 rounded-sm flex items-center justify-between transition-all text-left group shadow-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-white border border-cream-300 flex items-center justify-center shrink-0">
-                      <GooglePhotosLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-noir-950 block group-hover:text-foil-gold transition-colors">
-                        Google Photos
-                      </span>
-                      <span className="text-[10px] text-noir-500">Albums & timeline import</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-semibold bg-white border border-cream-300 px-2 py-0.5 rounded-sm text-noir-700 group-hover:bg-noir-950 group-hover:text-cream-50 transition-colors">
-                    Browse
-                  </span>
-                </button>
+              {/* Book Spec Summary Header */}
+              <div className="flex items-start gap-4">
+                {/* Book Cover Thumbnail */}
+                <div className="w-20 h-24 rounded-2xl bg-[#E2DDD5] overflow-hidden shrink-0 border border-black/5 relative shadow-2xs flex items-center justify-center">
+                  {bookCoverImage ? (
+                    <img
+                      src={bookCoverImage}
+                      alt={displayTitle}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs text-[#7A7873] font-medium">cover</span>
+                  )}
+                  {/* Spine Crease / Shading on left edge */}
+                  <div className="absolute inset-y-0 left-0 w-2.5 bg-gradient-to-r from-black/20 to-transparent pointer-events-none" />
+                </div>
 
-                {/* Google Drive */}
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setPickerInitialTab('drive');
-                    setPickerModalOpen(true);
-                  }}
-                  className="w-full bg-cream-50 hover:bg-cream-100/80 border border-cream-200 hover:border-noir-950 p-2.5 rounded-sm flex items-center justify-between transition-all text-left group shadow-xs"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-white border border-cream-300 flex items-center justify-center shrink-0">
-                      <GoogleDriveLogo className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-noir-950 block group-hover:text-foil-gold transition-colors">
-                        Google Drive
-                      </span>
-                      <span className="text-[10px] text-noir-500">Folder & high-res files</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-semibold bg-white border border-cream-300 px-2 py-0.5 rounded-sm text-noir-700 group-hover:bg-noir-950 group-hover:text-cream-50 transition-colors">
-                    Browse
+                {/* Book Details */}
+                <div className="min-w-0 flex-1">
+                  <span className="text-xs text-[#8A8780] font-medium block lowercase truncate">
+                    {seriesLabel}
                   </span>
-                </button>
-
-                {/* Apple iCloud - Scheduled for iOS release */}
-                <div className="p-2 rounded-sm border border-cream-200 bg-cream-100/50 flex items-center justify-between text-noir-400">
-                  <div className="flex items-center gap-2.5 opacity-60">
-                    <span className="text-base ml-1.5">☁️</span>
-                    <div>
-                      <span className="text-xs font-medium text-noir-700 block">Apple iCloud</span>
-                      <span className="text-[10px] text-noir-400">iOS Photo Stream</span>
-                    </div>
-                  </div>
-                  <span className="text-[9px] bg-cream-200/80 text-noir-500 font-medium px-1.5 py-0.5 rounded-[2px]">
-                    iOS App
+                  <h2 className="text-2xl font-bold text-black tracking-tight block mt-0.5 lowercase truncate">
+                    {displayTitle}
+                  </h2>
+                  <span className="text-xs text-[#7A7873] block mt-1.5 font-medium">
+                    {displayDimensions}
+                  </span>
+                  <span className="text-xs text-[#7A7873] block">
+                    hardcover · lay-flat
                   </span>
                 </div>
               </div>
+
+              {/* Divider */}
+              <div className="border-t border-[#ECEAE3] my-5" />
+
+              {/* Progress Tracker */}
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-[#7A7873] lowercase font-medium">photos added</span>
+                  <span className="font-bold text-black font-mono">
+                    {photos.length} / 120
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-[#ECEAE3] rounded-full overflow-hidden mb-6">
+                  <div
+                    className="h-full bg-black rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, (photos.length / 120) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Tips for the best print */}
+              <div className="mb-6">
+                <h4 className="text-xs font-bold text-black mb-3 lowercase tracking-tight">
+                  tips for the best print
+                </h4>
+                <ul className="space-y-2 text-xs text-[#5C5A55] leading-relaxed">
+                  <li className="flex items-start gap-2">
+                    <span className="text-black font-bold shrink-0">✓</span>
+                    <span>use original, high-resolution files</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-black font-bold shrink-0">✓</span>
+                    <span>portrait and landscape both work</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-black font-bold shrink-0">✓</span>
+                    <span>pick your favourites — fewer, better photos</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="w-full bg-black hover:bg-neutral-800 text-white text-sm font-semibold py-3.5 rounded-full transition-colors lowercase shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>continue</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddMoreLater}
+                  className="w-full bg-white border border-[#D0CCC3] hover:bg-[#FAF8F5] text-black text-sm font-medium py-3 rounded-full transition-colors lowercase flex items-center justify-center cursor-pointer"
+                >
+                  <span>add more later</span>
+                </button>
+              </div>
             </div>
-
-            {/* Quality Assurances */}
-            <div className="bg-cream-100 p-5 border border-cream-300 rounded-sm text-xs text-noir-700 space-y-2">
-              <span className="font-bold text-noir-950 block">AI Smart Layout Highlights:</span>
-              <p className="flex items-start gap-1.5">
-                <Check size={14} className="text-foil-gold shrink-0 mt-0.5" />
-                <span>Auto-deduplicates blurry & similar takes</span>
-              </p>
-              <p className="flex items-start gap-1.5">
-                <Check size={14} className="text-foil-gold shrink-0 mt-0.5" />
-                <span>Chronological & location-based timeline grouping</span>
-              </p>
-              <p className="flex items-start gap-1.5">
-                <Check size={14} className="text-foil-gold shrink-0 mt-0.5" />
-                <span>Smart face-aware centering for panoramic spreads</span>
-              </p>
-            </div>
           </div>
         </div>
-      </div>
+      </main>
 
-      {/* Floating Bottom Sticky Bar with Dynamic Validation Enforcement */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-cream-300 p-4 z-40 px-6 md:px-12 flex flex-col sm:flex-row justify-between items-center shadow-luxury-lg gap-4">
-        <div className="w-full sm:w-auto">
-          <div className="flex items-baseline gap-2">
-            <span className="font-serif text-2xl font-bold text-noir-950">{uploadedCount}</span>
-            <span className="text-xs text-noir-600 font-mono">
-              / {minRequired} Minimum Photos Required ({currentPageCount} Pages Selected)
-            </span>
-          </div>
-          
-          <div className="w-full sm:w-64 h-1.5 bg-cream-200 rounded-full overflow-hidden mt-1.5 mb-1">
-            <div 
-              className={`h-full transition-all duration-300 ${
-                isRequirementMet ? 'bg-emerald-600' : 'bg-amber-600'
-              }`}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-
-          <p className="text-[11px] text-noir-500">
-            {isRequirementMet ? (
-              <span className="text-emerald-700 font-medium">
-                ✓ Requirement satisfied ({uploadedCount} photos). Ready to generate smart layouts.
-              </span>
-            ) : (
-              <span className="text-amber-800 font-medium">
-                ⚠️ Upload at least {remainingCount} more photo{remainingCount > 1 ? 's' : ''} to unlock layout design.
-              </span>
-            )}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button 
-            type="button"
-            onClick={handleContinue}
-            disabled={!isRequirementMet}
-            className={`w-full sm:w-auto px-8 py-3.5 rounded-sm font-semibold tracking-wide text-xs uppercase flex items-center justify-center gap-2 transition-all shadow-xs ${
-              isRequirementMet
-                ? 'bg-noir-950 text-cream-50 hover:bg-noir-900 cursor-pointer'
-                : 'bg-neutral-300 text-neutral-500 cursor-not-allowed border border-neutral-300'
-            }`}
-            title={
-              isRequirementMet
-                ? 'Proceed to Smart Layout'
-                : `Upload at least ${minRequired} photos before proceeding (currently ${uploadedCount})`
-            }
-          >
-            {!isRequirementMet ? (
-              <>
-                <Lock size={14} />
-                <span>Upload {remainingCount} More to Proceed</span>
-              </>
-            ) : (
-              <>
-                <span>Continue to Smart Layout</span>
-                <ArrowRight size={16} />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Leave Page / Refresh Confirmation Modal */}
+      {/* Leave Page Confirmation Modal */}
       {showLeaveConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-          <div className="bg-white rounded-lg shadow-2xl border border-cream-300 max-w-md w-full p-6 text-noir-900 space-y-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-[#ECEAE4] max-w-md w-full p-6 text-black space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
-                <AlertCircle size={22} />
+                <AlertCircle size={20} />
               </div>
               <div>
-                <h3 className="font-serif font-bold text-lg text-noir-950">
-                  Leave Upload Page?
+                <h3 className="font-bold text-base text-black lowercase">
+                  leave upload page?
                 </h3>
-                <p className="text-xs text-noir-500">
-                  You have {photos.length} uploaded photo{photos.length === 1 ? '' : 's'} in this session.
+                <p className="text-xs text-[#7A7873] lowercase">
+                  you have {photos.length} uploaded photo{photos.length === 1 ? '' : 's'} in this session.
                 </p>
               </div>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-900 leading-relaxed">
-              If you leave this page or refresh your browser, your uploaded photos will be lost and you will have to re-upload them again.
+            <div className="bg-[#FAF8F5] border border-[#EBE8E1] rounded-2xl p-3.5 text-xs text-[#5C5A55] leading-relaxed lowercase">
+              if you leave without proceeding, your unassigned photos may need to be re-uploaded.
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-2">
@@ -831,9 +681,9 @@ function UploadContent() {
                   setShowLeaveConfirmModal(false);
                   setPendingNavigationUrl(null);
                 }}
-                className="px-4 py-2 text-xs font-semibold text-noir-700 hover:text-noir-950 bg-cream-100 hover:bg-cream-200 rounded-sm transition-colors"
+                className="px-5 py-2.5 text-xs font-semibold text-black bg-[#F4F2EC] hover:bg-[#EAE7DF] rounded-full transition-colors lowercase"
               >
-                Stay & Keep Photos
+                stay & keep photos
               </button>
               <button
                 type="button"
@@ -843,27 +693,27 @@ function UploadContent() {
                     router.push(pendingNavigationUrl);
                   }
                 }}
-                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-sm transition-colors shadow-xs"
+                className="px-5 py-2.5 text-xs font-semibold text-white bg-black hover:bg-neutral-800 rounded-full transition-colors lowercase shadow-xs"
               >
-                Leave & Discard Photos
+                leave page
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Google Photos & Google Drive Picker Modal */}
+      {/* Cloud Photo Pickers Modal */}
       <GooglePhotoPickerModal
         isOpen={pickerModalOpen}
         onClose={() => setPickerModalOpen(false)}
         initialTab={pickerInitialTab}
         onImportSuccess={(count) => {
-          setCloudImportToast(
+          setCloudToast(
             `Successfully imported ${count} photo${count === 1 ? '' : 's'} from Google ${
               pickerInitialTab === 'photos' ? 'Photos' : 'Drive'
-            } into your photobook collection!`
+            }!`
           );
-          setTimeout(() => setCloudImportToast(null), 5000);
+          setTimeout(() => setCloudToast(null), 5000);
         }}
       />
     </div>
@@ -873,8 +723,8 @@ function UploadContent() {
 export default function UploadPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-cream-50">
-        <div className="w-8 h-8 border-2 border-noir-950 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F4F2EC]">
+        <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <UploadContent />
