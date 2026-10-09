@@ -23,6 +23,7 @@ export type PageLayout =
   | '2-photo-v' 
   | '2-photo-h' 
   | '3-photo' 
+  | '3-photo-h'
   | '4-photo' 
   | '6-photo-grid';
 
@@ -114,6 +115,17 @@ interface EditorState {
   addPhoto: (photo: Photo) => void;
   removePhoto: (id: string) => void;
   updatePageCanvas: (index: number, elements: any[]) => void;
+  captions: Record<number, string>;
+  captionCase: 'lower' | 'sentence' | 'upper';
+  canvasZoom: number;
+  activeSidebarTab: 'photos' | 'layouts' | 'text' | 'background' | 'cover';
+  setCaption: (pageNumber: number, caption: string) => void;
+  setCaptionCase: (c: 'lower' | 'sentence' | 'upper') => void;
+  setCanvasZoom: (zoom: number | ((prev: number) => number)) => void;
+  setActiveSidebarTab: (tab: 'photos' | 'layouts' | 'text' | 'background' | 'cover') => void;
+  addSpread: () => void;
+  toggleSlotFit: (slotId: string) => void;
+  rotateSlotPhoto: (slotId: string) => void;
   setPhotoFilter: (filter: 'all' | 'unused' | 'flagged') => void;
   setTemplate: (template: any) => void;
   setBookConfig: (config: Partial<EditorState['bookConfig']>) => void;
@@ -188,6 +200,52 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   autoSaveStatus: 'saved',
   currentProjectId: null,
+  captions: {},
+  captionCase: 'lower',
+  canvasZoom: 100,
+  activeSidebarTab: 'layouts',
+
+  setCaption: (pageNumber, caption) => set((state) => ({
+    captions: { ...state.captions, [pageNumber]: caption },
+    autoSaveStatus: 'saved',
+  })),
+  setCaptionCase: (c) => set({ captionCase: c }),
+  setCanvasZoom: (zoom) => set((state) => ({
+    canvasZoom: typeof zoom === 'function' ? zoom(state.canvasZoom) : Math.max(50, Math.min(200, zoom)),
+  })),
+  setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+  addSpread: () => set((state) => {
+    const newCount = state.pageCount + 2;
+    return {
+      pageCount: newCount,
+      pages: generateSpreads(newCount),
+      bookConfig: { ...state.bookConfig, pages: newCount },
+    };
+  }),
+  toggleSlotFit: (slotId) => set((state) => {
+    const existing = state.slotCrops[slotId] || { position: 'center', x: 50, y: 50, zoom: 1 };
+    const newZoom = existing.zoom > 1.05 ? 1.0 : 1.35;
+    return {
+      slotCrops: {
+        ...state.slotCrops,
+        [slotId]: { ...existing, zoom: newZoom },
+      },
+      autoSaveStatus: 'saved',
+    };
+  }),
+  rotateSlotPhoto: (slotId) => set((state) => {
+    const existing = state.slotCrops[slotId] || { position: 'center', x: 50, y: 50, zoom: 1 };
+    const positions: SlotCropConfig['position'][] = ['center', 'top', 'right', 'bottom', 'left'];
+    const curIdx = positions.indexOf(existing.position);
+    const nextPos = positions[(curIdx + 1) % positions.length] || 'center';
+    return {
+      slotCrops: {
+        ...state.slotCrops,
+        [slotId]: { ...existing, position: nextPos },
+      },
+      autoSaveStatus: 'saved',
+    };
+  }),
 
   setCanvas: (canvas) => set({ canvas }),
   setSelectedObject: (id) => set({ selectedObjectId: id }),

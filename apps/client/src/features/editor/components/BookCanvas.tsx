@@ -12,12 +12,14 @@ import {
   Crop,
   ShieldAlert,
   AlertTriangle,
-  CheckCircle2
+  ArrowLeftRight,
+  Maximize2,
+  RotateCw,
+  ChevronDown
 } from 'lucide-react';
 import PortionCutModal from './PortionCutModal';
 import { getSpineMetrics } from '@/lib/spineCalculator';
 import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
-import { BINDERY_CANVAS_PALETTE } from '@repo/types';
 
 interface SlotProps {
   slotId: string;
@@ -32,7 +34,7 @@ interface SlotProps {
   slotWidthFraction?: number;
 }
 
-// Memoized PhotoSlot component (FE-02) prevents re-rendering entire spreads on slot clicks
+// Memoized PhotoSlot component with crisp black active border (media_1791563079911.png)
 const PhotoSlot = React.memo(function PhotoSlot({
   slotId,
   photo,
@@ -88,13 +90,13 @@ const PhotoSlot = React.memo(function PhotoSlot({
         }
       }}
       style={{ 
-        backgroundColor: isSelected ? undefined : BINDERY_CANVAS_PALETTE.pageBackgroundLight,
+        backgroundColor: '#F5F3EF',
         touchAction: 'manipulation',
       }}
-      className={`relative w-full h-full rounded-sm overflow-hidden border transition-all cursor-pointer group flex items-center justify-center touch-manipulation focus-visible:ring-2 focus-visible:ring-foil-gold focus-visible:border-foil-gold focus-visible:outline-none focus:outline-none ${
+      className={`relative w-full h-full rounded-xl overflow-hidden border transition-all cursor-pointer group flex items-center justify-center touch-manipulation focus-visible:ring-2 focus-visible:ring-black focus-visible:border-black focus-visible:outline-none focus:outline-none ${
         isSelected
-          ? 'border-foil-gold ring-2 ring-foil-gold bg-amber-50/50 shadow-sm'
-          : 'border-cream-300 hover:border-noir-900'
+          ? 'border-2 border-black ring-1 ring-black shadow-md'
+          : 'border border-black/10 hover:border-black/30'
       }`}
     >
       {photo ? (
@@ -128,68 +130,67 @@ const PhotoSlot = React.memo(function PhotoSlot({
             <div className="absolute top-1.5 left-1.5 z-20 pointer-events-auto">
               {isUltraHD && (
                 <span
-                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-sm flex items-center gap-1 backdrop-blur-xs"
+                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-xs flex items-center gap-1 backdrop-blur-xs"
                   title={`Crisp Print Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpi} DPI (exceeds 300 DPI press standard)`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  <span>300+ DPI (HD)</span>
+                  <span>300+ DPI</span>
                 </span>
               )}
               {isGoodQuality && (
                 <span
-                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/50 shadow-sm flex items-center gap-1 backdrop-blur-xs"
+                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/50 shadow-xs flex items-center gap-1 backdrop-blur-xs"
                   title={`Good Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpi} DPI (recommended range: 180-300 DPI)`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  <span>{dpi} DPI (Good)</span>
+                  <span>{dpi} DPI</span>
                 </span>
               )}
               {isLowRes && (
                 <span
-                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-rose-950/95 text-rose-200 border border-rose-500/80 shadow-md flex items-center gap-1 backdrop-blur-xs animate-pulse"
-                  title={`Low Resolution Alert: ${naturalSize?.width}×${naturalSize?.height}px produces only ${dpi} DPI. May appear grainy or blurry when printed. Recommended: 1500px+ width.`}
+                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-rose-950/95 text-rose-200 border border-rose-500/80 shadow-xs flex items-center gap-1 backdrop-blur-xs animate-pulse"
+                  title={`Low Resolution Alert: ${naturalSize?.width}×${naturalSize?.height}px produces only ${dpi} DPI. Recommended: 1500px+ width.`}
                 >
                   <AlertTriangle className="w-2.5 h-2.5 text-rose-400" />
-                  <span>⚠️ {dpi} DPI (Blurry Risk)</span>
+                  <span>⚠️ {dpi} DPI</span>
                 </span>
               )}
             </div>
           )}
 
-          <div className={`absolute inset-0 bg-black/45 transition-opacity flex items-center justify-center gap-1.5 p-1 z-30 ${
-            isSelected ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100'
-          }`}>
+          {/* Hover Cut/Portion Tool Button */}
+          <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-20 flex gap-1">
             {onOpenCutModal && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenCutModal(slotId, photo, label);
                 }}
-                className="px-2 py-1 bg-white/95 text-noir-900 rounded-sm text-[10px] font-semibold hover:bg-white flex items-center gap-1 shadow-sm transition-all hover:scale-105"
-                title="Cut / Choose Portion"
+                className="p-1 bg-white/90 hover:bg-white text-gray-900 rounded-md shadow-xs transition-colors"
+                title="Crop / Cut photo portion"
               >
-                <Crop size={11} className="text-foil-gold" />
-                <span>Cut / Portion</span>
+                <Crop size={12} />
               </button>
             )}
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onRemove(slotId);
               }}
-              className="px-2 py-1 bg-red-600/90 text-white rounded-sm text-[10px] font-semibold hover:bg-red-700 flex items-center gap-1 shadow-sm transition-all hover:scale-105"
+              className="p-1 bg-white/90 hover:bg-red-50 text-gray-700 hover:text-red-600 rounded-md shadow-xs transition-colors"
               title="Remove photo"
             >
-              <Trash2 size={11} />
-              <span>Remove</span>
+              <Trash2 size={12} />
             </button>
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center p-3 text-center text-cream-500 group-hover:text-noir-700 transition-colors">
-          <ImageIcon size={18} className="mb-1" />
-          <span className="text-[10px] font-semibold text-noir-600">{label || 'Empty Slot'}</span>
-          <span className="text-[9px] text-noir-400 mt-0.5">Click to place photo</span>
+        <div className="flex flex-col items-center justify-center p-3 text-center text-gray-400 group-hover:text-gray-700 transition-colors">
+          <ImageIcon size={18} className="mb-1 text-gray-400 group-hover:text-gray-600 transition-colors" />
+          <span className="text-[10px] font-semibold text-gray-600">{label || 'Empty Slot'}</span>
+          <span className="text-[9px] text-gray-400 mt-0.5">Click to place photo</span>
         </div>
       )}
     </div>
@@ -333,6 +334,53 @@ function RenderPageSlots({
     );
   }
 
+  if (layout === '3-photo-h') {
+    return (
+      <div className="flex-1 my-2 flex flex-col gap-2 h-full">
+        <div className="h-[58%]">
+          <PhotoSlot
+            slotId={`${pageNum}_0`}
+            photo={getPhoto(0)}
+            crop={getCrop(`${pageNum}_0`)}
+            isSelected={selectedSlot === `${pageNum}_0`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={1}
+            label="Hero Top Slot"
+          />
+        </div>
+        <div className="h-[42%] grid grid-cols-2 gap-2">
+          <PhotoSlot
+            slotId={`${pageNum}_1`}
+            photo={getPhoto(1)}
+            crop={getCrop(`${pageNum}_1`)}
+            isSelected={selectedSlot === `${pageNum}_1`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={0.5}
+            label="Bottom Left Slot"
+          />
+          <PhotoSlot
+            slotId={`${pageNum}_2`}
+            photo={getPhoto(2)}
+            crop={getCrop(`${pageNum}_2`)}
+            isSelected={selectedSlot === `${pageNum}_2`}
+            onSelect={onSelectSlot}
+            onRemove={onRemovePhoto}
+            onOpenCutModal={onOpenCutModal}
+            bookSize={bookSize}
+            slotWidthFraction={0.5}
+            label="Bottom Right Slot"
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (layout === '4-photo') {
     return (
       <div className="flex-1 my-2 grid grid-cols-2 grid-rows-2 gap-2 h-full">
@@ -427,6 +475,7 @@ export default function BookCanvas() {
     slotCrops,
     setSlotCrop,
     pageLayouts,
+    setPageLayout,
     pageBackgrounds,
     coverConfig,
     selectedSlot,
@@ -434,9 +483,16 @@ export default function BookCanvas() {
     assignPhotoToSlot,
     template,
     bookConfig,
+    canvasZoom,
+    setCanvasZoom,
+    toggleSlotFit,
+    rotateSlotPhoto,
+    photos,
+    captions,
   } = useEditorStore();
 
-  const [showGuides, setShowGuides] = useState(true);
+  const [showGuides, setShowGuides] = useState(false);
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
 
   const [cutModalState, setCutModalState] = useState<{
     isOpen: boolean;
@@ -465,6 +521,14 @@ export default function BookCanvas() {
   const leftPageNum = (currentSpreadIndex - 1) * 2 + 1;
   const rightPageNum = (currentSpreadIndex - 1) * 2 + 2;
 
+  let targetedPageNum = leftPageNum;
+  if (selectedSlot) {
+    const parsed = parseInt(selectedSlot.split('_')[0] || '', 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      targetedPageNum = parsed;
+    }
+  }
+
   const coverPhoto: Photo | null =
     slotPhotos['0'] ||
     pagePhotos[0] ||
@@ -481,7 +545,7 @@ export default function BookCanvas() {
     gold: 'bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-100 text-transparent bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
     silver: 'bg-gradient-to-r from-slate-100 via-slate-300 to-gray-100 text-transparent bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
     'rose-gold': 'bg-gradient-to-r from-rose-200 via-rose-300 to-amber-100 text-transparent bg-clip-text drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]',
-    black: 'text-noir-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)]',
+    black: 'text-neutral-950 drop-shadow-[0_1px_1px_rgba(255,255,255,0.2)]',
   }[coverConfig.foilColor || 'gold'];
 
   const handlePrev = () => {
@@ -496,8 +560,8 @@ export default function BookCanvas() {
     }
   };
 
-  const leftLayout = pageLayouts[leftPageNum] || '1-photo';
-  const rightLayout = pageLayouts[rightPageNum] || '1-photo';
+  const leftLayout = pageLayouts[leftPageNum] || '3-photo-h';
+  const rightLayout = pageLayouts[rightPageNum] || '3-photo';
   const leftBg = pageBackgrounds[leftPageNum] || '#FFFFFF';
   const rightBg = pageBackgrounds[rightPageNum] || '#FFFFFF';
 
@@ -532,26 +596,39 @@ export default function BookCanvas() {
     };
   }, [baseWidth, isCover, isBack, mobilePageView]);
 
+  // Floating capsule action handlers
+  const handleSwapOrCycle = () => {
+    const targetSlot = selectedSlot || `${leftPageNum}_0`;
+    const curPhoto = slotPhotos[targetSlot] || pagePhotos[leftPageNum];
+    const otherPhotos = photos.filter(p => p.id !== curPhoto?.id);
+    if (otherPhotos.length > 0) {
+      const nextPhoto = otherPhotos.find(p => (p.usedCount || 0) === 0) || otherPhotos[0];
+      if (nextPhoto) assignPhotoToSlot(targetSlot, nextPhoto);
+    }
+  };
+
+  const zoomFactor = (canvasZoom || 100) / 100;
+
   const renderLeftPage = (isSingle: boolean = false) => (
     <div
-      onClick={() => setSelectedSlot(leftPageNum.toString())}
+      onClick={() => setSelectedSlot(`${leftPageNum}_0`)}
       className={`${
         isSingle
-          ? 'w-[420px] h-[480px] shadow-luxury-2xl rounded-sm border border-cream-300'
+          ? 'w-[420px] h-[480px] shadow-2xl rounded-sm border border-black/10'
           : 'flex-1 border-r border-black/10'
-      } relative p-6 sm:p-8 md:p-10 flex flex-col justify-between cursor-pointer transition-all ${
+      } relative p-6 sm:p-8 flex flex-col justify-between cursor-pointer transition-all ${
         selectedSlot?.startsWith(leftPageNum.toString())
-          ? 'ring-2 ring-inset ring-foil-gold'
-          : 'hover:bg-cream-50/30'
+          ? 'bg-white'
+          : 'hover:bg-gray-50/30'
       }`}
       style={{ backgroundColor: leftBg }}
     >
-      {/* Top Page Header / Number */}
-      <div className="flex justify-between items-center text-[10px] text-noir-400 uppercase tracking-widest font-mono">
-        <span>Page {leftPageNum} ({leftLayout})</span>
+      {/* Top Page Header */}
+      <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono">
+        <span>page {leftPageNum}</span>
         {selectedSlot?.startsWith(leftPageNum.toString()) && (
-          <span className="inline-flex items-center gap-1 text-foil-gold font-bold">
-            <Check size={12} /> Active Page
+          <span className="inline-flex items-center gap-1 text-black font-semibold">
+            <Check size={11} strokeWidth={2.5} /> active
           </span>
         )}
       </div>
@@ -586,36 +663,37 @@ export default function BookCanvas() {
         </div>
       )}
 
-      {/* Bottom Editorial Footnote */}
-      <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif">
-        <span>— {leftPageNum < 10 ? `0${leftPageNum}` : leftPageNum} —</span>
-        <span className="text-[9px] uppercase tracking-wider text-noir-300">PerfectPic Lay-Flat</span>
-      </div>
+      {/* Caption if provided */}
+      {captions[leftPageNum] && (
+        <p className="text-[10px] text-center text-gray-600 italic font-serif mt-1 truncate">
+          {captions[leftPageNum]}
+        </p>
+      )}
     </div>
   );
 
   const renderRightPage = (isSingle: boolean = false) => (
     <div
-      onClick={() => setSelectedSlot(rightPageNum.toString())}
+      onClick={() => setSelectedSlot(`${rightPageNum}_0`)}
       className={`${
         isSingle
-          ? 'w-[420px] h-[480px] shadow-luxury-2xl rounded-sm border border-cream-300'
+          ? 'w-[420px] h-[480px] shadow-2xl rounded-sm border border-black/10'
           : 'flex-1'
-      } relative p-6 sm:p-8 md:p-10 flex flex-col justify-between cursor-pointer transition-all ${
+      } relative p-6 sm:p-8 flex flex-col justify-between cursor-pointer transition-all ${
         selectedSlot?.startsWith(rightPageNum.toString())
-          ? 'ring-2 ring-inset ring-foil-gold'
-          : 'hover:bg-cream-50/30'
+          ? 'bg-white'
+          : 'hover:bg-gray-50/30'
       }`}
       style={{ backgroundColor: rightBg }}
     >
-      {/* Top Page Header / Number */}
-      <div className="flex justify-between items-center text-[10px] text-noir-400 uppercase tracking-widest font-mono">
+      {/* Top Page Header */}
+      <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono">
         {selectedSlot?.startsWith(rightPageNum.toString()) ? (
-          <span className="inline-flex items-center gap-1 text-foil-gold font-bold">
-            <Check size={12} /> Active Page
+          <span className="inline-flex items-center gap-1 text-black font-semibold">
+            <Check size={11} strokeWidth={2.5} /> active
           </span>
         ) : <span />}
-        <span>Page {rightPageNum} ({rightLayout})</span>
+        <span>page {rightPageNum}</span>
       </div>
 
       {/* Dynamic Photo Slot Grid for Right Page */}
@@ -648,102 +726,152 @@ export default function BookCanvas() {
         </div>
       )}
 
-      {/* Bottom Editorial Footnote */}
-      <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif">
-        <span className="text-[9px] uppercase tracking-wider text-noir-300">Archival Series</span>
-        <span>— {rightPageNum < 10 ? `0${rightPageNum}` : rightPageNum} —</span>
-      </div>
+      {/* Caption if provided */}
+      {captions[rightPageNum] && (
+        <p className="text-[10px] text-center text-gray-600 italic font-serif mt-1 truncate">
+          {captions[rightPageNum]}
+        </p>
+      )}
     </div>
   );
 
   return (
     <div ref={containerRef} className="flex flex-col items-center justify-center w-full max-w-5xl select-none px-2 sm:px-4">
-      {/* Top Spread Info & Status */}
-      <div className="flex items-center justify-between w-full max-w-4xl px-1 sm:px-4 mb-3 text-xs flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-noir-900 uppercase tracking-widest text-[10px] sm:text-[11px]">
-            {isCover ? 'Front Cover' : isBack ? 'Back Cover' : `Pages ${leftPageNum} – ${rightPageNum} of ${pageCount}`}
-          </span>
-          <span className="text-noir-400 hidden sm:inline">•</span>
-          <span className="text-noir-500 font-medium text-[10px] sm:text-[11px] hidden sm:inline">
-            {isCover
-              ? `Foil: ${coverConfig.foilColor?.toUpperCase() || 'GOLD'}`
-              : `Layouts: P${leftPageNum} (${leftLayout}), P${rightPageNum} (${rightLayout})`}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Print Safety Guides Toggle */}
+      {/* Floating Contextual Action Pill (Mockup: layout ⌵ | swap | fit | rotate | delete) */}
+      <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-2 py-1 shadow-md border border-black/10 mb-4 z-40 select-none text-xs">
+        {/* Layout Button with Dropdown */}
+        <div className="relative">
           <button
             type="button"
-            onClick={() => setShowGuides(!showGuides)}
-            className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[10px] sm:text-[11px] font-semibold flex items-center gap-1.5 transition-all border ${
-              showGuides
-                ? 'bg-noir-950 text-white border-noir-900 shadow-sm'
-                : 'bg-white text-noir-600 border-cream-300 hover:border-noir-900'
-            }`}
-            title="Toggle mechanical trim cut lines, safe margins, and gutter fold guides"
+            onClick={() => setLayoutMenuOpen(!layoutMenuOpen)}
+            className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+            title="Choose layout for active page"
           >
-            <ShieldAlert size={11} className={showGuides ? 'text-foil-gold' : 'text-noir-400'} />
-            <span>Guides: {showGuides ? 'ON' : 'OFF'}</span>
+            <span>layout</span>
+            <ChevronDown size={13} className="text-gray-500" />
           </button>
-
-          <span className="text-[10px] sm:text-[11px] text-noir-500 hidden md:inline">
-            Target Slot: <strong className="text-noir-950 font-mono">{selectedSlot || 'None'}</strong>
-          </span>
+          {layoutMenuOpen && (
+            <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-48 z-50 animate-in fade-in zoom-in-95">
+              {[
+                { id: '1-photo', label: '1 photo full' },
+                { id: '2-photo-h', label: '2 photos split h' },
+                { id: '2-photo-v', label: '2 photos split v' },
+                { id: '3-photo', label: '3 photos (hero left)' },
+                { id: '3-photo-h', label: '3 photos (hero top)' },
+                { id: '4-photo', label: '4 photos grid' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    setPageLayout(targetedPageNum, opt.id as PageLayout);
+                    setLayoutMenuOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-black flex items-center justify-between"
+                >
+                  <span>{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
+        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+
+        {/* Swap Button */}
+        <button
+          type="button"
+          onClick={handleSwapOrCycle}
+          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          title="Swap or cycle photo"
+        >
+          <ArrowLeftRight size={12} className="text-gray-500" />
+          <span>swap</span>
+        </button>
+
+        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+
+        {/* Fit Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const targetSlot = selectedSlot || `${leftPageNum}_0`;
+            toggleSlotFit(targetSlot);
+          }}
+          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          title="Toggle fit / fill crop"
+        >
+          <Maximize2 size={12} className="text-gray-500" />
+          <span>fit</span>
+        </button>
+
+        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+
+        {/* Rotate Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const targetSlot = selectedSlot || `${leftPageNum}_0`;
+            rotateSlotPhoto(targetSlot);
+          }}
+          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          title="Rotate crop orientation"
+        >
+          <RotateCw size={12} className="text-gray-500" />
+          <span>rotate</span>
+        </button>
+
+        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+
+        {/* Crop / Cut Portion Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const targetSlot = selectedSlot || `${leftPageNum}_0`;
+            const curPhoto = slotPhotos[targetSlot] || pagePhotos[leftPageNum];
+            if (curPhoto) handleOpenCutModal(targetSlot, curPhoto);
+          }}
+          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          title="Cut / Crop photo"
+        >
+          <Crop size={12} className="text-gray-500" />
+          <span>crop</span>
+        </button>
+
+        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+
+        {/* Delete Button */}
+        <button
+          type="button"
+          onClick={() => {
+            const targetSlot = selectedSlot || `${leftPageNum}_0`;
+            assignPhotoToSlot(targetSlot, null);
+          }}
+          className="px-2.5 py-1 rounded-full hover:bg-red-50 hover:text-red-600 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          title="Remove photo from slot"
+        >
+          <Trash2 size={12} className="text-gray-500 hover:text-red-600" />
+          <span>delete</span>
+        </button>
       </div>
-
-      {/* Mobile Page View Toggle (Inside non-panoramic spreads only) */}
-      {!isCover && !isBack && !isPanoramic && (
-        <div className="flex md:hidden items-center bg-cream-200/80 p-0.5 rounded-full border border-cream-300 mb-3 text-[10px] font-mono shadow-xs">
-          <button
-            type="button"
-            onClick={() => setMobilePageView('spread')}
-            className={`px-2.5 py-1 rounded-full transition-all ${
-              mobilePageView === 'spread' ? 'bg-noir-950 text-white font-bold shadow-xs' : 'text-noir-700 hover:text-noir-950'
-            }`}
-          >
-            Both Pages
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobilePageView('left')}
-            className={`px-2.5 py-1 rounded-full transition-all ${
-              mobilePageView === 'left' ? 'bg-noir-950 text-white font-bold shadow-xs' : 'text-noir-700 hover:text-noir-950'
-            }`}
-          >
-            Page {leftPageNum}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobilePageView('right')}
-            className={`px-2.5 py-1 rounded-full transition-all ${
-              mobilePageView === 'right' ? 'bg-noir-950 text-white font-bold shadow-xs' : 'text-noir-700 hover:text-noir-950'
-            }`}
-          >
-            Page {rightPageNum}
-          </button>
-        </div>
-      )}
 
       {/* Main Spread Viewport with Side Navigation Controls */}
       <div className="relative flex items-center justify-center w-full">
-        {/* Previous Spread Button (Desktop) */}
+        {/* Previous Spread Button */}
         <button
           onClick={handlePrev}
           disabled={currentSpreadIndex === 0}
-          className="hidden md:flex absolute -left-4 md:-left-8 z-30 p-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-cream-300 shadow-luxury-md text-noir-700 hover:text-noir-950 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition-all"
+          className="hidden md:flex absolute -left-4 md:-left-8 z-30 w-9 h-9 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm border border-gray-200 shadow-md text-gray-700 hover:text-black hover:bg-white disabled:opacity-20 disabled:pointer-events-none transition-all"
           title="Previous Spread"
         >
-          <ChevronLeft size={20} />
+          <ChevronLeft size={18} />
         </button>
 
         {/* Scaled Book Container */}
         <div
           style={{
-            width: `${baseWidth * scale}px`,
-            height: `${baseHeight * scale}px`,
+            width: `${baseWidth * scale * zoomFactor}px`,
+            height: `${baseHeight * scale * zoomFactor}px`,
             position: 'relative',
           }}
           className="transition-all duration-150"
@@ -752,7 +880,7 @@ export default function BookCanvas() {
             style={{
               width: `${baseWidth}px`,
               height: `${baseHeight}px`,
-              transform: `scale(${scale})`,
+              transform: `scale(${scale * zoomFactor})`,
               transformOrigin: 'top left',
               position: 'absolute',
               top: 0,
@@ -765,16 +893,15 @@ export default function BookCanvas() {
             {isCover && (
               <div
                 onClick={() => setSelectedSlot('0')}
-                className={`relative w-[420px] h-[520px] rounded-r-md shadow-luxury-xl border border-black/10 flex overflow-hidden cursor-pointer transition-all duration-300 ${
-                  selectedSlot === '0' ? 'ring-2 ring-foil-gold ring-offset-4' : ''
+                className={`relative w-[420px] h-[520px] rounded-r-md shadow-2xl border border-black/10 flex overflow-hidden cursor-pointer transition-all duration-300 ${
+                  selectedSlot === '0' ? 'ring-2 ring-black ring-offset-4' : ''
                 }`}
                 style={{ backgroundColor: coverBg }}
               >
-                {/* Book Spine (Dynamic Bindery Spine Calculator) */}
+                {/* Book Spine */}
                 <div 
                   style={{ width: `${spineMetrics.spineWidthPx}px` }}
                   className="bg-black/20 flex items-center justify-center border-r border-black/15 relative overflow-hidden shrink-0 transition-all duration-300 group/spine"
-                  title={`Dynamic Spine: ${spineMetrics.spineWidthMm}mm (${spineMetrics.spineWidthInches} in) • ${spineMetrics.pageCount} Pages (${spineMetrics.sheetCount} Layflat Spreads)`}
                 >
                   <span 
                     className="font-bold text-white tracking-[0.25em] uppercase transform -rotate-90 whitespace-nowrap drop-shadow-sm font-mono select-none"
@@ -799,8 +926,8 @@ export default function BookCanvas() {
                     </p>
                   </div>
 
-                  {/* Cover Photo Slot (Gallery Centered) */}
-                  <div className="flex-1 my-4 bg-white/10 rounded-sm overflow-hidden relative border border-white/20 shadow-inner group">
+                  {/* Cover Photo Slot */}
+                  <div className="flex-1 my-4 bg-white/10 rounded-xl overflow-hidden relative border border-white/20 shadow-inner group">
                     <PhotoSlot
                       slotId="0"
                       photo={coverPhoto}
@@ -820,40 +947,29 @@ export default function BookCanvas() {
                     <span>{pageCount} Pages</span>
                   </div>
                 </div>
-
-                {/* Front Cover 3mm Bleed Cut Guide */}
-                {showGuides && (
-                  <div className="absolute inset-2 border border-dashed border-rose-400/60 pointer-events-none z-30 rounded-xs">
-                    <span className="absolute top-1 left-2 text-[7.5px] font-mono font-bold text-rose-300 bg-black/60 px-1 py-0.2 rounded">
-                      3mm Cover Trim Bleed
-                    </span>
-                  </div>
-                )}
               </div>
             )}
 
             {/* ======================================================== */}
-            {/* 2. OPEN TWO-PAGE SPREAD VIEW (Dynamic Multi-Photo Layouts) */}
+            {/* 2. OPEN TWO-PAGE SPREAD VIEW */}
             {/* ======================================================== */}
             {!isCover && !isBack && isPanoramic && (
               <div
                 onClick={() => setSelectedSlot(`spread_${currentSpreadIndex}`)}
-                className={`relative shadow-luxury-2xl bg-white rounded-sm flex flex-col justify-between w-[840px] h-[480px] border border-cream-300 overflow-hidden p-6 md:p-8 cursor-pointer transition-all ${
+                className={`relative shadow-2xl bg-white rounded-md flex flex-col justify-between w-[840px] h-[480px] border border-black/10 overflow-hidden p-6 md:p-8 cursor-pointer transition-all ${
                   selectedSlot === `spread_${currentSpreadIndex}`
-                    ? 'ring-2 ring-inset ring-foil-gold'
-                    : 'hover:bg-cream-50/20'
+                    ? 'ring-2 ring-black ring-inset'
+                    : 'hover:bg-gray-50/20'
                 }`}
                 style={{ backgroundColor: leftBg }}
               >
-                {/* Top Spread Bar */}
-                <div className="flex justify-between items-center text-[10px] text-noir-500 uppercase tracking-widest font-mono z-30">
-                  <span className="font-bold bg-noir-950 text-foil-gold px-2 py-0.5 rounded-xs">
-                    Two-Page Panoramic Spread (Pages {leftPageNum} – {rightPageNum})
+                <div className="flex justify-between items-center text-[10px] text-gray-500 uppercase tracking-widest font-mono z-30">
+                  <span className="font-bold bg-black text-white px-2 py-0.5 rounded-sm">
+                    panoramic spread (pages {leftPageNum} – {rightPageNum})
                   </span>
-                  <span className="text-noir-400">180° Zero-Gutter Lay-Flat Spanning</span>
+                  <span className="text-gray-400">layflat uninterrupted</span>
                 </div>
 
-                {/* Seamless Panoramic Slot Spanning Both Pages */}
                 <div className="flex-1 my-3 relative h-full">
                   <PhotoSlot
                     slotId={`spread_${currentSpreadIndex}`}
@@ -865,36 +981,12 @@ export default function BookCanvas() {
                     onOpenCutModal={handleOpenCutModal}
                     bookSize={bookConfig.size}
                     slotWidthFraction={2}
-                    label="Grand Panoramic Photo (Spans Across Both Pages)"
+                    label="Grand Panoramic Photo"
                   />
                 </div>
 
-                {/* Print Bleed & Safe Zone Overlay for Panoramic Spread */}
-                {showGuides && (
-                  <div className="absolute inset-0 pointer-events-none z-20">
-                    <div className="absolute inset-2 border border-dashed border-rose-500/50 rounded-xs">
-                      <span className="absolute top-0.5 left-1 text-[7.5px] font-mono font-bold text-rose-500 bg-white/90 px-1 py-0.2 rounded">
-                        3mm Cut Bleed
-                      </span>
-                    </div>
-                    <div className="absolute inset-6 border border-dashed border-teal-500/50 rounded-xs">
-                      <span className="absolute bottom-0.5 right-1 text-[7.5px] font-mono font-bold text-teal-600 bg-white/90 px-1 py-0.2 rounded">
-                        Safe Zone (Keep faces inside)
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Spine Center Fold Guide Line */}
-                <div className="absolute inset-y-0 left-1/2 w-[1px] bg-black/25 pointer-events-none z-20 border-r border-dashed border-white/60" />
+                <div className="absolute inset-y-0 left-1/2 w-[1px] bg-black/20 pointer-events-none z-20" />
                 <div className="absolute inset-y-0 left-1/2 -ml-4 w-8 bg-gradient-to-r from-black/10 via-transparent to-black/10 pointer-events-none z-10" />
-
-                {/* Bottom Editorial Footnote */}
-                <div className="flex justify-between items-center text-[10px] text-noir-400 font-serif z-30">
-                  <span>— Page {leftPageNum} —</span>
-                  <span className="text-[9px] uppercase tracking-wider text-noir-400 font-mono">180° Layflat Panoramic View</span>
-                  <span>— Page {rightPageNum} —</span>
-                </div>
               </div>
             )}
 
@@ -903,9 +995,9 @@ export default function BookCanvas() {
                 {mobilePageView === 'left' && renderLeftPage(true)}
                 {mobilePageView === 'right' && renderRightPage(true)}
                 {mobilePageView === 'spread' && (
-                  <div className="relative shadow-luxury-2xl bg-white rounded-sm flex w-[840px] h-[480px] border border-cream-300 overflow-hidden">
+                  <div className="relative shadow-2xl bg-white rounded-md flex w-[840px] h-[480px] border border-black/10 overflow-hidden">
                     {renderLeftPage(false)}
-                    {/* Spine Center Fold Illusion & Crease Shadow */}
+                    {/* Spine Center Fold Shadow */}
                     <div className="absolute inset-y-0 left-1/2 -ml-5 w-10 bg-gradient-to-r from-black/15 via-black/5 to-black/15 pointer-events-none z-20" />
                     <div className="absolute inset-y-0 left-1/2 w-[1px] bg-black/20 pointer-events-none z-20" />
                     {renderRightPage(false)}
@@ -919,7 +1011,7 @@ export default function BookCanvas() {
             {/* ======================================================== */}
             {isBack && (
               <div
-                className="relative w-[420px] h-[520px] rounded-l-md shadow-luxury-xl border border-black/10 flex flex-col justify-between p-10 overflow-hidden text-center text-white"
+                className="relative w-[420px] h-[520px] rounded-l-md shadow-2xl border border-black/10 flex flex-col justify-between p-10 overflow-hidden text-center text-white"
                 style={{ backgroundColor: coverBg }}
               >
                 <div className="pt-8">
@@ -945,37 +1037,43 @@ export default function BookCanvas() {
           </div>
         </div>
 
-        {/* Next Spread Button (Desktop) */}
+        {/* Next Spread Button */}
         <button
           onClick={handleNext}
           disabled={currentSpreadIndex >= totalSpreads + 1}
-          className="hidden md:flex absolute -right-4 md:-right-8 z-30 p-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-cream-300 shadow-luxury-md text-noir-700 hover:text-noir-950 hover:bg-white disabled:opacity-30 disabled:pointer-events-none transition-all"
+          className="hidden md:flex absolute -right-4 md:-right-8 z-30 w-9 h-9 items-center justify-center rounded-full bg-white/90 backdrop-blur-sm border border-gray-200 shadow-md text-gray-700 hover:text-black hover:bg-white disabled:opacity-20 disabled:pointer-events-none transition-all"
           title="Next Spread"
         >
-          <ChevronRight size={20} />
+          <ChevronRight size={18} />
         </button>
       </div>
 
-      {/* Mobile Spread Navigation Bar under canvas */}
-      <div className="flex md:hidden items-center justify-between w-full max-w-sm px-3 mt-3 z-10">
+      {/* Page Numbers Below Spread (Mockup: 12 and 13) */}
+      {!isCover && !isBack && (
+        <div className="flex justify-around items-center w-full max-w-[840px] mt-3 px-12 text-xs font-mono font-medium text-gray-500 select-none">
+          <span>{leftPageNum}</span>
+          <span>{rightPageNum}</span>
+        </div>
+      )}
+
+      {/* Zoom Control Pill (Mockup: - 100% +) */}
+      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs border border-gray-200 rounded-full px-3 py-1 shadow-2xs mt-2 text-xs font-mono text-gray-700 select-none">
         <button
           type="button"
-          onClick={handlePrev}
-          disabled={currentSpreadIndex === 0}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-cream-300 shadow-xs text-xs font-mono font-medium text-noir-800 disabled:opacity-30"
+          onClick={() => setCanvasZoom((z) => Math.max(50, z - 10))}
+          className="w-5 h-5 flex items-center justify-center hover:bg-gray-100 rounded-full text-gray-600 hover:text-black font-bold"
+          title="Zoom Out"
         >
-          <ChevronLeft size={14} /> Prev
+          -
         </button>
-        <span className="text-[11px] font-mono text-noir-700 bg-white/90 px-3 py-1 rounded-full border border-cream-200 shadow-2xs font-semibold">
-          {isCover ? 'Front Cover' : isBack ? 'Back Cover' : `Spread ${currentSpreadIndex}/${totalSpreads}`}
-        </span>
+        <span className="min-w-9 text-center font-medium">{canvasZoom || 100}%</span>
         <button
           type="button"
-          onClick={handleNext}
-          disabled={currentSpreadIndex >= totalSpreads + 1}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-cream-300 shadow-xs text-xs font-mono font-medium text-noir-800 disabled:opacity-30"
+          onClick={() => setCanvasZoom((z) => Math.min(150, z + 10))}
+          className="w-5 h-5 flex items-center justify-center hover:bg-gray-100 rounded-full text-gray-600 hover:text-black font-bold"
+          title="Zoom In"
         >
-          Next <ChevronRight size={14} />
+          +
         </button>
       </div>
 

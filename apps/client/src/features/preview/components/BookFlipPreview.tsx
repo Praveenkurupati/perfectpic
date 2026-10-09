@@ -205,6 +205,20 @@ export default function BookFlipPreview({
         );
       }
 
+      case '3-photo-h': {
+        return (
+          <div className="flex-1 my-2 flex flex-col gap-2 h-full">
+            <div className="h-[58%]">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Top Slot" crop={getCrop(0)} />
+            </div>
+            <div className="h-[42%] grid grid-cols-2 gap-2">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Left" crop={getCrop(1)} />
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Right" crop={getCrop(2)} />
+            </div>
+          </div>
+        );
+      }
+
       case '4-photo': {
         return (
           <div className="flex-1 my-2 grid grid-cols-2 grid-rows-2 gap-2 h-full">

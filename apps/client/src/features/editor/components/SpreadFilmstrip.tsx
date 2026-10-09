@@ -1,7 +1,7 @@
 'use client';
 
 import { useEditorStore } from '@/stores/useEditorStore';
-import { Sparkles } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 
 export default function SpreadFilmstrip() {
@@ -10,29 +10,28 @@ export default function SpreadFilmstrip() {
     currentSpreadIndex, 
     setCurrentSpreadIndex, 
     pagePhotos, 
-    autoPopulatePages,
+    slotPhotos,
+    pageLayouts,
+    addSpread,
     template
   } = useEditorStore();
 
   const totalSpreads = Math.ceil(pageCount / 2);
   const coverBg = template?.coverColor || '#F8BAC7';
 
-  // Count placed photos
-  const placedCount = Object.keys(pagePhotos).filter(k => Number(k) > 0 && pagePhotos[Number(k)]).length;
-
   const spreadsList = [];
 
   // 1. Cover
   spreadsList.push({
     index: 0,
-    label: 'Cover',
+    label: 'cover',
     isCover: true,
     isBack: false,
     leftNum: 0,
     rightNum: 0
   });
 
-  // 2. Inside Spreads (1 photo per page)
+  // 2. Inside Spreads
   for (let i = 1; i <= totalSpreads; i++) {
     const leftNum = (i - 1) * 2 + 1;
     const rightNum = (i - 1) * 2 + 2;
@@ -49,7 +48,7 @@ export default function SpreadFilmstrip() {
   // 3. Back Cover
   spreadsList.push({
     index: totalSpreads + 1,
-    label: 'Back',
+    label: 'back',
     isCover: false,
     isBack: true,
     leftNum: 0,
@@ -57,59 +56,53 @@ export default function SpreadFilmstrip() {
   });
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* Filmstrip Header */}
-      <div className="flex justify-between items-center px-4 py-2 border-b border-cream-200 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold uppercase tracking-wider text-noir-800 text-[11px]">
-            Spread Filmstrip
-          </span>
-          <span className="text-noir-400">•</span>
-          <span className="text-noir-600 font-mono text-[11px]">
-            {placedCount} of {pageCount} pages placed (1 photo / page)
-          </span>
+    <div className="w-full flex flex-col select-none py-2 px-4">
+      {/* Filmstrip Header (Mockup: spreads · 16 and + add spread) */}
+      <div className="flex justify-between items-center mb-2 px-1">
+        <div className="flex items-center gap-1.5 text-xs text-gray-700 font-medium">
+          <span className="font-bold text-gray-950">spreads</span>
+          <span>·</span>
+          <span className="font-mono text-gray-500">{totalSpreads}</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => autoPopulatePages()}
-            className="inline-flex items-center gap-1.5 px-3 py-1 bg-cream-100 hover:bg-cream-200 text-noir-900 rounded-sm text-[11px] font-medium border border-cream-300 transition-colors"
-          >
-            <Sparkles size={12} className="text-foil-gold" />
-            <span>Auto-Fill Album</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => addSpread()}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-black transition-colors"
+        >
+          <Plus size={13} className="stroke-[2.5]" />
+          <span>add spread</span>
+        </button>
       </div>
       
       {/* Horizontal Scroll of Thumbnails */}
-      <div className="flex-1 flex items-center px-4 gap-3 overflow-x-auto no-scrollbar py-2">
+      <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-1">
         {spreadsList.map((spread) => {
           const isActive = currentSpreadIndex === spread.index;
-          const leftPhoto = pagePhotos[spread.leftNum];
-          const rightPhoto = pagePhotos[spread.rightNum];
-          const coverPhoto = pagePhotos[0];
+          const leftPhoto = slotPhotos[`${spread.leftNum}_0`] || pagePhotos[spread.leftNum];
+          const rightPhoto = slotPhotos[`${spread.rightNum}_0`] || pagePhotos[spread.rightNum];
+          const coverPhoto = slotPhotos['0'] || pagePhotos[0] || (template?.coverImage ? { url: template.coverImage } : null);
 
           return (
             <div 
               key={spread.index} 
               onClick={() => setCurrentSpreadIndex(spread.index)}
-              className="flex-shrink-0 cursor-pointer flex flex-col items-center gap-1.5 group"
+              className="shrink-0 cursor-pointer flex flex-col items-center gap-1 group"
             >
               {/* Thumbnail Container */}
               <div 
-                className={`
-                  ${spread.isCover || spread.isBack ? 'w-14' : 'w-24'} 
-                  h-16 rounded-sm shadow-xs border transition-all duration-200 overflow-hidden relative flex
-                  ${isActive 
-                    ? 'ring-2 ring-foil-gold ring-offset-2 border-foil-gold' 
-                    : 'border-cream-300 group-hover:border-noir-500'}
-                `}
-                style={{ backgroundColor: (spread.isCover || spread.isBack) ? coverBg : '#FFFFFF' }}
+                className={`h-14 w-24 sm:w-26 rounded-lg overflow-hidden transition-all duration-150 p-1 flex items-center justify-center bg-white ${
+                  isActive 
+                    ? 'border-2 border-black ring-1 ring-black shadow-md' 
+                    : 'border border-gray-200 hover:border-gray-400 bg-white/80'
+                }`}
               >
-                {/* Cover thumbnail */}
-                {spread.isCover && (
-                  <div className="w-full h-full relative overflow-hidden flex items-center justify-center">
-                    {coverPhoto ? (
+                {spread.isCover ? (
+                  <div 
+                    className="w-full h-full rounded-sm overflow-hidden flex items-center justify-center relative shadow-inner"
+                    style={{ backgroundColor: coverBg }}
+                  >
+                    {coverPhoto?.url ? (
                       <img 
                         src={normalizeImageUrl(coverPhoto.url)} 
                         alt="Cover" 
@@ -121,52 +114,51 @@ export default function SpreadFilmstrip() {
                       <span className="text-[9px] font-bold text-white uppercase tracking-wider">Cover</span>
                     )}
                   </div>
-                )}
-
-                {/* Back thumbnail */}
-                {spread.isBack && (
-                  <div className="w-full h-full flex items-center justify-center text-white/80">
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Back</span>
+                ) : spread.isBack ? (
+                  <div 
+                    className="w-full h-full rounded-sm overflow-hidden flex items-center justify-center shadow-inner"
+                    style={{ backgroundColor: coverBg }}
+                  >
+                    <span className="text-[9px] font-bold text-white uppercase tracking-wider">Back</span>
                   </div>
-                )}
-
-                {/* Two-page inside spread thumbnail (1 photo per page) */}
-                {!spread.isCover && !spread.isBack && (
-                  <>
-                    {/* Left half */}
-                    <div className="flex-1 h-full border-r border-cream-200 bg-cream-50 p-1 flex items-center justify-center overflow-hidden">
-                      {leftPhoto ? (
+                ) : (
+                  <div className="w-full h-full flex gap-1 rounded-sm overflow-hidden bg-gray-100 p-0.5">
+                    {/* Left Page Mini */}
+                    <div className="flex-1 bg-white rounded-xs overflow-hidden relative flex items-center justify-center border border-gray-200/60">
+                      {leftPhoto?.url ? (
                         <img 
                           src={normalizeImageUrl(leftPhoto.url)} 
-                          alt={`p${spread.leftNum}`} 
+                          alt={`P.${spread.leftNum}`} 
                           data-original-url={leftPhoto.url}
-                          className="w-full h-full object-cover rounded-[1px]" 
+                          className="w-full h-full object-cover" 
                           onError={handleImageError}
                         />
                       ) : (
-                        <span className="text-[8px] text-cream-400 font-mono">{spread.leftNum}</span>
+                        <span className="text-[8px] text-gray-300 font-mono">{spread.leftNum}</span>
                       )}
                     </div>
-                    {/* Right half */}
-                    <div className="flex-1 h-full bg-cream-50 p-1 flex items-center justify-center overflow-hidden">
-                      {rightPhoto ? (
+                    {/* Right Page Mini */}
+                    <div className="flex-1 bg-white rounded-xs overflow-hidden relative flex items-center justify-center border border-gray-200/60">
+                      {rightPhoto?.url ? (
                         <img 
                           src={normalizeImageUrl(rightPhoto.url)} 
-                          alt={`p${spread.rightNum}`} 
+                          alt={`P.${spread.rightNum}`} 
                           data-original-url={rightPhoto.url}
-                          className="w-full h-full object-cover rounded-[1px]" 
+                          className="w-full h-full object-cover" 
                           onError={handleImageError}
                         />
                       ) : (
-                        <span className="text-[8px] text-cream-400 font-mono">{spread.rightNum}</span>
+                        <span className="text-[8px] text-gray-300 font-mono">{spread.rightNum}</span>
                       )}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
 
-              {/* Label */}
-              <span className={`text-[10px] tabular-nums font-mono ${isActive ? 'text-foil-gold font-bold' : 'text-noir-500'}`}>
+              {/* Page Numbers Label */}
+              <span className={`text-[10px] font-medium transition-colors ${
+                isActive ? 'text-black font-bold' : 'text-gray-400 group-hover:text-gray-700'
+              }`}>
                 {spread.label}
               </span>
             </div>

@@ -6,17 +6,17 @@ import dynamic from 'next/dynamic';
 import { useEditorStore } from '@/stores/useEditorStore';
 import { useCartStore } from '@/stores/useCartStore';
 import { 
-  ChevronLeft, 
-  ChevronRight, 
   Undo, 
   Redo, 
   Eye, 
-  ShoppingBag, 
   ArrowLeft, 
   Download, 
   Loader2,
   Image as ImageIcon,
   LayoutGrid,
+  Type,
+  Palette,
+  BookOpen,
   Film,
   X
 } from 'lucide-react';
@@ -24,9 +24,9 @@ import { generateBookProofPdf } from '@/lib/pdfGenerator';
 import { trackEvent } from '@/lib/analytics';
 
 const BookCanvas = dynamic(() => import('@/features/editor/components/BookCanvas'), { ssr: false });
-const EditorToolbar = dynamic(() => import('@/features/editor/components/EditorToolbar'), { ssr: false });
 const PhotoTray = dynamic(() => import('@/features/editor/components/PhotoTray'), { ssr: false });
 const SpreadFilmstrip = dynamic(() => import('@/features/editor/components/SpreadFilmstrip'), { ssr: false });
+const EditorRightPanel = dynamic(() => import('@/features/editor/components/EditorRightPanel'), { ssr: false });
 
 function StudioContent() {
   const router = useRouter();
@@ -34,7 +34,7 @@ function StudioContent() {
   const searchParams = useSearchParams();
   const projectId = (params?.projectId as string) || 'untitled-project';
 
-  const [mobileDrawer, setMobileDrawer] = useState<'photos' | 'toolbar' | 'filmstrip' | null>(null);
+  const [mobileDrawer, setMobileDrawer] = useState<'photos' | 'layouts' | 'filmstrip' | null>(null);
 
   const { 
     undo, 
@@ -52,6 +52,8 @@ function StudioContent() {
     pageLayouts, 
     pageBackgrounds, 
     coverConfig,
+    activeSidebarTab,
+    setActiveSidebarTab,
     initProject
   } = useEditorStore();
 
@@ -197,178 +199,197 @@ function StudioContent() {
 
   const totalSpreads = Math.ceil(pageCount / 2);
 
+  const toolRailItems = [
+    { id: 'photos', label: 'photos', icon: ImageIcon },
+    { id: 'layouts', label: 'layouts', icon: LayoutGrid },
+    { id: 'text', label: 'text', icon: Type },
+    { id: 'background', label: 'background', icon: Palette },
+    { id: 'cover', label: 'cover', icon: BookOpen },
+  ] as const;
+
   return (
-    <div className="h-screen flex flex-col bg-cream-50 font-sans text-noir-900 overflow-hidden">
-      {/* Top Navigation Bar */}
-      <header className="h-14 border-b border-cream-300 bg-white flex items-center justify-between px-2 sm:px-4 z-20 shrink-0">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+    <div className="h-screen flex flex-col bg-white font-sans text-gray-900 overflow-hidden select-none">
+      {/* 1. Top Navbar (Mockup: Squircle Logo + untitled book · saved just now, center undo/redo, right preview & continue) */}
+      <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-3 sm:px-5 z-30 shrink-0">
+        {/* Left: Brand Squircle + Book Title + Saved Indicator */}
+        <div className="flex items-center gap-3 min-w-0">
           <button 
+            type="button"
             onClick={() => router.push(`/upload/${projectId}`)} 
-            className="p-1.5 hover:bg-cream-100 rounded-sm text-noir-600 hover:text-noir-950 transition-colors shrink-0"
+            className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-black transition-colors shrink-0"
             title="Back to Upload"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
           </button>
+
+          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+            P
+          </div>
+
           <div className="min-w-0">
-            <h1 className="font-serif font-bold text-sm sm:text-base leading-none tracking-wide text-noir-950 truncate max-w-[130px] sm:max-w-[220px] md:max-w-none">
-              {template?.displayName || template?.title || 'Untitled Project'}
+            <h1 className="text-xs sm:text-sm font-semibold text-gray-950 truncate max-w-[140px] sm:max-w-[240px] md:max-w-none">
+              {template?.displayName || template?.title || 'untitled book'}
             </h1>
-            <p className="text-[9px] sm:text-[10px] uppercase tracking-[0.14em] sm:tracking-[0.18em] text-noir-500 mt-1 font-mono truncate">
-              {pageCount}P • {bookConfig.size || '8.25" × 8.25"'} • ₹{(bookConfig.price || 1999).toLocaleString('en-IN')}
-            </p>
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-gray-400 font-mono leading-none mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              <span>saved just now</span>
+            </div>
           </div>
         </div>
         
-        {/* Undo / Redo & Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="flex items-center bg-cream-100 rounded-sm p-0.5 border border-cream-300">
-            <button onClick={undo} className="p-1 sm:p-1.5 hover:bg-white rounded-xs text-noir-700 transition-colors" title="Undo">
-              <Undo size={14} />
-            </button>
-            <button onClick={redo} className="p-1 sm:p-1.5 hover:bg-white rounded-xs text-noir-700 transition-colors" title="Redo">
-              <Redo size={14} />
-            </button>
-          </div>
-
-          {/* Desktop Spread Navigator */}
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-noir-600 font-mono px-3 py-1 bg-cream-100 rounded-sm border border-cream-200">
-            <button 
-              disabled={currentSpreadIndex === 0}
-              onClick={() => setCurrentSpreadIndex(Math.max(0, currentSpreadIndex - 1))}
-              className="hover:text-noir-950 disabled:opacity-30"
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <span>
-              {currentSpreadIndex === 0 ? 'Cover' : currentSpreadIndex === totalSpreads + 1 ? 'Back' : `${(currentSpreadIndex - 1) * 2 + 1}–${(currentSpreadIndex - 1) * 2 + 2}`} / {pageCount}
-            </span>
-            <button 
-              disabled={currentSpreadIndex >= totalSpreads + 1}
-              onClick={() => setCurrentSpreadIndex(Math.min(totalSpreads + 1, currentSpreadIndex + 1))}
-              className="hover:text-noir-950 disabled:opacity-30"
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-
-          <div className="hidden sm:block w-px h-5 bg-cream-300 mx-0.5 sm:mx-1" />
-
-          {/* Export PDF Proof Button */}
+        {/* Center: Undo & Redo Pills */}
+        <div className="flex items-center gap-1 bg-gray-100/90 rounded-full p-0.5 border border-gray-200">
           <button 
+            type="button"
+            onClick={undo} 
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white text-gray-600 hover:text-black transition-colors" 
+            title="Undo"
+          >
+            <Undo size={13} />
+          </button>
+          <button 
+            type="button"
+            onClick={redo} 
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white text-gray-600 hover:text-black transition-colors" 
+            title="Redo"
+          >
+            <Redo size={13} />
+          </button>
+        </div>
+
+        {/* Right: PDF Proof + Preview + Continue Buttons */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Subtle PDF Export Icon */}
+          <button 
+            type="button"
             onClick={handleExportPdf}
             disabled={isExportingPdf}
-            className="inline-flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-noir-300 bg-white hover:bg-cream-100 rounded-sm text-noir-900 transition-colors disabled:opacity-50"
-            title="Export 12K Print Proof PDF"
+            className="p-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            title="Download PDF proof"
           >
             {isExportingPdf ? (
-              <>
-                <Loader2 size={13} className="animate-spin text-foil-gold" />
-                <span className="hidden md:inline">Exporting...</span>
-              </>
+              <Loader2 size={15} className="animate-spin text-black" />
             ) : (
-              <>
-                <Download size={13} className="text-foil-gold" />
-                <span className="hidden md:inline">Export PDF</span>
-              </>
+              <Download size={15} />
             )}
           </button>
 
-          {/* 3D Preview Button (Desktop) */}
+          {/* Preview Button (Border pill) */}
           <button 
+            type="button"
             onClick={() => {
               trackEvent('editor_action', 'studio_preview_viewed', { projectId, pageCount });
               router.push(`/preview/${projectId}`);
             }}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider border border-noir-900 rounded-sm hover:bg-cream-100 transition-colors"
+            className="px-4 py-1.5 rounded-full border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-xs flex items-center gap-1.5 transition-colors"
           >
             <Eye size={13} />
-            <span>3D Preview</span>
+            <span>preview</span>
           </button>
 
-          {/* Approve & Order Button */}
+          {/* Continue Button (Black pill) */}
           <button 
+            type="button"
             onClick={handleApproveAndOrder}
-            className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-4 py-1.5 text-xs font-semibold uppercase tracking-wider bg-noir-950 text-cream-50 rounded-sm hover:bg-noir-900 transition-colors shadow-xs"
+            className="px-5 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-neutral-800 shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <ShoppingBag size={13} />
-            <span className="hidden xs:inline">Order</span>
-            <span className="hidden sm:inline">&nbsp;&amp; Approve</span>
+            <span>continue</span>
           </button>
         </div>
       </header>
 
-      {/* Main Studio Workspace */}
+      {/* 2. Main Studio Workspace Layout */}
       <div className="flex-1 min-h-0 flex overflow-hidden relative">
-        {/* Left Sidebar: Theme & Layout Controls (Desktop) */}
-        <aside className="hidden lg:flex w-[280px] h-full min-h-0 bg-white border-r border-cream-300 flex-col shrink-0 z-10 overflow-y-auto">
-          <EditorToolbar />
+        {/* Far-Left Tool Rail (64px wide: photos, layouts, text, background, cover) */}
+        <aside className="hidden lg:flex w-16 h-full bg-white border-r border-gray-200 flex-col items-center py-4 gap-4 shrink-0 z-20">
+          {toolRailItems.map((item) => {
+            const isTabActive = activeSidebarTab === item.id;
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveSidebarTab(item.id)}
+                className={`flex flex-col items-center justify-center w-12 py-2 rounded-xl transition-all ${
+                  isTabActive
+                    ? 'text-black bg-gray-100 font-semibold shadow-2xs'
+                    : 'text-gray-400 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+                title={item.label}
+              >
+                <Icon size={19} className={isTabActive ? 'text-black' : 'text-gray-400'} />
+                <span className="text-[10px] mt-1 tracking-tight capitalize">{item.label}</span>
+              </button>
+            );
+          })}
         </aside>
 
-        {/* Center Canvas: Layflat Book Spread */}
-        <main className="flex-1 min-h-0 bg-cream-100/70 relative flex flex-col items-center justify-center p-2 sm:p-6 md:p-10 overflow-auto">
-          <BookCanvas />
+        {/* Left Panel: "your photos" Tray (270px wide) */}
+        <aside className="hidden lg:flex w-[270px] h-full min-h-0 bg-white border-r border-gray-200 flex-col shrink-0 z-10 overflow-hidden">
+          <PhotoTray />
+        </aside>
+
+        {/* Center Column: Warm Beige Canvas + Floating Action Capsule + Bottom Filmstrip */}
+        <main className="flex-1 min-h-0 bg-[#EBE7DF] relative flex flex-col overflow-hidden min-w-0">
+          {/* Canvas Spread Area */}
+          <div className="flex-1 min-h-0 relative flex flex-col items-center justify-center p-3 sm:p-6 overflow-auto">
+            <BookCanvas />
+          </div>
+
+          {/* Bottom Spread Filmstrip (Inside Center Column, exactly like mockup) */}
+          <div className="h-32 bg-[#EBE7DF] border-t border-black/5 shrink-0 z-10 flex flex-col justify-center">
+            <SpreadFilmstrip />
+          </div>
         </main>
 
-        {/* Right Sidebar: Photo Tray (Desktop) */}
-        <aside className="hidden lg:flex w-[280px] h-full min-h-0 bg-white border-l border-cream-300 flex-col shrink-0 z-10 overflow-hidden">
-          <PhotoTray />
+        {/* Right Panel: Layouts + Smart Creation + Caption (280px wide) */}
+        <aside className="hidden lg:flex w-[280px] h-full min-h-0 bg-white border-l border-gray-200 flex-col shrink-0 z-10 overflow-y-auto">
+          <EditorRightPanel />
         </aside>
       </div>
 
-      {/* Bottom Spread Filmstrip (Desktop) */}
-      <footer className="hidden lg:block h-32 bg-white border-t border-cream-300 shrink-0 z-10">
-        <SpreadFilmstrip />
-      </footer>
-
       {/* Mobile Bottom Navigation Dock (< lg) */}
-      <nav className="lg:hidden h-16 bg-white border-t border-cream-300 grid grid-cols-4 items-center shrink-0 z-20 px-2 py-1 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
+      <nav className="lg:hidden h-14 bg-white border-t border-gray-200 grid grid-cols-4 items-center shrink-0 z-20 px-2 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
         <button
           type="button"
           onClick={() => setMobileDrawer(mobileDrawer === 'photos' ? null : 'photos')}
-          className={`flex flex-col items-center justify-center py-1 rounded-sm transition-colors ${
-            mobileDrawer === 'photos' ? 'text-foil-gold font-bold bg-cream-100' : 'text-noir-600 hover:text-noir-950'
+          className={`flex flex-col items-center justify-center py-1 transition-colors ${
+            mobileDrawer === 'photos' ? 'text-black font-bold' : 'text-gray-500'
           }`}
         >
-          <div className="relative">
-            <ImageIcon size={19} />
-            {photos.length > 0 && (
-              <span className="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-noir-950 text-white text-[9px] font-mono font-bold flex items-center justify-center">
-                {photos.length}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] font-medium tracking-tight mt-1">Photos</span>
+          <ImageIcon size={18} />
+          <span className="text-[10px] font-medium mt-0.5">photos</span>
         </button>
 
         <button
           type="button"
-          onClick={() => setMobileDrawer(mobileDrawer === 'toolbar' ? null : 'toolbar')}
-          className={`flex flex-col items-center justify-center py-1 rounded-sm transition-colors ${
-            mobileDrawer === 'toolbar' ? 'text-foil-gold font-bold bg-cream-100' : 'text-noir-600 hover:text-noir-950'
+          onClick={() => setMobileDrawer(mobileDrawer === 'layouts' ? null : 'layouts')}
+          className={`flex flex-col items-center justify-center py-1 transition-colors ${
+            mobileDrawer === 'layouts' ? 'text-black font-bold' : 'text-gray-500'
           }`}
         >
-          <LayoutGrid size={19} />
-          <span className="text-[10px] font-medium tracking-tight mt-1">Layouts</span>
+          <LayoutGrid size={18} />
+          <span className="text-[10px] font-medium mt-0.5">layouts</span>
         </button>
 
         <button
           type="button"
           onClick={() => setMobileDrawer(mobileDrawer === 'filmstrip' ? null : 'filmstrip')}
-          className={`flex flex-col items-center justify-center py-1 rounded-sm transition-colors ${
-            mobileDrawer === 'filmstrip' ? 'text-foil-gold font-bold bg-cream-100' : 'text-noir-600 hover:text-noir-950'
+          className={`flex flex-col items-center justify-center py-1 transition-colors ${
+            mobileDrawer === 'filmstrip' ? 'text-black font-bold' : 'text-gray-500'
           }`}
         >
-          <Film size={19} />
-          <span className="text-[10px] font-medium tracking-tight mt-1">Spreads</span>
+          <Film size={18} />
+          <span className="text-[10px] font-medium mt-0.5">spreads</span>
         </button>
 
         <button
           type="button"
           onClick={() => router.push(`/preview/${projectId}`)}
-          className="flex flex-col items-center justify-center py-1 rounded-sm text-noir-600 hover:text-noir-950 transition-colors"
+          className="flex flex-col items-center justify-center py-1 text-gray-500 hover:text-black transition-colors"
         >
-          <Eye size={19} />
-          <span className="text-[10px] font-medium tracking-tight mt-1">3D Proof</span>
+          <Eye size={18} />
+          <span className="text-[10px] font-medium mt-0.5">preview</span>
         </button>
       </nav>
 
@@ -377,32 +398,28 @@ function StudioContent() {
         <div 
           role="dialog" 
           aria-modal="true" 
-          aria-label="Studio customization drawer" 
-          className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-xs animate-fade-in"
+          className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-xs animate-fade-in"
         >
           <div 
             className="absolute inset-0" 
             onClick={() => setMobileDrawer(null)} 
           />
-          <div className="relative bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85vh] h-[80vh] z-10 overflow-hidden border-t border-cream-300 pb-[calc(env(safe-area-inset-bottom,16px)+8px)] touch-pan-y">
+          <div className="relative bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85vh] h-[75vh] z-10 overflow-hidden border-t border-gray-200">
             {/* Visual Touch Drag Indicator Pill */}
-            <div className="w-10 h-1 bg-cream-400/80 rounded-full mx-auto mt-2 mb-0.5 shrink-0" />
+            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-2.5 mb-1 shrink-0" />
 
             {/* Drawer Header */}
-            <div className="flex items-center justify-between px-3.5 sm:px-4 py-2.5 border-b border-cream-200 bg-cream-50/80 shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-2 h-2 rounded-full bg-foil-gold shrink-0" />
-                <h3 className="font-serif font-bold text-xs sm:text-sm tracking-wide text-noir-950 uppercase truncate">
-                  {mobileDrawer === 'photos' && 'Photo Library & Cloud Uploads'}
-                  {mobileDrawer === 'toolbar' && 'Layout, Theme & Foil Finishes'}
-                  {mobileDrawer === 'filmstrip' && 'All Spreads & Page Navigator'}
-                </h3>
-              </div>
+            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 shrink-0">
+              <h3 className="font-semibold text-xs text-gray-950 uppercase tracking-wide">
+                {mobileDrawer === 'photos' && 'your photos'}
+                {mobileDrawer === 'layouts' && 'layouts & customization'}
+                {mobileDrawer === 'filmstrip' && 'spreads navigator'}
+              </h3>
               <button
                 type="button"
                 onClick={() => setMobileDrawer(null)}
-                className="p-1.5 rounded-full hover:bg-cream-200 text-noir-500 hover:text-noir-950 transition-colors"
-                title="Close Drawer"
+                className="p-1 rounded-full text-gray-400 hover:text-black transition-colors"
+                title="Close"
               >
                 <X size={18} />
               </button>
@@ -411,13 +428,13 @@ function StudioContent() {
             {/* Drawer Content */}
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               {mobileDrawer === 'photos' && <PhotoTray />}
-              {mobileDrawer === 'toolbar' && (
+              {mobileDrawer === 'layouts' && (
                 <div className="flex-1 min-h-0 overflow-y-auto">
-                  <EditorToolbar />
+                  <EditorRightPanel />
                 </div>
               )}
               {mobileDrawer === 'filmstrip' && (
-                <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="flex-1 min-h-0 overflow-y-auto p-4">
                   <SpreadFilmstrip />
                 </div>
               )}
@@ -431,7 +448,7 @@ function StudioContent() {
 
 export default function StudioPage() {
   return (
-    <Suspense fallback={<div className="h-screen bg-cream-50 flex items-center justify-center text-sm font-serif">Loading Studio...</div>}>
+    <Suspense fallback={<div className="h-screen bg-[#EBE7DF] flex items-center justify-center text-sm font-sans text-gray-600">loading studio...</div>}>
       <StudioContent />
     </Suspense>
   );

@@ -70,6 +70,7 @@ function getLayoutDisplayName(layout: string): string {
     case '2-photo-v': return 'Stacked Duo';
     case '2-photo-h': return 'Side-by-Side';
     case '3-photo': return 'Hero + Duo';
+    case '3-photo-h': return 'Hero Top + Duo';
     case '4-photo': return '2×2 Grid';
     case '6-photo-grid': return '3×2 Grid';
     case '2-page-panoramic': return 'Panoramic Spread';
@@ -403,6 +404,21 @@ async function drawPageLayoutSlots(
       await drawPhotoSlot(doc, url0, originX, originY, heroW, H, imageCache, `Page ${pageNum} Hero`, false, getSlotCrop(pageNum, 0));
       await drawPhotoSlot(doc, url1, duoX, originY, heroW, duoH, imageCache, `Page ${pageNum} Top`, false, getSlotCrop(pageNum, 1));
       await drawPhotoSlot(doc, url2, duoX, originY + duoH + gap, heroW, duoH, imageCache, `Page ${pageNum} Bottom`, false, getSlotCrop(pageNum, 2));
+      break;
+    }
+
+    case '3-photo-h': {
+      const gap = 3.5;
+      const heroH = (H - gap) * 0.58;
+      const duoH = (H - gap) * 0.42;
+      const duoW = (W - gap) / 2;
+      const duoY = originY + heroH + gap;
+      const url0 = getSlotPhotoUrl(pageNum, 0);
+      const url1 = getSlotPhotoUrl(pageNum, 1);
+      const url2 = getSlotPhotoUrl(pageNum, 2);
+      await drawPhotoSlot(doc, url0, originX, originY, W, heroH, imageCache, `Page ${pageNum} Top Hero`, false, getSlotCrop(pageNum, 0));
+      await drawPhotoSlot(doc, url1, originX, duoY, duoW, duoH, imageCache, `Page ${pageNum} Bottom Left`, false, getSlotCrop(pageNum, 1));
+      await drawPhotoSlot(doc, url2, originX + duoW + gap, duoY, duoW, duoH, imageCache, `Page ${pageNum} Bottom Right`, false, getSlotCrop(pageNum, 2));
       break;
     }
 
