@@ -41,6 +41,7 @@ function PreviewContent() {
 
   // Read from store
   const { 
+    photos,
     pageCount: storePageCount, 
     currentSpreadIndex, 
     pagePhotos, 
@@ -51,8 +52,16 @@ function PreviewContent() {
     coverConfig,
     template: storeTemplate,
     bookConfig: storeBookConfig,
-    setCurrentSpreadIndex 
+    setCurrentSpreadIndex,
+    initProject,
   } = useEditorStore();
+
+  // Hydrate project state if needed
+  useEffect(() => {
+    if (projectId) {
+      initProject(projectId);
+    }
+  }, [projectId, initProject]);
 
   const { addItem } = useCartStore();
 
@@ -533,6 +542,7 @@ function PreviewContent() {
               pageLayouts={pageLayouts}
               pageBackgrounds={pageBackgrounds}
               coverConfig={coverConfig}
+              userPhotos={photos}
               samplePhotos={samplePhotos}
               bookTitle={bookTitle}
               seriesLabel={seriesLabel}

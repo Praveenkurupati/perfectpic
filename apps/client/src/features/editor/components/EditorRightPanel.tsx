@@ -116,6 +116,14 @@ export default function EditorRightPanel() {
       ),
     },
     {
+      id: '1-photo-full',
+      label: 'full bleed',
+      photoCount: 1,
+      wireframe: (
+        <div className="w-full h-full bg-gray-300 rounded-none" />
+      ),
+    },
+    {
       id: '4-photo',
       label: '4 photos',
       photoCount: 4,
@@ -125,6 +133,31 @@ export default function EditorRightPanel() {
           <div className="bg-gray-300 rounded-xs" />
           <div className="bg-gray-300 rounded-xs" />
           <div className="bg-gray-300 rounded-xs" />
+        </div>
+      ),
+    },
+    {
+      id: '6-photo-grid',
+      label: '6 photos',
+      photoCount: 6,
+      wireframe: (
+        <div className="w-full h-full p-1 grid grid-cols-3 grid-rows-2 gap-0.5">
+          <div className="bg-gray-300 rounded-2xs" />
+          <div className="bg-gray-300 rounded-2xs" />
+          <div className="bg-gray-300 rounded-2xs" />
+          <div className="bg-gray-300 rounded-2xs" />
+          <div className="bg-gray-300 rounded-2xs" />
+          <div className="bg-gray-300 rounded-2xs" />
+        </div>
+      ),
+    },
+    {
+      id: '2-page-panoramic',
+      label: 'panoramic spread',
+      photoCount: 1,
+      wireframe: (
+        <div className="w-full h-full p-1 flex items-center justify-center">
+          <div className="w-full h-3/4 bg-gray-300 rounded-xs border border-dashed border-gray-400" />
         </div>
       ),
     },
@@ -290,7 +323,14 @@ export default function EditorRightPanel() {
               <button
                 key={card.id}
                 type="button"
-                onClick={() => setPageLayout(targetedPageNum, card.id)}
+                onClick={() => {
+                  if (card.id === '2-page-panoramic') {
+                    setPageLayout(leftPageNum, '2-page-panoramic');
+                    setPageLayout(rightPageNum, '2-page-panoramic');
+                  } else {
+                    setPageLayout(targetedPageNum, card.id);
+                  }
+                }}
                 className={`group aspect-[4/3] rounded-xl border p-2 flex flex-col items-center justify-between transition-all bg-white hover:bg-gray-50/50 ${
                   isSelected
                     ? 'border-2 border-black ring-1 ring-black shadow-xs'

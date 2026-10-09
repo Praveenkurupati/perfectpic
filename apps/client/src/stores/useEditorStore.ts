@@ -165,6 +165,14 @@ const generateSpreads = (pageCount: number): Page[] => {
   return spreads;
 };
 
+export const generateDefaultPageLayouts = (pageCount: number): Record<number, PageLayout> => {
+  const layouts: Record<number, PageLayout> = {};
+  for (let i = 1; i <= pageCount; i++) {
+    layouts[i] = '1-photo';
+  }
+  return layouts;
+};
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   canvas: null,
   selectedObjectId: null,
@@ -176,7 +184,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   pagePhotos: {},
   slotPhotos: {},
   slotCrops: {},
-  pageLayouts: {},
+  pageLayouts: generateDefaultPageLayouts(32),
   pageBackgrounds: {},
   coverConfig: {
     title: 'PERFECTPIC',
@@ -290,11 +298,15 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   }),
   setCurrentPage: (index) => set({ currentPageIndex: index, currentSpreadIndex: index }),
 
-  setPageCount: (count) => set((state) => ({
-    pageCount: count,
-    pages: generateSpreads(count),
-    bookConfig: { ...state.bookConfig, pages: count }
-  })),
+  setPageCount: (count) => set((state) => {
+    const nextLayouts = { ...generateDefaultPageLayouts(count), ...state.pageLayouts };
+    return {
+      pageCount: count,
+      pages: generateSpreads(count),
+      pageLayouts: nextLayouts,
+      bookConfig: { ...state.bookConfig, pages: count }
+    };
+  }),
 
   setCurrentSpreadIndex: (index) => set({
     currentSpreadIndex: index,
@@ -398,21 +410,29 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     if (state.photos.length === 0) return state;
 
     const newPagePhotos: Record<number, Photo> = {};
+    const newSlotPhotos: Record<string, Photo> = {};
+    const newPageLayouts: Record<number, PageLayout> = {};
+
     // Page 0 = Cover
     if (state.photos[0]) {
       newPagePhotos[0] = state.photos[0];
+      newSlotPhotos['0'] = state.photos[0];
     }
 
-    // Pages 1 to pageCount (1 photo per page)
+    // Pages 1 to pageCount: 1 photo per page, layout strictly '1-photo'
     for (let pageNum = 1; pageNum <= state.pageCount; pageNum++) {
-      const photoIndex = pageNum % state.photos.length;
-      if (state.photos[photoIndex]) {
-        newPagePhotos[pageNum] = state.photos[photoIndex]!;
+      newPageLayouts[pageNum] = '1-photo';
+      const photoIndex = (pageNum - 1) % state.photos.length;
+      const photo = state.photos[photoIndex];
+      if (photo) {
+        newPagePhotos[pageNum] = photo;
+        newSlotPhotos[pageNum.toString()] = photo;
+        newSlotPhotos[`${pageNum}_0`] = photo;
       }
     }
 
     const counts: Record<string, number> = {};
-    Object.values(newPagePhotos).forEach(p => {
+    Object.values(newSlotPhotos).forEach(p => {
       if (p) counts[p.id] = (counts[p.id] || 0) + 1;
     });
 
@@ -423,7 +443,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     return {
       pagePhotos: newPagePhotos,
-      photos: updatedPhotos
+      slotPhotos: newSlotPhotos,
+      pageLayouts: newPageLayouts,
+      photos: updatedPhotos,
+      autoSaveStatus: 'saved'
     };
   }),
 
@@ -501,6 +524,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     if (snapshot) {
       const pCount = snapshot.pageCount || initialConfig?.pages || 32;
+      const defaultLayouts = generateDefaultPageLayouts(pCount);
+      const resolvedLayouts = { ...defaultLayouts, ...(snapshot.pageLayouts || {}) };
       set({
         currentProjectId: projectId,
         pageCount: pCount,
@@ -517,7 +542,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         pagePhotos: snapshot.pagePhotos || {},
         slotPhotos: snapshot.slotPhotos || {},
         slotCrops: snapshot.slotCrops || {},
-        pageLayouts: snapshot.pageLayouts || {},
+        pageLayouts: resolvedLayouts,
         pageBackgrounds: snapshot.pageBackgrounds || {},
         coverConfig: snapshot.coverConfig || {
           title: snapshot.title || 'PERFECTPIC',
@@ -549,7 +574,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         pagePhotos: {},
         slotPhotos: {},
         slotCrops: {},
-        pageLayouts: {},
+        pageLayouts: generateDefaultPageLayouts(pCount),
         pageBackgrounds: {},
         coverConfig: {
           title: 'PERFECTPIC',
@@ -589,7 +614,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       pagePhotos: {},
       slotPhotos: {},
       slotCrops: {},
-      pageLayouts: {},
+      pageLayouts: generateDefaultPageLayouts(pageCount),
       pageBackgrounds: {},
       coverConfig: {
         title: 'PERFECTPIC',

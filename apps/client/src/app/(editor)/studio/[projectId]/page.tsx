@@ -104,8 +104,7 @@ function StudioContent() {
     }
   }, [currentSpreadIndex, projectId, pageCount]);
 
-  const handleApproveAndOrder = () => {
-    const thumbnail = pagePhotos[0]?.url || template?.coverImage || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400';
+  const saveSnapshot = () => {
     const slotPhotoUrls = Object.values(slotPhotos || {})
       .filter((p: any) => p && typeof p.url === 'string')
       .map((p: any) => p.url);
@@ -141,6 +140,12 @@ function StudioContent() {
         localStorage.setItem(`pp_snapshot_${projectId}`, JSON.stringify(projectSnapshot));
       } catch {}
     }
+    return projectSnapshot;
+  };
+
+  const handleApproveAndOrder = () => {
+    const thumbnail = pagePhotos[0]?.url || template?.coverImage || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?w=400';
+    const projectSnapshot = saveSnapshot();
 
     addItem({
       id: `cart-${projectId}-${Date.now()}`,
@@ -279,6 +284,7 @@ function StudioContent() {
             type="button"
             onClick={() => {
               trackEvent('editor_action', 'studio_preview_viewed', { projectId, pageCount });
+              saveSnapshot();
               router.push(`/preview/${projectId}`);
             }}
             className="px-4 py-1.5 rounded-full border border-gray-300 text-xs font-medium text-gray-700 hover:bg-gray-50 shadow-xs flex items-center gap-1.5 transition-colors"
@@ -385,7 +391,10 @@ function StudioContent() {
 
         <button
           type="button"
-          onClick={() => router.push(`/preview/${projectId}`)}
+          onClick={() => {
+            saveSnapshot();
+            router.push(`/preview/${projectId}`);
+          }}
           className="flex flex-col items-center justify-center py-1 text-gray-500 hover:text-black transition-colors"
         >
           <Eye size={18} />

@@ -597,8 +597,8 @@ export async function buildAdminProductionPdfDocument(options: AdminPrintPdfOpti
     const leftPageNum = (s - 1) * 2 + 1;
     const rightPageNum = leftPageNum + 1;
 
-    const leftLayout = pageLayouts[leftPageNum] || '1-photo';
-    const rightLayout = pageLayouts[rightPageNum] || '1-photo';
+    const leftLayout = pageLayouts[leftPageNum] || (pageLayouts as any)[leftPageNum.toString()] || '1-photo';
+    const rightLayout = pageLayouts[rightPageNum] || (pageLayouts as any)[rightPageNum.toString()] || '1-photo';
     const isPanoramic = leftLayout === '2-page-panoramic' || rightLayout === '2-page-panoramic';
 
     const [lR, lG, lB] = hexToRgb(pageBackgrounds[leftPageNum], [250, 248, 245]);

@@ -17,6 +17,7 @@ interface BookFlipPreviewProps {
   pageLayouts?: Record<number, PageLayout>;
   pageBackgrounds?: Record<number, string>;
   coverConfig?: CoverConfig;
+  userPhotos?: Photo[];
   samplePhotos?: string[];
   bookTitle: string;
   seriesLabel?: string;
@@ -38,6 +39,7 @@ export default function BookFlipPreview({
   pageLayouts = {},
   pageBackgrounds = {},
   coverConfig,
+  userPhotos = [],
   samplePhotos = [],
   bookTitle,
   seriesLabel = 'the travel series',
@@ -61,20 +63,42 @@ export default function BookFlipPreview({
   const displaySpine = coverConfig?.spineText || 'PERFECTPIC ARCHIVAL';
   const effectiveCoverBg = coverConfig?.backgroundColor || coverColor;
 
-  // Retrieve photo for a specific slot, with deterministic fallback
+  // Retrieve photo for a specific slot, with comprehensive user photo and sample fallback
   const getSlotPhotoUrl = (pageNum: number, subIndex: number): string => {
     const slotId = `${pageNum}_${subIndex}`;
+    // 1. Direct slot assignment
     if (slotPhotos && slotPhotos[slotId]?.url) {
       return slotPhotos[slotId]!.url;
     }
-    if (subIndex === 0 && pagePhotos && pagePhotos[pageNum]?.url) {
-      return pagePhotos[pageNum]!.url;
+    // 2. Primary slot fallback to page-level slot or pagePhotos
+    if (subIndex === 0) {
+      if (slotPhotos && slotPhotos[String(pageNum)]?.url) {
+        return slotPhotos[String(pageNum)]!.url;
+      }
+      if (pagePhotos && pagePhotos[pageNum]?.url) {
+        return pagePhotos[pageNum]!.url;
+      }
     }
+    // 3. User's uploaded photos pool
+    if (userPhotos && userPhotos.length > 0) {
+      const idx = ((pageNum - 1) * 3 + subIndex) % userPhotos.length;
+      return userPhotos[idx]?.url || userPhotos[0]!.url;
+    }
+    // 4. Sample/template photos pool
     if (samplePhotos && samplePhotos.length > 0) {
-      const idx = (pageNum * 3 + subIndex) % samplePhotos.length;
+      const idx = ((pageNum - 1) * 3 + subIndex) % samplePhotos.length;
       return samplePhotos[idx] || samplePhotos[0]!;
     }
-    return 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
+    // 5. Distinct high-res Unsplash editorial fallbacks
+    const defaultFallbacks = [
+      'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop',
+      'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=800&auto=format&fit=crop',
+    ];
+    return defaultFallbacks[(pageNum + subIndex) % defaultFallbacks.length]!;
   };
 
   // Retrieve panoramic photo spanning both pages
@@ -86,8 +110,15 @@ export default function BookFlipPreview({
     if (slotPhotos && slotPhotos[`${leftPageNum}_0`]?.url) {
       return slotPhotos[`${leftPageNum}_0`]!.url;
     }
+    if (slotPhotos && slotPhotos[String(leftPageNum)]?.url) {
+      return slotPhotos[String(leftPageNum)]!.url;
+    }
     if (pagePhotos && pagePhotos[leftPageNum]?.url) {
       return pagePhotos[leftPageNum]!.url;
+    }
+    if (userPhotos && userPhotos.length > 0) {
+      const idx = (spreadIndex - 1) % userPhotos.length;
+      return userPhotos[idx]?.url || userPhotos[0]!.url;
     }
     if (samplePhotos && samplePhotos.length > 0) {
       const idx = (spreadIndex - 1) % samplePhotos.length;
@@ -99,8 +130,8 @@ export default function BookFlipPreview({
   const leftPageNumber = (currentSpread - 1) * 2 + 1;
   const rightPageNumber = (currentSpread - 1) * 2 + 2;
 
-  const leftLayout: PageLayout = pageLayouts[leftPageNumber] || '1-photo';
-  const rightLayout: PageLayout = pageLayouts[rightPageNumber] || '1-photo';
+  const leftLayout: PageLayout = (pageLayouts && (pageLayouts[leftPageNumber] || (pageLayouts as any)[leftPageNumber.toString()])) || '1-photo';
+  const rightLayout: PageLayout = (pageLayouts && (pageLayouts[rightPageNumber] || (pageLayouts as any)[rightPageNumber.toString()])) || '1-photo';
   const leftBg = pageBackgrounds[leftPageNumber] || '#FFFFFF';
   const rightBg = pageBackgrounds[rightPageNumber] || '#FFFFFF';
 
@@ -110,6 +141,7 @@ export default function BookFlipPreview({
     slotPhotos['0']?.url ||
     pagePhotos[0]?.url ||
     coverImage ||
+    userPhotos[0]?.url ||
     samplePhotos[0] ||
     'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800&auto=format&fit=crop';
 
@@ -169,7 +201,7 @@ export default function BookFlipPreview({
       case '1-photo-full': {
         const url = getSlotPhotoUrl(pageNum, 0);
         return (
-          <div className="flex-1 -mx-8 -my-6 md:-mx-10 md:-my-8 h-[calc(100%+3rem)] md:h-[calc(100%+4rem)] overflow-hidden">
+          <div className="w-full h-[330px] rounded-none overflow-hidden shadow-sm border border-noir-300/40 relative group">
             <RenderPreviewSlot url={url} label={`Full Bleed Page ${pageNum}`} crop={getCrop(0)} />
           </div>
         );
@@ -177,29 +209,43 @@ export default function BookFlipPreview({
 
       case '2-photo-v': {
         return (
-          <div className="flex-1 my-2 grid grid-rows-2 gap-2 h-full">
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Top Slot" crop={getCrop(0)} />
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Slot" crop={getCrop(1)} />
+          <div className="w-full h-[330px] grid grid-rows-2 gap-2">
+            <div className="w-full h-full min-h-0">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Top Slot" crop={getCrop(0)} />
+            </div>
+            <div className="w-full h-full min-h-0">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Slot" crop={getCrop(1)} />
+            </div>
           </div>
         );
       }
 
       case '2-photo-h': {
         return (
-          <div className="flex-1 my-2 grid grid-cols-2 gap-2 h-full">
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Left Slot" crop={getCrop(0)} />
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Right Slot" crop={getCrop(1)} />
+          <div className="w-full h-[330px] grid grid-cols-2 gap-2">
+            <div className="w-full h-full min-w-0">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Left Slot" crop={getCrop(0)} />
+            </div>
+            <div className="w-full h-full min-w-0">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Right Slot" crop={getCrop(1)} />
+            </div>
           </div>
         );
       }
 
       case '3-photo': {
         return (
-          <div className="flex-1 my-2 grid grid-cols-2 gap-2 h-full">
-            <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Hero Slot" crop={getCrop(0)} />
-            <div className="grid grid-rows-2 gap-2 h-full">
-              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Top Slot" crop={getCrop(1)} />
-              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Slot" crop={getCrop(2)} />
+          <div className="w-full h-[330px] grid grid-cols-2 gap-2">
+            <div className="w-full h-full min-w-0">
+              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Hero Slot" crop={getCrop(0)} />
+            </div>
+            <div className="w-full h-full min-w-0 grid grid-rows-2 gap-2">
+              <div className="w-full h-full min-h-0">
+                <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Top Slot" crop={getCrop(1)} />
+              </div>
+              <div className="w-full h-full min-h-0">
+                <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Slot" crop={getCrop(2)} />
+              </div>
             </div>
           </div>
         );
@@ -207,13 +253,17 @@ export default function BookFlipPreview({
 
       case '3-photo-h': {
         return (
-          <div className="flex-1 my-2 flex flex-col gap-2 h-full">
-            <div className="h-[58%]">
+          <div className="w-full h-[330px] flex flex-col gap-2">
+            <div className="h-[190px] w-full min-h-0">
               <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 0)} label="Top Slot" crop={getCrop(0)} />
             </div>
-            <div className="h-[42%] grid grid-cols-2 gap-2">
-              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Left" crop={getCrop(1)} />
-              <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Right" crop={getCrop(2)} />
+            <div className="flex-1 w-full min-h-0 grid grid-cols-2 gap-2">
+              <div className="w-full h-full min-w-0">
+                <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 1)} label="Bottom Left" crop={getCrop(1)} />
+              </div>
+              <div className="w-full h-full min-w-0">
+                <RenderPreviewSlot url={getSlotPhotoUrl(pageNum, 2)} label="Bottom Right" crop={getCrop(2)} />
+              </div>
             </div>
           </div>
         );
@@ -221,14 +271,16 @@ export default function BookFlipPreview({
 
       case '4-photo': {
         return (
-          <div className="flex-1 my-2 grid grid-cols-2 grid-rows-2 gap-2 h-full">
+          <div className="w-full h-[330px] grid grid-cols-2 grid-rows-2 gap-2">
             {[0, 1, 2, 3].map((idx) => (
-              <RenderPreviewSlot
-                key={idx}
-                url={getSlotPhotoUrl(pageNum, idx)}
-                label={`Slot ${idx + 1}`}
-                crop={getCrop(idx)}
-              />
+              <div key={idx} className="w-full h-full min-h-0 min-w-0">
+                <RenderPreviewSlot
+                  key={idx}
+                  url={getSlotPhotoUrl(pageNum, idx)}
+                  label={`Slot ${idx + 1}`}
+                  crop={getCrop(idx)}
+                />
+              </div>
             ))}
           </div>
         );
@@ -236,14 +288,16 @@ export default function BookFlipPreview({
 
       case '6-photo-grid': {
         return (
-          <div className="flex-1 my-2 grid grid-cols-3 grid-rows-2 gap-1.5 h-full">
+          <div className="w-full h-[330px] grid grid-cols-3 grid-rows-2 gap-1.5">
             {[0, 1, 2, 3, 4, 5].map((idx) => (
-              <RenderPreviewSlot
-                key={idx}
-                url={getSlotPhotoUrl(pageNum, idx)}
-                label={`Slot ${idx + 1}`}
-                crop={getCrop(idx)}
-              />
+              <div key={idx} className="w-full h-full min-h-0 min-w-0">
+                <RenderPreviewSlot
+                  key={idx}
+                  url={getSlotPhotoUrl(pageNum, idx)}
+                  label={`Slot ${idx + 1}`}
+                  crop={getCrop(idx)}
+                />
+              </div>
             ))}
           </div>
         );
@@ -253,8 +307,8 @@ export default function BookFlipPreview({
       default: {
         const url = getSlotPhotoUrl(pageNum, 0);
         return (
-          <div className="flex-1 my-3 flex items-center justify-center h-full">
-            <div className="w-full h-[330px] rounded-xs overflow-hidden shadow-md border border-noir-200/60 bg-cream-100 relative group">
+          <div className="w-full h-[330px] flex items-center justify-center">
+            <div className="w-full h-full rounded-xs overflow-hidden shadow-md border border-noir-200/60 bg-cream-100 relative group">
               <RenderPreviewSlot url={url} label={`Page ${pageNum}`} crop={getCrop(0)} />
             </div>
           </div>
@@ -451,7 +505,7 @@ export default function BookFlipPreview({
                   </div>
 
                   {/* Dynamic Photo Slot Layout */}
-                  <div className="flex-1 relative flex flex-col justify-center overflow-hidden">
+                  <div className="w-full h-[330px] my-auto relative flex items-center justify-center">
                     {renderLayoutContent(leftPageNumber, leftLayout)}
                   </div>
 
@@ -480,7 +534,7 @@ export default function BookFlipPreview({
                   </div>
 
                   {/* Dynamic Photo Slot Layout */}
-                  <div className="flex-1 relative flex flex-col justify-center overflow-hidden">
+                  <div className="w-full h-[330px] my-auto relative flex items-center justify-center">
                     {renderLayoutContent(rightPageNumber, rightLayout)}
                   </div>
 

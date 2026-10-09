@@ -560,8 +560,8 @@ export default function BookCanvas() {
     }
   };
 
-  const leftLayout = pageLayouts[leftPageNum] || '3-photo-h';
-  const rightLayout = pageLayouts[rightPageNum] || '3-photo';
+  const leftLayout: PageLayout = pageLayouts[leftPageNum] || (pageLayouts as any)[leftPageNum.toString()] || '1-photo';
+  const rightLayout: PageLayout = pageLayouts[rightPageNum] || (pageLayouts as any)[rightPageNum.toString()] || '1-photo';
   const leftBg = pageBackgrounds[leftPageNum] || '#FFFFFF';
   const rightBg = pageBackgrounds[rightPageNum] || '#FFFFFF';
 
