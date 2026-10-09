@@ -46,7 +46,7 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50">
       {/* Top Announcement Bar */}
       <div className="bg-[#0A0A0A] text-[#D9D6CF] py-2 px-4 text-center text-[11px] md:text-xs font-medium tracking-wide">
-        crafted in bengaluru • delivered across india in 5-7 days
+        bundle &amp; save · free delivery across india · 100% reprint policy
       </div>
 
       {/* Main Navigation Bar */}

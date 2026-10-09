@@ -3,6 +3,8 @@
 export interface FallbackBook {
   id?: string;
   slug: string;
+  shortTitle?: string;
+  mockupBg?: string;
   seriesLabel: string;
   bookType: string;
   title: string;
@@ -30,272 +32,359 @@ export interface FallbackBook {
 
 export const fallbackCatalog: FallbackBook[] = [
   {
-    "slug": "trek-series-nethravathi",
-    "seriesLabel": "trek series",
-    "bookType": "custom photobook",
-    "title": "custom photobook",
-    "displayName": "Netravati Peak Cloud Trails",
-    "tagline": "emerald valleys & western monsoon mist",
-    "subtitle": "Chikmagalur Ghats Ridge Hike",
-    "description": "Vibrant green ridge landscapes and dramatic monsoon fog captured on premium lay-flat spreads.",
-    "category": "Trek",
-    "tags": [
-      "trek",
-      "trekking",
-      "nethravathi",
-      "netravati",
-      "karnataka",
-      "western ghats",
-      "monsoon",
-      "clouds",
-      "hills",
-      "greenery"
-    ],
-    "pageOptions": [
-      12,
-      24,
-      32,
-      60,
-      120
-    ],
-    "coverImage": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-    "coverColor": "#4E7055",
-    "spineText": "NETRAVATI",
-    "rating": 4.9,
-    "reviewCount": 88,
-    "fromPrice": 1999,
-    "pricing": {
-      "10": 2499,
-      "8.25": 1999
-    },
-    "basePages": 32,
-    "maxPhotos": 120,
-    "badge": "trending",
-    "priority": 100,
-    "featured": true,
-    "templatePhotos": [
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1511497584788-87676104235f?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&auto=format&fit=crop"
-    ]
-  },
-  {
     "slug": "travel-series-kerala",
+    "shortTitle": "kerala",
     "seriesLabel": "travel series",
     "bookType": "custom photobook",
-    "title": "custom photobook",
+    "title": "kerala — custom photobook",
     "displayName": "Kerala Gods Own Country",
     "tagline": "swaying palms, backwaters & spice trails",
     "subtitle": "Alleppey, Kumarakom & Kochi",
     "description": "Tranquil houseboat cruises, lush coconut groves, and heritage spice warehouses.",
     "category": "Travel",
-    "tags": [
-      "kerala",
-      "alleppey",
-      "backwaters",
-      "houseboat",
-      "kumarakom",
-      "south india",
-      "palms",
-      "ayurveda",
-      "vacation"
-    ],
-    "pageOptions": [
-      12,
-      24,
-      32,
-      60,
-      120
-    ],
+    "tags": ["kerala", "travel", "alleppey", "backwaters", "vacation"],
+    "pageOptions": [12, 24, 32, 60, 120],
     "coverImage": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop",
     "coverColor": "#3B7A57",
+    "mockupBg": "#D8D4CC",
     "spineText": "KERALA",
-    "rating": 5,
-    "reviewCount": 145,
+    "rating": 4.9,
+    "reviewCount": 2124,
     "fromPrice": 1999,
-    "pricing": {
-      "10": 2499,
-      "8.25": 1999
-    },
+    "pricing": { "10": 2499, "8.25": 1999 },
     "basePages": 32,
     "maxPhotos": 120,
     "badge": "bestseller",
-    "priority": 98,
+    "priority": 100,
     "featured": true,
     "templatePhotos": [
       "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop",
       "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?w=800&auto=format&fit=crop",
       "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=800&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "trek-series-nethravathi",
+    "shortTitle": "netravati",
+    "seriesLabel": "trek series",
+    "bookType": "custom photobook",
+    "title": "netravati — custom photobook",
+    "displayName": "Netravati Peak Cloud Trails",
+    "tagline": "emerald valleys & western monsoon mist",
+    "subtitle": "Chikmagalur Ghats Ridge Hike",
+    "description": "Vibrant green ridge landscapes and dramatic monsoon fog captured on premium lay-flat spreads.",
+    "category": "Trek",
+    "tags": ["trek", "netravati", "nethravathi", "karnataka", "western ghats"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+    "coverColor": "#4E7055",
+    "mockupBg": "#D4D0C8",
+    "spineText": "NETRAVATI",
+    "rating": 4.9,
+    "reviewCount": 88,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "priority": 99,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1511497584788-87676104235f?w=800&auto=format&fit=crop"
     ]
   },
   {
     "slug": "trek-series-himalaya",
+    "shortTitle": "himalaya",
     "seriesLabel": "trek series",
     "bookType": "custom photobook",
-    "title": "custom photobook",
+    "title": "himalaya — custom photobook",
     "displayName": "Himalayan Summit Chronicles",
     "tagline": "eternal snowfields & high prayer flags",
     "subtitle": "Great Himalayan Range Expeditions",
     "description": "Crisp mountaineering shots with generous margins, minimalist typography, and archival binding.",
     "category": "Trek",
-    "tags": [
-      "trek",
-      "trekking",
-      "himalaya",
-      "himalayas",
-      "india",
-      "peaks",
-      "glacier",
-      "snow",
-      "camping",
-      "altitude"
-    ],
-    "pageOptions": [
-      12,
-      24,
-      32,
-      60,
-      120
-    ],
+    "tags": ["trek", "himalaya", "himalayas", "snow", "peaks"],
+    "pageOptions": [12, 24, 32, 60, 120],
     "coverImage": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop",
     "coverColor": "#415A77",
+    "mockupBg": "#CEC9C0",
     "spineText": "HIMALAYAS",
     "rating": 4.9,
     "reviewCount": 94,
     "fromPrice": 1999,
-    "pricing": {
-      "10": 2499,
-      "8.25": 1999
-    },
+    "pricing": { "10": 2499, "8.25": 1999 },
     "basePages": 32,
     "maxPhotos": 120,
-    "badge": "popular",
-    "priority": 96,
+    "badge": "new",
+    "priority": 98,
     "featured": true,
     "templatePhotos": [
-      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop"
     ]
   },
   {
     "slug": "travel-series-varkala",
+    "shortTitle": "varkala",
     "seriesLabel": "travel series",
     "bookType": "custom photobook",
-    "title": "custom photobook",
+    "title": "varkala — custom photobook",
     "displayName": "Varkala Bohemian Cliffs",
     "tagline": "red laterite cliffs & arabian sea sunset",
     "subtitle": "North Cliff Surf & Beach Diaries",
     "description": "Dramatic cliffside vistas, golden beach breaks, and bohemian oceanview cafe memories.",
     "category": "Travel",
-    "tags": [
-      "varkala",
-      "kerala",
-      "cliff",
-      "arabian sea",
-      "beach",
-      "sunset",
-      "surf",
-      "south india",
-      "coastal"
-    ],
-    "pageOptions": [
-      12,
-      24,
-      32,
-      60,
-      120
-    ],
+    "tags": ["travel", "varkala", "cliff", "kerala", "beach"],
+    "pageOptions": [12, 24, 32, 60, 120],
     "coverImage": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop",
     "coverColor": "#D87040",
+    "mockupBg": "#D8D2CA",
     "spineText": "VARKALA",
     "rating": 4.9,
     "reviewCount": 92,
     "fromPrice": 1999,
-    "pricing": {
-      "10": 2499,
-      "8.25": 1999
-    },
+    "pricing": { "10": 2499, "8.25": 1999 },
     "basePages": 32,
     "maxPhotos": 120,
-    "badge": "new",
-    "priority": 94,
+    "priority": 97,
     "featured": true,
     "templatePhotos": [
-      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1596178065887-1198b6148b2b?w=800&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop"
     ]
   },
   {
     "slug": "trek-series-kudremukh",
+    "shortTitle": "kudremukh",
     "seriesLabel": "trek series",
     "bookType": "custom photobook",
-    "title": "custom photobook",
+    "title": "kudremukh — custom photobook",
     "displayName": "Kudremukh Rolling Meadows",
-    "tagline": "shola forests & horse-face peak",
-    "subtitle": "Kudremukh National Park Trail",
-    "description": "Rolling shola grasshills and cloud-draped mountain paths documented in pristine gallery quality.",
+    "tagline": "horse-face peak & shola forest canopies",
+    "subtitle": "Chikmagalur National Park Trek",
+    "description": "Expansive green grassland hills and mist-laden shola rainforests.",
     "category": "Trek",
-    "tags": [
-      "trek",
-      "trekking",
-      "kudremukh",
-      "chikmagalur",
-      "karnataka",
-      "greenery",
-      "western ghats",
-      "shola",
-      "wildlife"
-    ],
-    "pageOptions": [
-      12,
-      24,
-      32,
-      60,
-      120
-    ],
-    "coverImage": "https://images.unsplash.com/photo-1511497584788-87676104235f?w=800&auto=format&fit=crop",
-    "coverColor": "#606C38",
+    "tags": ["trek", "kudremukh", "karnataka", "western ghats"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop",
+    "coverColor": "#335C67",
+    "mockupBg": "#D2CCC3",
     "spineText": "KUDREMUKH",
     "rating": 4.8,
     "reviewCount": 76,
     "fromPrice": 1999,
-    "pricing": {
-      "10": 2499,
-      "8.25": 1999
-    },
+    "pricing": { "10": 2499, "8.25": 1999 },
     "basePages": 32,
     "maxPhotos": 120,
-    "badge": "",
+    "badge": "new",
+    "priority": 96,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "travel-series-goa",
+    "shortTitle": "goa",
+    "seriesLabel": "travel series",
+    "bookType": "custom photobook",
+    "title": "goa — custom photobook",
+    "displayName": "Goa Coastal Sun & Heritage",
+    "tagline": "golden shores, portuguese villas & susegad",
+    "subtitle": "North & South Goa Sun-Drenched Escapes",
+    "description": "Portuguese architecture, tropical palm groves, and vibrant sunsets.",
+    "category": "Travel",
+    "tags": ["travel", "goa", "beach", "sunset", "heritage"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop",
+    "coverColor": "#E09F3E",
+    "mockupBg": "#D5D0C7",
+    "spineText": "GOA",
+    "rating": 4.9,
+    "reviewCount": 110,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "priority": 95,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "baby-first-year",
+    "shortTitle": "first year",
+    "seriesLabel": "baby",
+    "bookType": "custom photobook",
+    "title": "first year — custom photobook",
+    "displayName": "Baby's First Year Milestones",
+    "tagline": "first smiles, tiny steps & endless giggles",
+    "subtitle": "12 Months of Unforgettable Wonder",
+    "description": "Document every milestone of your little one's precious first 365 days.",
+    "category": "Baby",
+    "tags": ["baby", "first year", "milestones", "newborn", "family"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1519689680058-324335c77eba?w=800&auto=format&fit=crop",
+    "coverColor": "#E5D4C0",
+    "mockupBg": "#E2DDD5",
+    "spineText": "FIRST YEAR",
+    "rating": 5.0,
+    "reviewCount": 180,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "priority": 94,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1519689680058-324335c77eba?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "birthday-celebration",
+    "shortTitle": "birthday",
+    "seriesLabel": "celebration",
+    "bookType": "custom photobook",
+    "title": "birthday — custom photobook",
+    "displayName": "Birthday Celebrations Chronicle",
+    "tagline": "candles, laughter & unforgettable parties",
+    "subtitle": "Joyous Milestone Moments",
+    "description": "Every toast, balloon, and celebration preserved with radiant fidelity.",
+    "category": "Birthday",
+    "tags": ["birthday", "celebration", "party", "milestones"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&auto=format&fit=crop",
+    "coverColor": "#F4A261",
+    "mockupBg": "#DDD8D0",
+    "spineText": "BIRTHDAY",
+    "rating": 4.9,
+    "reviewCount": 95,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "priority": 93,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "first-anniversary",
+    "shortTitle": "anniversary",
+    "seriesLabel": "couples",
+    "bookType": "custom photobook",
+    "title": "anniversary — custom photobook",
+    "displayName": "Our 1st Anniversary Keepsake",
+    "tagline": "365 days of love, laughter & partnership",
+    "subtitle": "Paper Milestone Monograph",
+    "description": "Celebrate your first trip around the sun together in heirloom layflat style.",
+    "category": "Anniversary",
+    "tags": ["anniversary", "couples", "love", "milestone"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop",
+    "coverColor": "#C9ADA7",
+    "mockupBg": "#D4CEC5",
+    "spineText": "ANNIVERSARY",
+    "rating": 5.0,
+    "reviewCount": 160,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
     "priority": 92,
     "featured": true,
     "templatePhotos": [
-      "https://images.unsplash.com/photo-1511497584788-87676104235f?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1529636798458-92182e662485?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "wedding-memories",
+    "shortTitle": "wedding",
+    "seriesLabel": "celebration",
+    "bookType": "custom photobook",
+    "title": "wedding — custom photobook",
+    "displayName": "The Royal Wedding Album",
+    "tagline": "vows, rituals & golden family portraits",
+    "subtitle": "Complete Ceremony & Reception Monograph",
+    "description": "Heirloom wedding chronicle with thick archival layflat paper and zero-gutter spreads.",
+    "category": "Wedding",
+    "tags": ["wedding", "celebration", "bride", "groom", "ceremony"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop",
+    "coverColor": "#D4AF37",
+    "mockupBg": "#D7D1C8",
+    "spineText": "WEDDING",
+    "rating": 5.0,
+    "reviewCount": 340,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "badge": "bestseller",
+    "priority": 91,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "festival-of-lights",
+    "shortTitle": "festival of lights",
+    "seriesLabel": "festivals",
+    "bookType": "custom photobook",
+    "title": "festival of lights — custom photobook",
+    "displayName": "Festival of Lights & Celebrations",
+    "tagline": "diyas, sweets & cherished family reunions",
+    "subtitle": "Diwali & Festive Traditions",
+    "description": "Capture the warmth of glowing lamps, family dinners, and traditional attire.",
+    "category": "Festivals",
+    "tags": ["festivals", "diwali", "celebrations", "family", "traditions"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&auto=format&fit=crop",
+    "coverColor": "#E76F51",
+    "mockupBg": "#E0DBD2",
+    "spineText": "FESTIVALS",
+    "rating": 4.9,
+    "reviewCount": 82,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "priority": 90,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&auto=format&fit=crop"
+    ]
+  },
+  {
+    "slug": "family-trip",
+    "shortTitle": "family trip",
+    "seriesLabel": "travel series",
+    "bookType": "custom photobook",
+    "title": "family trip — custom photobook",
+    "displayName": "Annual Family Vacation Chronicle",
+    "tagline": "generations together, memories forever",
+    "subtitle": "From Grandparents to Grandchildren",
+    "description": "Every candid group photo, shared meal, and road trip adventure together.",
+    "category": "Travel",
+    "tags": ["family", "travel", "vacation", "generations", "holiday"],
+    "pageOptions": [12, 24, 32, 60, 120],
+    "coverImage": "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&auto=format&fit=crop",
+    "coverColor": "#588157",
+    "mockupBg": "#D5CFC6",
+    "spineText": "FAMILY TRIP",
+    "rating": 4.9,
+    "reviewCount": 118,
+    "fromPrice": 1999,
+    "pricing": { "10": 2499, "8.25": 1999 },
+    "basePages": 32,
+    "maxPhotos": 120,
+    "priority": 89,
+    "featured": true,
+    "templatePhotos": [
+      "https://images.unsplash.com/photo-1511895426328-dc8714191300?w=800&auto=format&fit=crop"
     ]
   },
   {
@@ -1834,15 +1923,17 @@ export const fallbackCatalog: FallbackBook[] = [
 ];
 
 export function getFallbackProduct(slug: string): FallbackBook | undefined {
+  if (!slug) return fallbackCatalog[0];
   const clean = slug.toLowerCase().replace(/_/g, '-');
-  const bare = clean.replace(/-[0-9]+$/, '');
+  const bare = clean.replace(/-[0-9]+$/, '').replace(/^(travel-series-|trek-series-|moments-series-|celebration-)/, '');
 
   return fallbackCatalog.find(b => 
     b.slug === slug || 
     b.slug === clean || 
+    (b.shortTitle && b.shortTitle.toLowerCase() === bare) ||
     b.slug.includes(bare) || 
     bare.includes(b.slug) ||
     b.displayName.toLowerCase().includes(bare.replace(/-/g, ' '))
-  );
+  ) || fallbackCatalog[0];
 }
 

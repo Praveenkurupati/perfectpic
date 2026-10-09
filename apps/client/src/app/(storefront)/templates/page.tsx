@@ -1,222 +1,190 @@
-"use client";
+'use client';
 
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
-import { api } from "@/lib/api";
-import { Sparkles, ArrowLeft, Search, X } from "lucide-react";
-import Link from "next/link";
-import { Pagination } from "@/components/ui/Pagination";
+import { useState, useMemo, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
+import ModernBookCard from '@/features/catalog/components/ModernBookCard';
+import { fallbackCatalog, FallbackBook } from '@/features/catalog/data/catalogFallback';
 
-const popularTags = [
-  { id: "all", label: "All" },
-  { id: "trek", label: "🏔️ Trekking" },
-  { id: "himalayas", label: "❄️ Himalayas" },
-  { id: "kerala", label: "🌴 Kerala" },
-  { id: "beach", label: "🌊 Beaches" },
-  { id: "western ghats", label: "🍃 Western Ghats" },
-  { id: "rajasthan", label: "🏰 Heritage" },
-  { id: "anniversary", label: "🥂 Anniversary" },
-];
-
-function TemplatesContent() {
+function CatalogContent() {
   const searchParams = useSearchParams();
-  const initialSearch = searchParams.get("search") || "";
-  const initialTag = searchParams.get("tag") || "all";
+  const initialCategory = searchParams.get('category') || 'all';
 
-  const [books, setBooks] = useState<BookItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [selectedTag, setSelectedTag] = useState<string>(initialTag);
-  const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(9);
-  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<string>(initialCategory.toLowerCase());
+  const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'price-asc' | 'price-desc'>('popular');
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState<number>(12);
 
-  useEffect(() => {
-    setLoading(true);
-    api.getProducts()
-      .then(res => {
-        if (res && res.products && res.products.length > 0) {
-          setBooks(res.products);
-        }
-      })
-      .catch(err => {
-        console.warn("Using offline fallback templates", err);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  const categories = [
-    { id: "all", label: "all series" },
-    { id: "trek series", label: "trek series" },
-    { id: "travel series", label: "travel series" },
-    { id: "travel edit", label: "travel edit" },
-    { id: "moments series", label: "moments series" },
-    { id: "anniversary series", label: "anniversary series" }
+  const filterCategories = [
+    { id: 'all', label: 'all' },
+    { id: 'travel', label: 'travel' },
+    { id: 'trek', label: 'trek' },
+    { id: 'wedding', label: 'wedding' },
+    { id: 'baby', label: 'baby' },
+    { id: 'birthday', label: 'birthday' },
+    { id: 'anniversary', label: 'anniversary' },
+    { id: 'festivals', label: 'festivals' },
   ];
 
-  // Multi-dimensional filtering: category + tag + text search
-  const filteredBooks = books.filter(book => {
-    // 1. Category match
-    const matchesCategory = activeCategory === "all" || 
-      book.seriesLabel?.toLowerCase() === activeCategory.toLowerCase() ||
-      book.category?.toLowerCase() === activeCategory.toLowerCase();
+  const filteredBooks = useMemo(() => {
+    let list = fallbackCatalog.filter((book) => {
+      if (activeFilter === 'all') return true;
+      const cat = book.category?.toLowerCase() || '';
+      const series = book.seriesLabel?.toLowerCase() || '';
+      const tags = (book.tags || []).map((t) => t.toLowerCase());
 
-    // 2. Tag match
-    const matchesTag = selectedTag === "all" ||
-      (book.tags && book.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase()));
+      if (activeFilter === 'travel') return cat === 'travel' || series.includes('travel');
+      if (activeFilter === 'trek') return cat === 'trek' || series.includes('trek');
+      if (activeFilter === 'wedding') return cat === 'wedding' || series.includes('wedding');
+      if (activeFilter === 'baby') return cat === 'baby' || series.includes('baby');
+      if (activeFilter === 'birthday') return cat === 'birthday' || series.includes('birthday');
+      if (activeFilter === 'anniversary') return cat === 'anniversary' || series.includes('couples') || series.includes('anniversary');
+      if (activeFilter === 'festivals') return cat === 'festivals' || series.includes('festivals');
 
-    // 3. Search query match (title, displayName, tagline, subtitle, tags)
-    const q = searchQuery.toLowerCase().trim();
-    const matchesSearch = !q ||
-      book.title?.toLowerCase().includes(q) ||
-      book.displayName?.toLowerCase().includes(q) ||
-      book.tagline?.toLowerCase().includes(q) ||
-      book.subtitle?.toLowerCase().includes(q) ||
-      book.seriesLabel?.toLowerCase().includes(q) ||
-      (book.tags && book.tags.some(t => t.toLowerCase().includes(q)));
+      return tags.includes(activeFilter) || cat.includes(activeFilter);
+    });
 
-    return matchesCategory && matchesTag && matchesSearch;
-  });
+    if (sortBy === 'price-asc') {
+      list = [...list].sort((a, b) => (a.fromPrice || 1999) - (b.fromPrice || 1999));
+    } else if (sortBy === 'price-desc') {
+      list = [...list].sort((a, b) => (b.fromPrice || 1999) - (a.fromPrice || 1999));
+    } else if (sortBy === 'newest') {
+      list = [...list].sort((a, b) => (b.badge === 'new' ? 1 : 0) - (a.badge === 'new' ? 1 : 0));
+    } else {
+      // popular
+      list = [...list].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    }
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory, selectedTag, searchQuery]);
+    return list;
+  }, [activeFilter, sortBy]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredBooks.length / pageSize));
-  const paginatedBooks = filteredBooks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const displayedBooks = filteredBooks.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredBooks.length;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] py-16 md:py-24 px-4 md:px-8">
-      <div className="container mx-auto max-w-7xl">
-        {/* Breadcrumb / Top Link */}
-        <div className="mb-8 flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center text-xs font-semibold uppercase tracking-wider text-neutral-500 hover:text-black transition-colors">
-            <ArrowLeft size={14} className="mr-1.5" />
-            <span>Back to Home</span>
-          </Link>
-          <span className="text-xs text-neutral-400 font-mono">
-            {filteredBooks.length} {filteredBooks.length === 1 ? "edition" : "editions"} available
-          </span>
-        </div>
-
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-neutral-200 rounded-full text-xs font-semibold uppercase tracking-wider text-neutral-800 mb-4 shadow-sm">
-            <Sparkles size={14} className="text-foil-gold" />
-            <span>Curated Photobook & Magazine Catalog</span>
-          </div>
-          <h1 className="font-serif text-4xl md:text-6xl text-neutral-900 font-medium tracking-tight mb-4">
-            Heirloom Series Collection
-          </h1>
-          <p className="text-neutral-600 text-sm md:text-base leading-relaxed">
-            From iconic Indian Himalayan treks to coastal retreats and milestone anniversaries. Each book features exactly one photo per page with elegant gallery margins, printed on 100% tear-proof lay-flat synthetic paper.
+    <div className="min-h-screen bg-white text-gray-900 pt-28 pb-20 select-none">
+      <div className="container mx-auto px-4 md:px-8 max-w-7xl">
+        {/* 1. Breadcrumbs */}
+        <div className="mb-4">
+          <p className="text-xs text-gray-400 font-mono">
+            <Link href="/" className="hover:text-black transition-colors">home</Link>
+            <span className="mx-1.5">/</span>
+            <span className="text-gray-900 font-medium">shop</span>
           </p>
+        </div>
 
-          {/* Search Bar */}
-          <div className="mt-8 max-w-xl mx-auto relative">
-            <div className="relative flex items-center">
-              <Search className="absolute left-4 w-4 h-4 text-neutral-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search treks, destinations, or themes (e.g. Annapurna, Nethravathi, Kerala)..."
-                className="w-full pl-11 pr-10 py-3.5 bg-white border border-neutral-300 rounded-full text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 shadow-sm transition-all"
-              />
-              {searchQuery && (
+        {/* 2. Hero Header (Mockup: all books.) */}
+        <div className="mb-8">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-black lowercase">
+            all books.
+          </h1>
+          <p className="text-xs sm:text-sm text-gray-600 max-w-2xl mt-3 leading-relaxed">
+            lay-flat photobooks for every journey and milestone. printed on archival paper, delivered across india.
+          </p>
+        </div>
+
+        {/* 3. Filter Pills Row & Sort Dropdown (Mockup) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 pb-2 border-b border-gray-100">
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {filterCategories.map((cat) => {
+              const isActive = activeFilter === cat.id;
+              return (
                 <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3.5 p-1 text-neutral-400 hover:text-neutral-700 rounded-full"
+                  key={cat.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveFilter(cat.id);
+                    setVisibleCount(12);
+                  }}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-black text-white shadow-xs'
+                      : 'bg-white border border-gray-300 text-gray-700 hover:border-black hover:text-black'
+                  }`}
                 >
-                  <X size={16} />
+                  {cat.label}
                 </button>
-              )}
-            </div>
+              );
+            })}
           </div>
 
-          {/* Quick Tag Filter Pills */}
-          <div className="flex flex-wrap justify-center items-center gap-2 mt-4">
-            {popularTags.map(tag => (
-              <button
-                key={tag.id}
-                onClick={() => setSelectedTag(tag.id)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  selectedTag === tag.id
-                    ? "bg-neutral-900 text-white shadow-xs"
-                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
-                }`}
-              >
-                {tag.label}
-              </button>
-            ))}
-          </div>
+          {/* Sort Dropdown */}
+          <div className="relative shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+              className="px-4 py-1.5 rounded-full border border-gray-300 bg-white text-xs text-gray-700 hover:border-black flex items-center gap-1.5 transition-colors shadow-2xs font-medium"
+            >
+              <span>sort: {sortBy.replace('-', ' ')}</span>
+              <ChevronDown size={13} className="text-gray-500" />
+            </button>
 
-          {/* Series Category Filter Chips */}
-          <div className="flex flex-wrap justify-center gap-2 mt-6">
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold lowercase tracking-wide transition-all ${
-                  activeCategory === cat.id
-                    ? "bg-amber-900/90 text-white shadow-sm"
-                    : "bg-white text-neutral-600 border border-neutral-200 hover:bg-neutral-100 hover:text-black"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
+            {sortDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-44 bg-white border border-gray-200 rounded-xl shadow-xl py-1.5 z-40 animate-in fade-in zoom-in-95 text-xs">
+                {[
+                  { id: 'popular', label: 'popular' },
+                  { id: 'newest', label: 'newest' },
+                  { id: 'price-asc', label: 'price: low to high' },
+                  { id: 'price-desc', label: 'price: high to low' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setSortBy(opt.id as any);
+                      setSortDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-3.5 py-1.5 hover:bg-gray-50 transition-colors ${
+                      sortBy === opt.id ? 'font-bold text-black bg-gray-50' : 'text-gray-600'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Books Grid */}
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="bg-white rounded-2xl border border-neutral-200 h-96 animate-pulse p-6" />
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {paginatedBooks.map(book => (
-                <BookCard key={book.id || book.slug} book={book} />
-              ))}
-            </div>
+        {/* 4. Books Catalog Grid (Mockup: 4 columns) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 gap-y-10">
+          {displayedBooks.map((book) => (
+            <ModernBookCard key={book.slug} book={book} />
+          ))}
+        </div>
 
-            {/* Pagination Controls */}
-            <div className="mt-8 border-t border-neutral-200/80 pt-4">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={filteredBooks.length}
-                pageSize={pageSize}
-                onPageChange={setCurrentPage}
-                itemLabel="heirloom editions"
-              />
-            </div>
-          </>
-        )}
-
-        {!loading && filteredBooks.length === 0 && (
-          <div className="text-center py-20 bg-white rounded-2xl border border-neutral-200 max-w-xl mx-auto p-8 shadow-sm">
-            <p className="text-base font-semibold text-neutral-900 mb-1">No matching photo books found</p>
-            <p className="text-neutral-500 text-xs mb-6">
-              We couldn&apos;t find any books matching &ldquo;{searchQuery || selectedTag}&rdquo;. Try another trek, region, or clear filters.
-            </p>
+        {/* 5. Load More Button */}
+        {hasMore && (
+          <div className="flex justify-center mt-12 mb-16">
             <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedTag("all");
-                setActiveCategory("all");
-              }}
-              className="px-5 py-2 bg-neutral-900 text-white text-xs font-semibold rounded-full hover:bg-black transition-colors"
+              type="button"
+              onClick={() => setVisibleCount((prev) => prev + 12)}
+              className="px-8 py-2.5 rounded-full border border-gray-300 bg-white text-black text-xs font-semibold hover:border-black transition-all shadow-2xs"
             >
-              Reset All Filters
+              load more
             </button>
           </div>
         )}
+
+        {/* 6. Bundle & Save Banner (Mockup solid black banner) */}
+        <div className="bg-black text-white p-8 sm:p-12 md:p-14 rounded-2xl md:rounded-3xl mt-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-sm">
+          <div>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white lowercase">
+              bundle &amp; save.
+            </h2>
+            <p className="text-xs sm:text-sm text-gray-400 mt-2 font-mono">
+              2 books save ₹300 · 6 books save ₹1,500 · 12 books save ₹4,500
+            </p>
+          </div>
+          <Link
+            href="/configure?bundle=true"
+            className="px-6 py-2.5 rounded-full bg-white text-black text-xs font-semibold hover:bg-gray-100 transition-colors shadow-xs whitespace-nowrap self-stretch sm:self-auto text-center"
+          >
+            shop bundles
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -224,8 +192,8 @@ function TemplatesContent() {
 
 export default function TemplatesPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#faf8f5] flex items-center justify-center text-sm text-neutral-500">Loading catalog...</div>}>
-      <TemplatesContent />
+    <Suspense fallback={<div className="min-h-screen bg-white flex items-center justify-center text-xs font-mono text-gray-400">loading books...</div>}>
+      <CatalogContent />
     </Suspense>
   );
 }

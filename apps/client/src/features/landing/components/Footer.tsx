@@ -12,7 +12,7 @@ export function Footer() {
               <BrandLogo variant="light" height={36} className="h-8 md:h-9 w-auto" />
             </Link>
             <p className="text-[#5C5A55] font-sans text-sm max-w-sm leading-relaxed mb-8 lowercase">
-              lay-flat photobooks on archival, non-tearable paper. design online in minutes and get it delivered across india.
+              premium photobooks that last generations. printed on archival paper, delivered across india.
             </p>
             <a 
               href="https://wa.me/919999999999?text=Hi%20PerfectPic%20Team%2C%20I%20need%20help%20with%20my%20photobook" 
@@ -28,19 +28,19 @@ export function Footer() {
           <div>
             <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#0A0A0A] mb-6">products</h4>
             <ul className="space-y-3">
-              <li><Link href="/configure" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">hardcover photobooks</Link></li>
-              <li><Link href="/configure" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">lay-flat albums</Link></li>
-              <li><Link href="/pricing" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">pricing & specs</Link></li>
-              <li><Link href="/configure" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">bulk bundles</Link></li>
+              <li><Link href="/templates" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">hardcover photobooks</Link></li>
+              <li><Link href="/templates" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">lay-flat albums</Link></li>
+              <li><Link href="/pricing" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">pricing &amp; specs</Link></li>
+              <li><Link href="/configure?bundle=true" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">bulk bundles</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#0A0A0A] mb-6">company</h4>
             <ul className="space-y-3">
-              <li><Link href="/pricing" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">quality & specs</Link></li>
+              <li><Link href="/pricing" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">our quality</Link></li>
               <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">how it works</Link></li>
-              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">privacy policy</Link></li>
+              <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">privacy &amp; photos</Link></li>
               <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">contact support</Link></li>
             </ul>
           </div>
@@ -49,9 +49,8 @@ export function Footer() {
             <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#0A0A0A] mb-6">support</h4>
             <ul className="space-y-3">
               <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">faqs</Link></li>
-              <li><Link href="/orders" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">track orders</Link></li>
-              <li><Link href="/projects" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">saved projects</Link></li>
-              <li><Link href="/settings" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">account settings</Link></li>
+              <li><Link href="/orders" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">track order</Link></li>
+              <li><Link href="/projects" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">my projects</Link></li>
               <li><Link href="/faq" className="text-[#5C5A55] hover:text-[#0A0A0A] transition-colors text-sm lowercase">100% reprint policy</Link></li>
             </ul>
           </div>
@@ -59,7 +58,7 @@ export function Footer() {
 
         <div className="pt-8 border-t border-[#D9D6CF] flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <p className="text-[#5C5A55] text-xs lowercase">
-            © {new Date().getFullYear()} perfectpic. all rights reserved. • crafted in india
+            © 2026 perfectpic · made with love in india
           </p>
           <div className="flex space-x-6 text-[#5C5A55]">
             <a href="#" className="hover:text-[#0A0A0A] transition-colors" aria-label="Instagram"><Instagram size={18} /></a>
