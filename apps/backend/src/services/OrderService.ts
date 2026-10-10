@@ -5,6 +5,7 @@ import { PromoCodeService } from './PromoCodeService';
 import { PricingService } from './PricingService';
 import { ApiError } from '../utils/apiError';
 import { mailService } from './MailService';
+import { WhatsappService } from './WhatsappService';
 import { MetaCapiService } from './MetaCapiService';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
@@ -182,6 +183,23 @@ export class OrderService {
       });
     }
 
+    // Send confirmation WhatsApp asynchronously if customer phone exists
+    const notifyPhone = orderData.customerPhone || orderData.shippingAddress?.phone;
+    if (notifyPhone) {
+      const orderNum = String(order.orderNumber || order.id || (order as any)._id || 'PP-ORDER');
+      const orderTitle = order.title || (orderData.items && orderData.items[0]?.title) || 'Archival Photobook Keepsake';
+      const orderTotal = Number(order.total || order.amount || 0);
+      WhatsappService.sendOrderConfirmation(notifyPhone, {
+        orderNumber: orderNum,
+        title: orderTitle,
+        total: orderTotal,
+        customerName: orderData.shippingAddress?.fullName || orderData.customerName,
+        itemsCount: Array.isArray(orderData.items) ? orderData.items.length : 1,
+      }).catch((err) => {
+        logger.error('Failed to send WhatsApp order confirmation:', err.message);
+      });
+    }
+
     // Trigger Meta Conversions API (CAPI) server-side Purchase event
     const customerEmail = orderData.customerEmail || orderData.shippingAddress?.email;
     const customerPhone = orderData.customerPhone || orderData.shippingAddress?.phone;
@@ -273,16 +291,56 @@ export class OrderService {
       throw ApiError.notFound(`Order with ID '${id}' not found.`);
     }
 
-    // Trigger dispatch notification email when transitioned to dispatched
-    if (status.toLowerCase() === 'dispatched' && (updated as any).customerEmail) {
+    // Trigger dispatch notifications when transitioned to dispatched
+    if (status.toLowerCase() === 'dispatched') {
       const trackingNumber = trackingPayload?.trackingNumber || `BD${Math.floor(100000000 + Math.random() * 900000000)}IN`;
-      mailService.sendDispatchEmail((updated as any).customerEmail, updated, {
-        carrier: trackingPayload?.carrier || 'BlueDart Express',
-        trackingNumber,
-        trackingUrl: trackingPayload?.trackingUrl || `https://www.bluedart.com/tracking?awb=${trackingNumber}`,
-      }).catch((err) => {
-        logger.error('Failed to send dispatch email:', err.message);
-      });
+      const carrier = trackingPayload?.carrier || 'BlueDart Express';
+      const trackingUrl = trackingPayload?.trackingUrl || `https://www.bluedart.com/tracking?awb=${trackingNumber}`;
+
+      // Email dispatch notification
+      if ((updated as any).customerEmail) {
+        mailService.sendDispatchEmail((updated as any).customerEmail, updated, {
+          carrier,
+          trackingNumber,
+          trackingUrl,
+        }).catch((err) => {
+          logger.error('Failed to send dispatch email:', err.message);
+        });
+      }
+
+      // WhatsApp dispatch notification
+      const dispatchPhone = (updated as any).customerPhone || (updated as any).shippingAddress?.phone;
+      if (dispatchPhone) {
+        WhatsappService.sendDispatchNotification(
+          dispatchPhone,
+          {
+            orderNumber: (updated as any).orderNumber || id,
+            title: (updated as any).title,
+            customerName: (updated as any).customerName || (updated as any).shippingAddress?.fullName,
+          },
+          {
+            carrier,
+            trackingNumber,
+            trackingUrl,
+          }
+        ).catch((err) => {
+          logger.error('Failed to send WhatsApp dispatch notification:', err.message);
+        });
+      }
+    }
+
+    // Trigger delivery notification via WhatsApp when transitioned to delivered
+    if (status.toLowerCase() === 'delivered') {
+      const deliveryPhone = (updated as any).customerPhone || (updated as any).shippingAddress?.phone;
+      if (deliveryPhone) {
+        WhatsappService.sendDeliveryNotification(deliveryPhone, {
+          orderNumber: (updated as any).orderNumber || id,
+          title: (updated as any).title,
+          customerName: (updated as any).customerName || (updated as any).shippingAddress?.fullName,
+        }).catch((err) => {
+          logger.error('Failed to send WhatsApp delivery notification:', err.message);
+        });
+      }
     }
 
     return updated;

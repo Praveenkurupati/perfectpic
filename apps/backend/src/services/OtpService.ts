@@ -49,7 +49,8 @@ export class OtpService {
     }
 
     const isEmail = identifier.includes('@');
-    const channel: OtpChannel = options.channel || (isEmail ? 'email' : 'sms');
+    const defaultPhoneChannel: OtpChannel = env.WHATSAPP_ENABLED ? 'whatsapp' : 'sms';
+    const channel: OtpChannel = options.channel || (isEmail ? 'email' : defaultPhoneChannel);
 
     // 1. Distributed Redis Cooldown Check (60 seconds)
     const cooldownKey = `otp_cooldown:${identifier}:${purpose}`;
@@ -114,14 +115,16 @@ export class OtpService {
       }
     }
 
-    if (channel === 'sms' || (!isEmail && options.phone)) {
-      const phoneNum = options.phone || identifier;
-      await SmsService.sendOtpSms(phoneNum, otp);
-    }
-
     if (channel === 'whatsapp') {
       const phoneNum = options.phone || identifier;
-      await WhatsappService.sendOtpWhatsapp(phoneNum, otp);
+      const sent = await WhatsappService.sendOtpWhatsapp(phoneNum, otp, purpose);
+      if (!sent && SmsService) {
+        logger.warn(`⚠️ [OtpService] WhatsApp delivery failed for ${phoneNum}. Attempting SMS fallback.`);
+        await SmsService.sendOtpSms(phoneNum, otp);
+      }
+    } else if (channel === 'sms' || (!isEmail && options.phone)) {
+      const phoneNum = options.phone || identifier;
+      await SmsService.sendOtpSms(phoneNum, otp);
     }
 
     logger.info(`✅ [Enterprise OTP] Code successfully dispatched to [${identifier}] via ${channel} (Purpose: ${purpose})`);

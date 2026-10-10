@@ -101,7 +101,7 @@ export class AuthController {
 
   public static async sendOtp(req: Request, res: Response, next: NextFunction) {
     try {
-      const { phone, email, identifier, name, purpose } = req.body;
+      const { phone, email, identifier, name, purpose, channel } = req.body;
       const rawTarget = email || phone || identifier;
       const target = (rawTarget || '').trim().toLowerCase();
 
@@ -124,6 +124,7 @@ export class AuthController {
         phone: !target.includes('@') ? target : phone,
         identifier: target,
         name,
+        channel,
         purpose: otpPurpose,
         ipAddress: req.ip || '',
         userAgent: req.get('user-agent') || '',

@@ -127,6 +127,7 @@ export default function UnifiedAuthScreen({ initialMode = 'login' }: UnifiedAuth
         identifier: targetIdentifier,
         phone: method === 'phone' ? `+91${rawPhoneDigits}` : undefined,
         email: method === 'email' ? email.trim().toLowerCase() : undefined,
+        channel: method === 'phone' ? 'whatsapp' : 'email',
         purpose: 'login',
       });
 

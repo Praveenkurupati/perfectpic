@@ -85,7 +85,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  sendOtp: (param: string | { email?: string; phone?: string; identifier?: string; name?: string; purpose?: 'login' | 'signup' }) => {
+  sendOtp: (param: string | { email?: string; phone?: string; identifier?: string; name?: string; purpose?: 'login' | 'signup'; channel?: 'email' | 'sms' | 'whatsapp' }) => {
     const body = typeof param === 'string' 
       ? (param.includes('@') ? { email: param } : { phone: param }) 
       : param;

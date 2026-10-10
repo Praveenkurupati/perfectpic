@@ -70,7 +70,14 @@ export const env = {
   APPLE_KEY_ID: process.env.APPLE_KEY_ID || '',
   APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY || '',
   APPLE_CALLBACK_URL: process.env.APPLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/apple/callback',
-  
+
+  // WhatsApp / Kapso.ai Meta Cloud API v24.0
+  KAPSO_API_KEY: process.env.KAPSO_API_KEY || '',
+  KAPSO_PHONE_NUMBER_ID: process.env.KAPSO_PHONE_NUMBER_ID || '',
+  KAPSO_BASE_URL: process.env.KAPSO_BASE_URL || 'https://api.kapso.ai/meta/whatsapp/v24.0',
+  WHATSAPP_ENABLED: process.env.WHATSAPP_ENABLED !== 'false',
+  WHATSAPP_SANDBOX_MODE: process.env.WHATSAPP_SANDBOX_MODE === 'true',
+
   isDev: process.env.NODE_ENV !== 'production',
   isProd: process.env.NODE_ENV === 'production',
 };
