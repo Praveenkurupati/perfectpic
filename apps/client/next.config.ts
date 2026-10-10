@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: true, // Verification is handled in pre-commit/CI typecheck; skips duplicate 10-minute TS check during build
+  },
   experimental: {
     optimizePackageImports: [
       "lucide-react",

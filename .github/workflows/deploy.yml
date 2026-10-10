@@ -78,11 +78,27 @@ jobs:
               BACKEND_CHANGED=true
             fi
 
-            # Fallback: if no diff detected (e.g. forced push or first checkout), build all
+            # Fallback: if no diff detected between revisions, inspect latest commit changes
             if [ -z "$CHANGED_FILES" ] || [ "$PREV_REV" = "$NEW_REV" ]; then
-              CLIENT_CHANGED=true
-              ADMIN_CHANGED=true
-              BACKEND_CHANGED=true
+              CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")
+              if [ -n "$CHANGED_FILES" ]; then
+                CLIENT_CHANGED=false
+                ADMIN_CHANGED=false
+                BACKEND_CHANGED=false
+                if echo "$CHANGED_FILES" | grep -qE "(^apps/client/|^packages/|pnpm-lock.yaml|package.json|turbo.json)"; then
+                  CLIENT_CHANGED=true
+                fi
+                if echo "$CHANGED_FILES" | grep -qE "(^apps/admin/|^packages/|pnpm-lock.yaml|package.json|turbo.json)"; then
+                  ADMIN_CHANGED=true
+                fi
+                if echo "$CHANGED_FILES" | grep -qE "(^apps/backend/|^packages/|pnpm-lock.yaml|package.json|turbo.json)"; then
+                  BACKEND_CHANGED=true
+                fi
+              else
+                CLIENT_CHANGED=true
+                ADMIN_CHANGED=true
+                BACKEND_CHANGED=true
+              fi
             fi
 
             echo "📊 Change Detection:"
@@ -90,9 +106,13 @@ jobs:
             echo "   • Admin changed:   $ADMIN_CHANGED"
             echo "   • Backend changed: $BACKEND_CHANGED"
 
-            # 4. Install dependencies using pnpm
-            echo "📦 Installing dependencies with pnpm..."
-            pnpm install --frozen-lockfile || pnpm install
+            # 4. Install dependencies using pnpm (skip if lockfile & package.json untouched)
+            if echo "$CHANGED_FILES" | grep -qE "(pnpm-lock.yaml|package.json)"; then
+              echo "📦 Package files updated. Installing dependencies with pnpm..."
+              pnpm install --frozen-lockfile || pnpm install
+            else
+              echo "⏩ Dependencies unchanged. Skipping full pnpm install to accelerate deploy."
+            fi
 
             # 5. Smart Selective Build with memory isolation
             echo "🔨 Building applications selectively..."
