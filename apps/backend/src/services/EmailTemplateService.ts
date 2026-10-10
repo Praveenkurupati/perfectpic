@@ -162,13 +162,11 @@ export class EmailTemplateService {
   private getInlineFallbackTemplate(templateKey: string): string {
     if (templateKey.includes('otp')) {
       return `
-        <div style="text-align: center; padding: 20px;">
-          <h2 style="color: #111;">Your Verification Code</h2>
-          <p style="color: #666;">Use the verification code below to authenticate:</p>
-          <div style="font-size: 36px; font-weight: bold; letter-spacing: 6px; margin: 20px 0; color: #111;">
-            {{otpCode}}
-          </div>
-          <p style="font-size: 12px; color: #888;">Valid for 10 minutes. Do not share with anyone.</p>
+        <div style="text-align: left; padding: 20px;">
+          <h2 style="color: #111; font-size: 20px; margin-bottom: 16px;">Your Verification Code</h2>
+          <p style="font-size: 15px; color: #333; line-height: 1.7; margin-bottom: 16px;">
+            Your one-time verification code is <strong style="font-size: 22px; font-weight: 800; color: #000; letter-spacing: 2px;">{{otpCode}}</strong>. Valid for 10 minutes. Never share this code with anyone.
+          </p>
         </div>
       `;
     }
