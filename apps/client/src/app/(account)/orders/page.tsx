@@ -57,13 +57,81 @@ export default function OrdersPage() {
   const [feedback, setFeedback] = useState('');
   const [recommend, setRecommend] = useState(true);
   const [generatingPdfOrderId, setGeneratingPdfOrderId] = useState<string | null>(null);
+  const [syncingOrderIds, setSyncingOrderIds] = useState<Record<string, boolean>>({});
+
+  const autoSyncOrderPdfToS3 = async (order: any) => {
+    const orderId = order.orderNumber || order.id;
+    try {
+      setSyncingOrderIds(prev => ({ ...prev, [orderId]: true }));
+      let snapshot = order.projectSnapshot || order.projectManifest;
+      if (!snapshot && typeof window !== 'undefined') {
+        try {
+          snapshot = JSON.parse(
+            localStorage.getItem(`pp_snapshot_${order.projectId}`) ||
+            localStorage.getItem(`pp_snapshot_${orderId}`) ||
+            'null'
+          );
+        } catch {}
+      }
+      if (!snapshot) return;
+
+      const blob = await generateBookPdfBlob({
+        title: snapshot.title || order.title || 'Curated Photobook',
+        subtitle: snapshot.subtitle,
+        seriesLabel: snapshot.seriesLabel,
+        dimensions: snapshot.dimensions || order.dimensions || '8.25" × 8.25"',
+        pageCount: snapshot.pageCount || order.pageCount || 32,
+        theme: snapshot.theme || order.theme || 'Minimal Modern',
+        coverImage: snapshot.coverImage || order.coverUrl || order.thumbnail,
+        coverColor: snapshot.coverColor,
+        coverConfig: snapshot.coverConfig,
+        photos: snapshot.photos || [],
+        pagePhotos: snapshot.pagePhotos,
+        slotPhotos: snapshot.slotPhotos,
+        slotCrops: snapshot.slotCrops,
+        pageLayouts: snapshot.pageLayouts,
+        pageBackgrounds: snapshot.pageBackgrounds,
+        projectId: snapshot.projectId || order.projectId || orderId,
+      });
+
+      const uploadRes = await api.uploadOrderPdf(blob, orderId);
+      if (uploadRes?.url) {
+        await api.updateOrderPdf(orderId, uploadRes.url).catch(() => {});
+        try {
+          localStorage.setItem(`pp_pdf_${orderId}`, uploadRes.url);
+        } catch {}
+        setOrders(prev => prev.map(o => (o.orderNumber || o.id) === orderId ? { ...o, pdfUrl: uploadRes.url } : o));
+      }
+    } catch (e) {
+      console.warn('Auto-sync notice for order:', orderId, e);
+    } finally {
+      setSyncingOrderIds(prev => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
+    }
+  };
 
   const handleDownloadOrderPhotobookPdf = async (order: any) => {
     const orderId = order.orderNumber || order.id;
+
+    // 1. If order already has verified S3 PDF URL, download directly without re-generating!
+    if (order.pdfUrl && typeof order.pdfUrl === 'string' && order.pdfUrl.startsWith('http')) {
+      const link = document.createElement('a');
+      link.href = order.pdfUrl;
+      link.target = '_blank';
+      link.download = `PerfectPic-Photobook-${orderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     setGeneratingPdfOrderId(orderId);
 
     try {
-      // 1. Check if snapshot exists in order object or in localStorage
+      // 2. Retrieve snapshot from order or local storage
       let snapshot = order.projectSnapshot || order.projectManifest;
       if (!snapshot && typeof window !== 'undefined') {
         try {
@@ -75,82 +143,57 @@ export default function OrdersPage() {
         } catch {}
       }
 
-      // If snapshot is available, generate the high-res photobook with all photos (exact match to 3D Preview)
-      if (snapshot) {
-        await generateBookProofPdf({
-          title: snapshot.title || order.title || 'Curated Photobook',
-          subtitle: snapshot.subtitle,
-          seriesLabel: snapshot.seriesLabel,
-          dimensions: snapshot.dimensions || order.dimensions || '8.25" × 8.25"',
-          pageCount: snapshot.pageCount || order.pageCount || 32,
-          theme: snapshot.theme || order.theme || 'Minimal Modern',
-          coverImage: snapshot.coverImage || order.coverUrl || order.thumbnail,
-          coverColor: snapshot.coverColor,
-          coverConfig: snapshot.coverConfig,
-          photos: snapshot.photos,
-          pagePhotos: snapshot.pagePhotos,
-          slotPhotos: snapshot.slotPhotos,
-          slotCrops: snapshot.slotCrops,
-          pageLayouts: snapshot.pageLayouts,
-          pageBackgrounds: snapshot.pageBackgrounds,
-          projectId: snapshot.projectId || order.projectId || orderId,
-        });
+      // 3. Generate high-fidelity PDF blob and stream directly to S3
+      const blob = await generateBookPdfBlob({
+        title: snapshot?.title || order.title || 'Curated Photobook',
+        subtitle: snapshot?.subtitle,
+        seriesLabel: snapshot?.seriesLabel,
+        dimensions: snapshot?.dimensions || order.dimensions || '8.25" × 8.25"',
+        pageCount: snapshot?.pageCount || order.pageCount || 32,
+        theme: snapshot?.theme || order.theme || 'Minimal Modern',
+        coverImage: snapshot?.coverImage || order.coverUrl || order.thumbnail,
+        coverColor: snapshot?.coverColor,
+        coverConfig: snapshot?.coverConfig,
+        photos: snapshot?.photos || order.photos || (order.thumbnail ? [order.thumbnail] : []),
+        pagePhotos: snapshot?.pagePhotos,
+        slotPhotos: snapshot?.slotPhotos,
+        slotCrops: snapshot?.slotCrops,
+        pageLayouts: snapshot?.pageLayouts,
+        pageBackgrounds: snapshot?.pageBackgrounds,
+        projectId: snapshot?.projectId || order.projectId || orderId,
+      });
 
-        // Background sync to S3 so subsequent downloads have verified file
+      const uploadRes = await api.uploadOrderPdf(blob, orderId);
+      const s3Url = uploadRes?.url;
+
+      if (s3Url) {
+        await api.updateOrderPdf(orderId, s3Url).catch(() => {});
         try {
-          const blob = await generateBookPdfBlob({
-            title: snapshot.title || order.title || 'Curated Photobook',
-            subtitle: snapshot.subtitle,
-            seriesLabel: snapshot.seriesLabel,
-            dimensions: snapshot.dimensions || order.dimensions || '8.25" × 8.25"',
-            pageCount: snapshot.pageCount || order.pageCount || 32,
-            theme: snapshot.theme || order.theme || 'Minimal Modern',
-            coverImage: snapshot.coverImage || order.coverUrl || order.thumbnail,
-            coverColor: snapshot.coverColor,
-            coverConfig: snapshot.coverConfig,
-            photos: snapshot.photos,
-            pagePhotos: snapshot.pagePhotos,
-            slotPhotos: snapshot.slotPhotos,
-            slotCrops: snapshot.slotCrops,
-            pageLayouts: snapshot.pageLayouts,
-            pageBackgrounds: snapshot.pageBackgrounds,
-            projectId: snapshot.projectId || order.projectId || orderId,
-          });
+          localStorage.setItem(`pp_pdf_${orderId}`, s3Url);
+        } catch {}
+        setOrders(prev => prev.map(o => (o.orderNumber || o.id) === orderId ? { ...o, pdfUrl: s3Url } : o));
 
-          const uploadRes = await api.uploadPdf(blob, `Photobook-${orderId}.pdf`, orderId);
-          if (uploadRes?.url) {
-            await api.updateOrderPdf(orderId, uploadRes.url).catch(() => {});
-            setOrders(prev => prev.map(o => (o.orderNumber || o.id) === orderId ? { ...o, pdfUrl: uploadRes.url } : o));
-          }
-        } catch (uploadErr) {
-          console.warn('Background S3 upload notice:', uploadErr);
-        }
-        return;
-      }
-
-      // 2. If no client snapshot, check if order.pdfUrl exists and trigger download
-      if (order.pdfUrl) {
+        // Immediately trigger download from the newly uploaded S3 URL
         const link = document.createElement('a');
-        link.href = order.pdfUrl;
+        link.href = s3Url;
         link.target = '_blank';
-        link.download = `Photobook-${orderId}.pdf`;
+        link.download = `PerfectPic-Photobook-${orderId}.pdf`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        return;
+      } else {
+        // Fallback local proof save if offline
+        await generateBookProofPdf({
+          title: snapshot?.title || order.title || 'Curated Photobook',
+          dimensions: order.dimensions || '8.25" × 8.25"',
+          pageCount: order.pageCount || 32,
+          coverImage: order.coverUrl || order.thumbnail,
+          photos: snapshot?.photos || order.photos || [],
+          projectId: orderId,
+        });
       }
-
-      // 3. Fallback: generate high-res proof with available order photos
-      await generateBookProofPdf({
-        title: order.title || 'Curated Photobook',
-        dimensions: order.dimensions || '8.25" × 8.25"',
-        pageCount: order.pageCount || 32,
-        coverImage: order.coverUrl || order.thumbnail,
-        photos: order.photos || (order.thumbnail ? [order.thumbnail] : []),
-        projectId: order.projectId || orderId,
-      });
     } catch (err: any) {
-      console.error('Failed to generate photobook PDF:', err);
+      console.error('Failed to generate and upload photobook PDF:', err);
       alert('Could not download photobook PDF. Please try again.');
     } finally {
       setGeneratingPdfOrderId(null);
@@ -203,15 +246,35 @@ export default function OrdersPage() {
     api.getOrders()
       .then(res => {
         const fetchedOrders = res.orders || [];
-        // Augment with locally cached reviews if any
+        // Augment with locally cached reviews and S3 PDF URLs if any
         const enriched = fetchedOrders.map((o: any) => {
-          const cached = getCachedReview(o.orderNumber || o.id);
-          if (cached && !o.review) {
-            return { ...o, review: cached };
+          const ordId = o.orderNumber || o.id;
+          const cached = getCachedReview(ordId);
+          let pdfUrl = o.pdfUrl;
+          if ((!pdfUrl || !String(pdfUrl).startsWith('http')) && typeof window !== 'undefined') {
+            const localPdf = localStorage.getItem(`pp_pdf_${ordId}`);
+            if (localPdf && localPdf.startsWith('http')) {
+              pdfUrl = localPdf;
+            }
           }
-          return o;
+          return {
+            ...o,
+            pdfUrl,
+            review: cached || o.review,
+          };
         });
         setOrders(enriched);
+
+        // Auto-sync in background for any order missing verified S3 PDF
+        enriched.forEach((o: any) => {
+          const ordId = o.orderNumber || o.id;
+          if (!o.pdfUrl && typeof window !== 'undefined') {
+            const hasSnapshot = o.projectSnapshot || localStorage.getItem(`pp_snapshot_${ordId}`);
+            if (hasSnapshot) {
+              autoSyncOrderPdfToS3(o);
+            }
+          }
+        });
       })
       .catch(err => {
         console.warn("Failed to fetch orders from server:", err);
@@ -488,25 +551,35 @@ export default function OrdersPage() {
                           <span>GST Invoice</span>
                         </button>
 
-                        {/* Ultra-HD Photobook PDF Button */}
-                        <button
-                          onClick={() => handleDownloadOrderPhotobookPdf(order)}
-                          disabled={generatingPdfOrderId === (order.orderNumber || order.id)}
-                          className="text-xs font-medium border border-amber-300 bg-amber-50/60 hover:bg-amber-100 disabled:opacity-60 text-noir-900 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                          title="Download Ultra-HD Photobook PDF with high-resolution photos"
-                        >
-                          {generatingPdfOrderId === (order.orderNumber || order.id) ? (
-                            <>
-                              <Loader2 size={13} className="text-foil-gold animate-spin" />
-                              <span>Generating PDF...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Download size={13} className="text-foil-gold" />
-                              <span>Photobook PDF</span>
-                            </>
-                          )}
-                        </button>
+                        {/* Photobook PDF Button: "Download PDF" if in S3, "Uploading to S3..." when in progress, or "Upload to S3" */}
+                        {order.pdfUrl && typeof order.pdfUrl === 'string' && order.pdfUrl.startsWith('http') ? (
+                          <button
+                            onClick={() => handleDownloadOrderPhotobookPdf(order)}
+                            className="text-xs font-medium border border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-noir-900 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            title="Download Ultra-HD Photobook PDF directly from AWS S3"
+                          >
+                            <Download size={13} className="text-foil-gold" />
+                            <span>Download PDF</span>
+                          </button>
+                        ) : (generatingPdfOrderId === (order.orderNumber || order.id) || syncingOrderIds[order.orderNumber || order.id]) ? (
+                          <button
+                            disabled
+                            className="text-xs font-medium border border-amber-200 bg-amber-50/50 opacity-90 text-amber-900 px-3 py-2 rounded-sm flex items-center gap-1.5 shadow-sm cursor-not-allowed"
+                            title="Generating and uploading Ultra-HD PDF to AWS S3 in background..."
+                          >
+                            <Loader2 size={13} className="text-foil-gold animate-spin" />
+                            <span>Uploading to S3...</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleDownloadOrderPhotobookPdf(order)}
+                            className="text-xs font-medium border border-cream-300 bg-white hover:bg-cream-100 text-noir-800 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                            title="Generate Ultra-HD Photobook PDF and upload to AWS S3"
+                          >
+                            <Download size={13} className="text-foil-gold" />
+                            <span>Upload to S3</span>
+                          </button>
+                        )}
 
                         {/* Rate & Review Button for Delivered Orders */}
                         {isDelivered && (

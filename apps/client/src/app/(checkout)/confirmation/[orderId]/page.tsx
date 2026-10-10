@@ -20,6 +20,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
+import { generateBookPdfBlob } from '@/lib/pdfGenerator';
 
 export default function ConfirmationPage() {
   const params = useParams();
@@ -30,18 +31,116 @@ export default function ConfirmationPage() {
 
   const [order, setOrder] = useState<any>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(true);
+  const [isGeneratingManualPdf, setIsGeneratingManualPdf] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
-    api.getOrder(orderId, { token, email })
-      .then((res) => {
+
+    let attempts = 0;
+    const maxAttempts = 8;
+    let timer: NodeJS.Timeout;
+
+    const checkOrder = async () => {
+      try {
+        let localPdf = typeof window !== 'undefined' ? localStorage.getItem(`pp_pdf_${orderId}`) : null;
+        const res = await api.getOrder(orderId, { token, email }).catch(() => null);
         const orderData = res?.order || res;
-        if (orderData) setOrder(orderData);
-      })
-      .catch((err) => {
+
+        if (orderData) {
+          const finalPdfUrl = orderData.pdfUrl || localPdf;
+          if (finalPdfUrl && String(finalPdfUrl).startsWith('http')) {
+            setOrder({ ...orderData, pdfUrl: finalPdfUrl });
+            setIsUploadingPdf(false);
+            return;
+          }
+          setOrder(orderData);
+        } else if (localPdf) {
+          setOrder((prev: any) => prev ? { ...prev, pdfUrl: localPdf } : { id: orderId, pdfUrl: localPdf });
+          setIsUploadingPdf(false);
+          return;
+        }
+
+        attempts++;
+        if (attempts < maxAttempts) {
+          timer = setTimeout(checkOrder, 2500);
+        } else {
+          setIsUploadingPdf(false);
+        }
+      } catch (err) {
         console.warn('Order confirmation lookup notice:', err);
-      });
+        attempts++;
+        if (attempts < maxAttempts) {
+          timer = setTimeout(checkOrder, 2500);
+        } else {
+          setIsUploadingPdf(false);
+        }
+      }
+    };
+
+    checkOrder();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [orderId, token, email]);
+
+  const handleManualGeneratePdf = async () => {
+    try {
+      setIsGeneratingManualPdf(true);
+      let snapshot = order?.projectSnapshot || order?.projectManifest;
+      if (!snapshot && typeof window !== 'undefined') {
+        try {
+          snapshot = JSON.parse(
+            localStorage.getItem(`pp_snapshot_${order?.projectId}`) ||
+            localStorage.getItem(`pp_snapshot_${orderId}`) ||
+            'null'
+          );
+        } catch {}
+      }
+
+      const blob = await generateBookPdfBlob({
+        title: snapshot?.title || order?.title || 'Heirloom Custom Photobook',
+        subtitle: snapshot?.subtitle,
+        seriesLabel: snapshot?.seriesLabel,
+        dimensions: snapshot?.dimensions || order?.dimensions || '8.25" × 8.25"',
+        pageCount: snapshot?.pageCount || order?.pageCount || 32,
+        theme: snapshot?.theme || order?.theme || 'Minimal Modern',
+        coverImage: snapshot?.coverImage || order?.coverUrl || order?.thumbnail,
+        coverColor: snapshot?.coverColor,
+        coverConfig: snapshot?.coverConfig,
+        photos: snapshot?.photos || order?.photos || [],
+        pagePhotos: snapshot?.pagePhotos || {},
+        slotPhotos: snapshot?.slotPhotos || {},
+        slotCrops: snapshot?.slotCrops || {},
+        pageLayouts: snapshot?.pageLayouts || {},
+        pageBackgrounds: snapshot?.pageBackgrounds || {},
+        projectId: snapshot?.projectId || order?.projectId || orderId,
+      });
+
+      const uploadRes = await api.uploadOrderPdf(blob, orderId);
+      if (uploadRes?.url) {
+        await api.updateOrderPdf(orderId, uploadRes.url).catch(() => {});
+        try {
+          localStorage.setItem(`pp_pdf_${orderId}`, uploadRes.url);
+        } catch {}
+        setOrder((prev: any) => ({ ...prev, pdfUrl: uploadRes.url }));
+
+        const link = document.createElement('a');
+        link.href = uploadRes.url;
+        link.target = '_blank';
+        link.download = `PerfectPic-Photobook-${order?.orderNumber || order?.id || orderId}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err: any) {
+      console.error('Manual PDF compilation error:', err);
+      alert('Unable to generate photobook PDF. Please try again.');
+    } finally {
+      setIsGeneratingManualPdf(false);
+    }
+  };
 
   const orderNum = order?.orderNumber || order?.id || orderId || 'PP-6262';
   const displayTotal = Number(order?.total || order?.amount) || 2499;
@@ -439,18 +538,35 @@ export default function ConfirmationPage() {
               )}
             </button>
 
-            {order?.pdfUrl && (
+            {order?.pdfUrl && typeof order.pdfUrl === 'string' && order.pdfUrl.startsWith('http') ? (
               <a
                 href={order.pdfUrl}
                 target="_blank"
                 rel="noreferrer"
-                download={`Photobook-Proof-${orderNum}.pdf`}
-                className="w-full sm:w-auto px-5 py-3 border border-amber-300 text-noir-900 bg-amber-50/60 hover:bg-amber-100 rounded-sm font-semibold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-xs"
+                download={`PerfectPic-Photobook-${orderNum}.pdf`}
+                className="w-full sm:w-auto px-5 py-3 border border-amber-300 text-noir-900 bg-amber-50 hover:bg-amber-100 rounded-sm font-semibold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-xs"
                 title="Download Ultra-HD Photobook Print PDF from AWS S3"
               >
                 <Download size={15} className="text-foil-gold" />
-                <span>Photobook PDF</span>
+                <span>Download Photobook PDF</span>
               </a>
+            ) : isUploadingPdf || isGeneratingManualPdf ? (
+              <div
+                className="w-full sm:w-auto px-5 py-3 border border-amber-200 text-amber-900 bg-amber-50/60 rounded-sm font-semibold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 shadow-xs"
+                title="Ultra-HD Photobook PDF is uploading to AWS S3 in background..."
+              >
+                <Loader2 size={15} className="text-foil-gold animate-spin" />
+                <span>Uploading to S3...</span>
+              </div>
+            ) : (
+              <button
+                onClick={handleManualGeneratePdf}
+                className="w-full sm:w-auto px-5 py-3 border border-cream-300 text-noir-800 bg-white hover:bg-cream-100 rounded-sm font-semibold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                title="Generate Ultra-HD Photobook PDF and upload to AWS S3"
+              >
+                <Download size={15} className="text-foil-gold" />
+                <span>Upload to S3</span>
+              </button>
             )}
 
             <Link 

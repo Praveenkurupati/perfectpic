@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  CopyObjectCommand,
   PutBucketCorsCommand,
   PutBucketLifecycleConfigurationCommand,
 } from '@aws-sdk/client-s3';
@@ -251,4 +252,38 @@ export async function generatePresignedGetUrl(
   });
 
   return getSignedUrl(client, command, { expiresIn });
+}
+
+/**
+ * Copies an existing object within S3 to a new destination key (e.g. canonical photobook key).
+ */
+export async function copyS3Object(
+  sourceKey: string,
+  destinationKey: string
+): Promise<S3UploadResult> {
+  const client = getS3Client();
+  if (!client || !env.S3_BUCKET) {
+    throw new Error('AWS S3 is not properly configured. Missing credentials or bucket name.');
+  }
+
+  const cleanSource = sourceKey.replace(/^\/+/, '');
+  const cleanDest = destinationKey.replace(/^\/+/, '');
+
+  const command = new CopyObjectCommand({
+    Bucket: env.S3_BUCKET,
+    CopySource: `${env.S3_BUCKET}/${cleanSource}`,
+    Key: cleanDest,
+    ContentType: 'application/pdf',
+    MetadataDirective: 'COPY',
+  });
+
+  const response = await client.send(command);
+  const url = `https://${env.S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${cleanDest}`;
+
+  return {
+    url,
+    key: cleanDest,
+    eTag: response.CopyObjectResult?.ETag,
+    bucket: env.S3_BUCKET,
+  };
 }

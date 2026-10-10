@@ -9,7 +9,7 @@ import { ApiError } from '../utils/apiError';
 export class UploadController {
   public static async presign(req: Request, res: Response, next: NextFunction) {
     try {
-      const { filename, contentType } = req.body;
+      const { filename, contentType, folder, orderId } = req.body;
       if (!filename || !contentType || typeof filename !== 'string' || typeof contentType !== 'string') {
         throw ApiError.badRequest('Valid filename and contentType strings are required.');
       }
@@ -35,11 +35,32 @@ export class UploadController {
 
       // Sanitize filename against path traversal
       const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
-      const userId = req.user?.id ? req.user.id.replace(/[^a-zA-Z0-9_-]/g, '') : 'guest';
-      const key = `uploads/${userId}/${Date.now()}-${safeFilename}`;
-      const url = await generatePresignedUrl(key, cleanMime);
+      const isPdf = cleanMime === 'application/pdf' || filename.toLowerCase().endsWith('.pdf');
+      const cleanOrderId = orderId ? String(orderId).replace(/[^a-zA-Z0-9_-]/g, '') : '';
 
-      return res.status(200).json({ url, key });
+      let key: string;
+      if (isPdf && cleanOrderId) {
+        // Proper canonical S3 key format for photobook orders
+        key = `photobooks/PerfectPic-Photobook-${cleanOrderId}.pdf`;
+      } else if (isPdf || folder === 'photobooks') {
+        const safeBase = path.basename(safeFilename, path.extname(safeFilename));
+        key = `photobooks/PerfectPic-Photobook-${Date.now()}-${safeBase}.pdf`;
+      } else {
+        const userId = req.user?.id ? req.user.id.replace(/[^a-zA-Z0-9_-]/g, '') : 'guest';
+        key = `uploads/${userId}/${Date.now()}-${safeFilename}`;
+      }
+
+      const url = await generatePresignedUrl(key, cleanMime);
+      const publicUrl = isS3Configured()
+        ? `https://${env.S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`
+        : url.split('?')[0];
+
+      return res.status(200).json({
+        url,
+        key,
+        publicUrl,
+        bucket: env.S3_BUCKET,
+      });
     } catch (err) {
       next(err);
     }
@@ -197,10 +218,26 @@ export class UploadController {
 
       const isPdf = req.file.mimetype === 'application/pdf' || ext === '.pdf';
       const requestedFolder = typeof req.body?.folder === 'string' ? req.body.folder.trim().replace(/[^a-zA-Z0-9_-]/g, '') : '';
-      const folder = requestedFolder || (isPdf ? 'photobooks' : 'photos');
-      const prefix = isPdf ? 'photobook' : 'photo';
-      const filename = `${prefix}-${cleanBase}-${uniqueSuffix}${ext}`;
-      const s3Key = `${folder}/${filename}`;
+      const rawOrderId = req.body?.orderId || req.body?.orderNumber;
+      const cleanOrderId = rawOrderId ? String(rawOrderId).replace(/[^a-zA-Z0-9_-]/g, '') : '';
+
+      let filename: string;
+      let s3Key: string;
+      let folder: string;
+
+      if (isPdf && cleanOrderId) {
+        folder = 'photobooks';
+        filename = `PerfectPic-Photobook-${cleanOrderId}.pdf`;
+        s3Key = `${folder}/${filename}`;
+      } else if (isPdf) {
+        folder = 'photobooks';
+        filename = `PerfectPic-Photobook-${cleanBase}-${uniqueSuffix}.pdf`;
+        s3Key = `${folder}/${filename}`;
+      } else {
+        folder = requestedFolder || 'photos';
+        filename = `photo-${cleanBase}-${uniqueSuffix}${ext}`;
+        s3Key = `${folder}/${filename}`;
+      }
 
       // Enforce AWS S3 in production to keep container disks lightweight
       const hasS3 = isS3Configured();
@@ -217,12 +254,11 @@ export class UploadController {
             req.file.mimetype || (isPdf ? 'application/pdf' : 'image/jpeg')
           );
 
-          // If an associated orderId is provided, optionally link PDF directly to Order
-          const orderId = req.body?.orderId || req.body?.orderNumber;
-          if (orderId && isPdf) {
+          // If an associated orderId is provided, link canonical PDF directly to Order
+          if (cleanOrderId && isPdf) {
             try {
               const { OrderRepository } = await import('../repositories/OrderRepository');
-              await OrderRepository.updatePdfUrl(orderId, s3Result.url);
+              await OrderRepository.updatePdfUrl(cleanOrderId, s3Result.url);
             } catch (linkErr: any) {
               console.warn('Could not auto-link PDF to order:', linkErr?.message);
             }
@@ -312,6 +348,54 @@ export class UploadController {
       }
       return res.status(200).json({
         message: 'Photo deleted successfully',
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /**
+   * Confirms a photobook PDF uploaded from the client, ensures it is saved under
+   * the canonical format photobooks/PerfectPic-Photobook-${orderId}.pdf in the main S3 bucket,
+   * and links it authoritatively to the Order in the database.
+   */
+  public static async confirmOrderPdf(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { orderId, pdfUrl, key } = req.body;
+      const rawId = orderId || req.body?.orderNumber;
+      if (!rawId) {
+        throw ApiError.badRequest('orderId is required to confirm photobook PDF.');
+      }
+
+      const cleanOrderId = String(rawId).replace(/[^a-zA-Z0-9_-]/g, '');
+      const canonicalKey = `photobooks/PerfectPic-Photobook-${cleanOrderId}.pdf`;
+      let finalPdfUrl = pdfUrl;
+
+      // If object was uploaded to a non-canonical S3 key, copy it to the canonical key
+      if (isS3Configured() && key && key !== canonicalKey) {
+        try {
+          const { copyS3Object } = await import('../lib/s3');
+          const copied = await copyS3Object(key, canonicalKey);
+          finalPdfUrl = copied.url;
+        } catch (copyErr: any) {
+          console.warn('Notice: Could not copy S3 object to canonical key:', copyErr?.message);
+        }
+      }
+
+      if (!finalPdfUrl && isS3Configured()) {
+        finalPdfUrl = `https://${env.S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${canonicalKey}`;
+      }
+
+      const { OrderRepository } = await import('../repositories/OrderRepository');
+      const updatedOrder = await OrderRepository.updatePdfUrl(cleanOrderId, finalPdfUrl);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Photobook PDF verified and stored in main S3 bucket.',
+        orderId: cleanOrderId,
+        pdfUrl: finalPdfUrl,
+        key: canonicalKey,
+        order: updatedOrder,
       });
     } catch (err) {
       next(err);

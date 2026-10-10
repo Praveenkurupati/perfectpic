@@ -153,10 +153,27 @@ export class OrderController {
   public static async updateOrderPdf(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
-      const { pdfUrl } = req.body;
-      const updated = await OrderService.updatePdfUrl(id, pdfUrl);
+      const { pdfUrl, key } = req.body;
+      const cleanOrderId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+      const canonicalKey = `photobooks/PerfectPic-Photobook-${cleanOrderId}.pdf`;
+      let finalPdfUrl = pdfUrl;
+
+      // Ensure file resides at canonical key in main S3 bucket
+      try {
+        const { isS3Configured, copyS3Object } = await import('../lib/s3');
+        if (isS3Configured() && key && key !== canonicalKey) {
+          const copied = await copyS3Object(key, canonicalKey);
+          finalPdfUrl = copied.url;
+        }
+      } catch (copyErr: any) {
+        console.warn('Notice: Could not copy S3 object to canonical key:', copyErr?.message);
+      }
+
+      const updated = await OrderService.updatePdfUrl(cleanOrderId, finalPdfUrl);
       return res.status(200).json({
         message: 'Order PDF updated successfully',
+        pdfUrl: finalPdfUrl,
+        key: canonicalKey,
         order: updated,
       });
     } catch (err) {

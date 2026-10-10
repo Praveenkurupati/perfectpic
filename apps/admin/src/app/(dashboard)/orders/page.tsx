@@ -668,7 +668,7 @@ export default function OrdersPage() {
                               href={order.pdfUrl}
                               target="_blank"
                               rel="noreferrer"
-                              download={`PerfectPic-Print-${order.id}.pdf`}
+                              download={`PerfectPic-Photobook-${order.id}.pdf`}
                               className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-sm flex items-center gap-1 shadow-xs"
                               title="Download Print PDF directly from S3"
                             >

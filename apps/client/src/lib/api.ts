@@ -288,11 +288,11 @@ export const api = {
     }),
 
   // Presigned S3 direct uploads
-  getPresignedUploadUrl: async (filename: string, contentType: string) => {
-    return fetcher<{ url: string; key: string }>('/upload/presign', {
+  getPresignedUploadUrl: async (filename: string, contentType: string, folder?: string, orderId?: string) => {
+    return fetcher<{ url: string; key: string; publicUrl?: string; bucket?: string }>('/upload/presign', {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ filename, contentType }),
+      body: JSON.stringify({ filename, contentType, folder, orderId }),
     });
   },
 
@@ -359,13 +359,95 @@ export const api = {
     }
     return res.json() as Promise<{ url: string; filename: string; originalName: string; size: number }>;
   },
+
+  /**
+   * Upload photobook PDF using direct S3 Presigned PUT URL with proper canonical format
+   * (photobooks/PerfectPic-Photobook-{orderId}.pdf), falling back to backend upload if needed,
+   * and auto-linking the canonical S3 URL to the order.
+   */
+  uploadOrderPdf: async (blobOrFile: Blob | File, orderId: string, customFilename?: string) => {
+    const cleanId = String(orderId).replace(/[^a-zA-Z0-9_-]/g, '') || `ORD-${Date.now()}`;
+    const canonicalFilename = customFilename || `PerfectPic-Photobook-${cleanId}.pdf`;
+    const token = typeof window !== 'undefined' ? (localStorage.getItem('pp_token') || localStorage.getItem('token')) : null;
+
+    // 1. Attempt Direct-to-S3 Presigned PUT with proper canonical key
+    try {
+      const presignRes = await fetch(`${getApiBaseUrl()}/api/v1/upload/presign`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          filename: canonicalFilename,
+          contentType: 'application/pdf',
+          folder: 'photobooks',
+          orderId: cleanId,
+        }),
+      });
+
+      if (presignRes.ok) {
+        const { url: presignedPutUrl, key, publicUrl } = await presignRes.json();
+
+        // If real S3 presigned URL (not mock S3), upload directly to S3
+        if (presignedPutUrl && presignedPutUrl.includes('.amazonaws.com') && !presignedPutUrl.includes('mock-s3-bucket')) {
+          const directPutRes = await fetch(presignedPutUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/pdf',
+            },
+            body: blobOrFile,
+          });
+
+          if (directPutRes.ok) {
+            const canonicalUrl = publicUrl || presignedPutUrl.split('?')[0];
+            // Confirm canonical PDF with backend and associate with order
+            await api.confirmOrderPdf(cleanId, canonicalUrl, key).catch(() => {});
+            return {
+              url: canonicalUrl,
+              filename: key,
+              originalName: canonicalFilename,
+              storage: 's3-presigned',
+            };
+          }
+        }
+      }
+    } catch (presignErr) {
+      console.warn('Notice: Presigned direct upload failed; cascading to fallback streaming:', presignErr);
+    }
+
+    // 2. Fallback streaming upload via backend /upload/file
+    const formData = new FormData();
+    const file = blobOrFile instanceof File ? blobOrFile : new File([blobOrFile], canonicalFilename, { type: 'application/pdf' });
+    formData.append('file', file);
+    formData.append('folder', 'photobooks');
+    formData.append('orderId', cleanId);
+
+    const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to upload photobook PDF to S3');
+    }
+    const result = (await res.json()) as { url: string; filename: string; originalName: string; size: number };
+    if (result?.url) {
+      await api.updateOrderPdf(cleanId, result.url).catch(() => {});
+    }
+    return result;
+  },
+
   uploadPdf: async (blobOrFile: Blob | File, filename?: string, orderId?: string) => {
+    if (orderId) {
+      return api.uploadOrderPdf(blobOrFile, orderId, filename);
+    }
     const formData = new FormData();
     const fname = filename || `photobook-${Date.now()}.pdf`;
     const file = blobOrFile instanceof File ? blobOrFile : new File([blobOrFile], fname, { type: 'application/pdf' });
     formData.append('file', file);
     formData.append('folder', 'photobooks');
-    if (orderId) formData.append('orderId', orderId);
 
     const token = typeof window !== 'undefined' ? (localStorage.getItem('pp_token') || localStorage.getItem('token')) : null;
     const res = await fetch(`${getApiBaseUrl()}/api/v1/upload/file`, {
@@ -379,6 +461,12 @@ export const api = {
     }
     return res.json() as Promise<{ url: string; filename: string; originalName: string; size: number }>;
   },
+  confirmOrderPdf: (orderId: string, pdfUrl: string, key?: string) =>
+    fetcher<{ success: boolean; pdfUrl: string; key: string; order: any }>('/upload/confirm-order-pdf', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ orderId, pdfUrl, key }),
+    }),
   updateOrderPdf: (orderId: string, pdfUrl: string) =>
     fetcher<{ message: string; order: any }>(`/orders/${orderId}/pdf`, {
       method: 'PUT',

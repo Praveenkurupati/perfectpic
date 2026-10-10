@@ -18,11 +18,20 @@ export const printRenderWorker = new Worker<{
     const cid = job.data.correlationId || 'none';
     logger.info(`[Worker:printRender] [cid: ${cid}] Starting 300 DPI compile for Order ${job.data.orderId} (Job ${job.id})`);
     const orderId = job.data.orderId;
-    const existingOrder = await OrderRepository.findById(orderId);
+    let existingOrder = await OrderRepository.findById(orderId);
+
+    // Allow window for client background PDF upload to arrive and register
+    for (let attempt = 0; attempt < 5; attempt++) {
+      if (existingOrder && (existingOrder as any).pdfUrl && String((existingOrder as any).pdfUrl).startsWith('http')) {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 5000));
+      existingOrder = await OrderRepository.findById(orderId);
+    }
 
     // If order already has a verified S3 print PDF uploaded with full photos from client, preserve it!
     if (existingOrder && (existingOrder as any).pdfUrl && String((existingOrder as any).pdfUrl).startsWith('http')) {
-      logger.info(`[Worker:printRender] [cid: ${cid}] Order ${orderId} already has verified print PDF: ${(existingOrder as any).pdfUrl}. Preserving it.`);
+      logger.info(`[Worker:printRender] [cid: ${cid}] Order ${orderId} already has verified print PDF from client upload: ${(existingOrder as any).pdfUrl}. Preserving it.`);
       await OrderRepository.updateStatus(orderId, 'printing', {
         notes: `300 DPI Press Master verified from client upload and linked to production queue.`,
       });
@@ -55,7 +64,7 @@ export const printRenderWorker = new Worker<{
       if (isS3Configured()) {
         const s3Result = await uploadBufferToS3(
           pdfBuffer,
-          `photobooks/photobook-${orderId}.pdf`,
+          `photobooks/PerfectPic-Photobook-${orderId}.pdf`,
           'application/pdf'
         );
         generatedPdfUrl = s3Result.url;
@@ -68,7 +77,13 @@ export const printRenderWorker = new Worker<{
       await OrderRepository.updateStatus(orderId, 'printing', {
         notes: `300 DPI Press Master rasterized via PrintEngine (Score: ${preflight.score}/100, Bytes: ${pdfBuffer.length})`,
       });
-      await OrderRepository.updatePdfUrl(orderId, generatedPdfUrl);
+      // Ensure client upload didn't arrive while compiling
+      const latestOrder = await OrderRepository.findById(orderId);
+      if (latestOrder && (latestOrder as any).pdfUrl && String((latestOrder as any).pdfUrl).startsWith('http')) {
+        logger.info(`[Worker:printRender] Client uploaded high-fidelity PDF in interim. Not overwriting with server fallback.`);
+      } else {
+        await OrderRepository.updatePdfUrl(orderId, generatedPdfUrl);
+      }
     } catch (orderUpdateErr: any) {
       logger.warn(`[Worker:printRender] Could not update order record: ${orderUpdateErr?.message}`);
     }
