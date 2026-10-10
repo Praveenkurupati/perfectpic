@@ -489,6 +489,7 @@ export default function BookCanvas() {
     rotateSlotPhoto,
     photos,
     captions,
+    setActiveSidebarTab,
   } = useEditorStore();
 
   const [showGuides, setShowGuides] = useState(false);
@@ -737,59 +738,30 @@ export default function BookCanvas() {
 
   return (
     <div ref={containerRef} className="flex flex-col items-center justify-center w-full max-w-5xl select-none px-2 sm:px-4">
-      {/* Floating Contextual Action Pill (Mockup: layout ⌵ | swap | fit | rotate | delete) */}
-      <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-full px-2 py-1 shadow-md border border-black/10 mb-4 z-40 select-none text-xs">
-        {/* Layout Button with Dropdown */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setLayoutMenuOpen(!layoutMenuOpen)}
-            className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
-            title="Choose layout for active page"
-          >
-            <span>layout</span>
-            <ChevronDown size={13} className="text-gray-500" />
-          </button>
-          {layoutMenuOpen && (
-            <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 w-48 z-50 animate-in fade-in zoom-in-95">
-              {[
-                { id: '1-photo', label: '1 photo full' },
-                { id: '2-photo-h', label: '2 photos split h' },
-                { id: '2-photo-v', label: '2 photos split v' },
-                { id: '3-photo', label: '3 photos (hero left)' },
-                { id: '3-photo-h', label: '3 photos (hero top)' },
-                { id: '4-photo', label: '4 photos grid' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => {
-                    setPageLayout(targetedPageNum, opt.id as PageLayout);
-                    setLayoutMenuOpen(false);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 hover:text-black flex items-center justify-between"
-                >
-                  <span>{opt.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
+      {/* Floating Contextual Action Pill (Mockup: layout | swap | fit | delete) */}
+      <div className="relative flex items-center justify-center bg-white rounded-full px-5 py-2 shadow-md border border-black/5 mb-3 sm:mb-4 z-40 select-none text-xs text-black gap-5 sm:gap-7">
+        {/* Layout Button */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSidebarTab('layouts');
+            setLayoutMenuOpen((prev) => !prev);
+          }}
+          className="hover:text-black font-medium transition-colors cursor-pointer"
+          title="Choose layout for active page"
+        >
+          <span>layout</span>
+        </button>
 
         {/* Swap Button */}
         <button
           type="button"
           onClick={handleSwapOrCycle}
-          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          className="hover:text-black font-medium transition-colors cursor-pointer"
           title="Swap or cycle photo"
         >
-          <ArrowLeftRight size={12} className="text-gray-500" />
           <span>swap</span>
         </button>
-
-        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
 
         {/* Fit Button */}
         <button
@@ -798,47 +770,11 @@ export default function BookCanvas() {
             const targetSlot = selectedSlot || `${leftPageNum}_0`;
             toggleSlotFit(targetSlot);
           }}
-          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          className="hover:text-black font-medium transition-colors cursor-pointer"
           title="Toggle fit / fill crop"
         >
-          <Maximize2 size={12} className="text-gray-500" />
           <span>fit</span>
         </button>
-
-        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
-
-        {/* Rotate Button */}
-        <button
-          type="button"
-          onClick={() => {
-            const targetSlot = selectedSlot || `${leftPageNum}_0`;
-            rotateSlotPhoto(targetSlot);
-          }}
-          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
-          title="Rotate crop orientation"
-        >
-          <RotateCw size={12} className="text-gray-500" />
-          <span>rotate</span>
-        </button>
-
-        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
-
-        {/* Crop / Cut Portion Button */}
-        <button
-          type="button"
-          onClick={() => {
-            const targetSlot = selectedSlot || `${leftPageNum}_0`;
-            const curPhoto = slotPhotos[targetSlot] || pagePhotos[leftPageNum];
-            if (curPhoto) handleOpenCutModal(targetSlot, curPhoto);
-          }}
-          className="px-2.5 py-1 rounded-full hover:bg-gray-100 flex items-center gap-1 font-medium text-gray-800 transition-colors"
-          title="Cut / Crop photo"
-        >
-          <Crop size={12} className="text-gray-500" />
-          <span>crop</span>
-        </button>
-
-        <div className="w-px h-3.5 bg-gray-200 mx-0.5" />
 
         {/* Delete Button */}
         <button
@@ -847,12 +783,38 @@ export default function BookCanvas() {
             const targetSlot = selectedSlot || `${leftPageNum}_0`;
             assignPhotoToSlot(targetSlot, null);
           }}
-          className="px-2.5 py-1 rounded-full hover:bg-red-50 hover:text-red-600 flex items-center gap-1 font-medium text-gray-800 transition-colors"
+          className="hover:text-red-600 font-medium transition-colors cursor-pointer"
           title="Remove photo from slot"
         >
-          <Trash2 size={12} className="text-gray-500 hover:text-red-600" />
           <span>delete</span>
         </button>
+
+        {/* Desktop-only extra tools */}
+        <div className="hidden lg:flex items-center gap-5 border-l border-gray-200 pl-5">
+          <button
+            type="button"
+            onClick={() => {
+              const targetSlot = selectedSlot || `${leftPageNum}_0`;
+              rotateSlotPhoto(targetSlot);
+            }}
+            className="hover:text-black font-medium transition-colors"
+            title="Rotate crop orientation"
+          >
+            <span>rotate</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const targetSlot = selectedSlot || `${leftPageNum}_0`;
+              const curPhoto = slotPhotos[targetSlot] || pagePhotos[leftPageNum];
+              if (curPhoto) handleOpenCutModal(targetSlot, curPhoto);
+            }}
+            className="hover:text-black font-medium transition-colors"
+            title="Cut / Crop photo"
+          >
+            <span>crop</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Spread Viewport with Side Navigation Controls */}
@@ -1050,27 +1012,30 @@ export default function BookCanvas() {
 
       {/* Page Numbers Below Spread (Mockup: 12 and 13) */}
       {!isCover && !isBack && (
-        <div className="flex justify-around items-center w-full max-w-[840px] mt-3 px-12 text-xs font-mono font-medium text-gray-500 select-none">
+        <div 
+          style={{ width: `${baseWidth * scale * zoomFactor}px` }}
+          className="flex justify-between items-center mt-2 px-1 text-xs font-mono font-medium text-neutral-500 select-none"
+        >
           <span>{leftPageNum}</span>
           <span>{rightPageNum}</span>
         </div>
       )}
 
-      {/* Zoom Control Pill (Mockup: - 100% +) */}
-      <div className="flex items-center gap-2 bg-white/90 backdrop-blur-xs border border-gray-200 rounded-full px-3 py-1 shadow-2xs mt-2 text-xs font-mono text-gray-700 select-none">
+      {/* Zoom Control (Mockup: - 100% +) */}
+      <div className="flex items-center gap-3 text-xs font-mono text-neutral-600 mt-1 select-none">
         <button
           type="button"
           onClick={() => setCanvasZoom((z) => Math.max(50, z - 10))}
-          className="w-5 h-5 flex items-center justify-center hover:bg-gray-100 rounded-full text-gray-600 hover:text-black font-bold"
+          className="w-5 h-5 flex items-center justify-center font-bold text-neutral-600 hover:text-black transition-colors cursor-pointer"
           title="Zoom Out"
         >
           -
         </button>
-        <span className="min-w-9 text-center font-medium">{canvasZoom || 100}%</span>
+        <span className="min-w-9 text-center font-medium text-neutral-800">{canvasZoom || 100}%</span>
         <button
           type="button"
           onClick={() => setCanvasZoom((z) => Math.min(150, z + 10))}
-          className="w-5 h-5 flex items-center justify-center hover:bg-gray-100 rounded-full text-gray-600 hover:text-black font-bold"
+          className="w-5 h-5 flex items-center justify-center font-bold text-neutral-600 hover:text-black transition-colors cursor-pointer"
           title="Zoom In"
         >
           +

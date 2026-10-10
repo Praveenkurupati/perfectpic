@@ -16,9 +16,7 @@ import {
   LayoutGrid,
   Type,
   Palette,
-  BookOpen,
-  Film,
-  X
+  BookOpen
 } from 'lucide-react';
 import { generateBookProofPdf } from '@/lib/pdfGenerator';
 import { trackEvent } from '@/lib/analytics';
@@ -27,14 +25,13 @@ const BookCanvas = dynamic(() => import('@/features/editor/components/BookCanvas
 const PhotoTray = dynamic(() => import('@/features/editor/components/PhotoTray'), { ssr: false });
 const SpreadFilmstrip = dynamic(() => import('@/features/editor/components/SpreadFilmstrip'), { ssr: false });
 const EditorRightPanel = dynamic(() => import('@/features/editor/components/EditorRightPanel'), { ssr: false });
+const MobileEditorDock = dynamic(() => import('@/features/editor/components/MobileEditorDock'), { ssr: false });
 
 function StudioContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const projectId = (params?.projectId as string) || 'untitled-project';
-
-  const [mobileDrawer, setMobileDrawer] = useState<'photos' | 'layouts' | 'filmstrip' | null>(null);
 
   const { 
     undo, 
@@ -81,9 +78,7 @@ function StudioContent() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const totalSpreads = Math.ceil(pageCount / 2);
-      if (e.key === 'Escape' && mobileDrawer) {
-        setMobileDrawer(null);
-      } else if (e.key === 'ArrowLeft' && currentSpreadIndex > 0) {
+      if (e.key === 'ArrowLeft' && currentSpreadIndex > 0) {
         setCurrentSpreadIndex(currentSpreadIndex - 1);
       } else if (e.key === 'ArrowRight' && currentSpreadIndex <= totalSpreads) {
         setCurrentSpreadIndex(currentSpreadIndex + 1);
@@ -91,7 +86,7 @@ function StudioContent() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSpreadIndex, pageCount, setCurrentSpreadIndex, mobileDrawer]);
+  }, [currentSpreadIndex, pageCount, setCurrentSpreadIndex]);
 
   // Analytics: Emit studio_spread_edited when spread is changed/edited
   useEffect(() => {
@@ -212,10 +207,42 @@ function StudioContent() {
     { id: 'cover', label: 'cover', icon: BookOpen },
   ] as const;
 
+  const displayBookTitle = template?.displayName || template?.title || 'kerala';
+
   return (
     <div className="h-screen flex flex-col bg-white font-sans text-gray-900 overflow-hidden select-none">
-      {/* 1. Top Navbar (Mockup: Squircle Logo + untitled book · saved just now, center undo/redo, right preview & continue) */}
-      <header className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-3 sm:px-5 z-30 shrink-0">
+      {/* 1a. Mobile Top Header (< lg) matching reference design media_1791638307136.png */}
+      <header className="lg:hidden h-14 border-b border-gray-200/80 bg-white flex items-center justify-between px-4 z-30 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <button 
+            type="button"
+            onClick={() => router.push(`/upload/${projectId}`)} 
+            className="p-1 -ml-1 text-black hover:bg-gray-100 rounded-full transition-colors shrink-0"
+            title="Back to Upload"
+          >
+            <ArrowLeft size={20} className="stroke-[2.2]" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-gray-950 truncate max-w-[210px] sm:max-w-xs">
+              {displayBookTitle} · untitled
+            </h1>
+            <p className="text-[11px] text-gray-400 font-normal leading-tight mt-0.5">
+              saved just now
+            </p>
+          </div>
+        </div>
+
+        <button 
+          type="button"
+          onClick={handleApproveAndOrder}
+          className="px-5 py-2 rounded-full bg-black text-white text-xs font-semibold hover:bg-neutral-800 shadow-xs transition-colors shrink-0"
+        >
+          continue
+        </button>
+      </header>
+
+      {/* 1b. Desktop Top Header (>= lg) */}
+      <header className="hidden lg:flex h-14 border-b border-gray-200 bg-white items-center justify-between px-5 z-30 shrink-0">
         {/* Left: Brand Squircle + Book Title + Saved Indicator */}
         <div className="flex items-center gap-3 min-w-0">
           <button 
@@ -232,10 +259,10 @@ function StudioContent() {
           </div>
 
           <div className="min-w-0">
-            <h1 className="text-xs sm:text-sm font-semibold text-gray-950 truncate max-w-[140px] sm:max-w-[240px] md:max-w-none">
+            <h1 className="text-sm font-semibold text-gray-950 truncate max-w-[240px] md:max-w-none">
               {template?.displayName || template?.title || 'untitled book'}
             </h1>
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-gray-400 font-mono leading-none mt-0.5">
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 font-mono leading-none mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
               <span>saved just now</span>
             </div>
@@ -264,7 +291,6 @@ function StudioContent() {
 
         {/* Right: PDF Proof + Preview + Continue Buttons */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Subtle PDF Export Icon */}
           <button 
             type="button"
             onClick={handleExportPdf}
@@ -279,7 +305,6 @@ function StudioContent() {
             )}
           </button>
 
-          {/* Preview Button (Border pill) */}
           <button 
             type="button"
             onClick={() => {
@@ -293,7 +318,6 @@ function StudioContent() {
             <span>preview</span>
           </button>
 
-          {/* Continue Button (Black pill) */}
           <button 
             type="button"
             onClick={handleApproveAndOrder}
@@ -306,7 +330,7 @@ function StudioContent() {
 
       {/* 2. Main Studio Workspace Layout */}
       <div className="flex-1 min-h-0 flex overflow-hidden relative">
-        {/* Far-Left Tool Rail (64px wide: photos, layouts, text, background, cover) */}
+        {/* Far-Left Tool Rail (64px wide: photos, layouts, text, background, cover) - Desktop Only */}
         <aside className="hidden lg:flex w-16 h-full bg-white border-r border-gray-200 flex-col items-center py-4 gap-4 shrink-0 z-20">
           {toolRailItems.map((item) => {
             const isTabActive = activeSidebarTab === item.id;
@@ -330,127 +354,39 @@ function StudioContent() {
           })}
         </aside>
 
-        {/* Left Panel: "your photos" Tray (270px wide) */}
+        {/* Left Panel: "your photos" Tray (270px wide) - Desktop Only */}
         <aside className="hidden lg:flex w-[270px] h-full min-h-0 bg-white border-r border-gray-200 flex-col shrink-0 z-10 overflow-hidden">
           <PhotoTray />
         </aside>
 
-        {/* Center Column: Warm Beige Canvas + Floating Action Capsule + Bottom Filmstrip */}
+        {/* Center Column: Warm Beige Canvas + Floating Action Capsule + Bottom Filmstrip / Dock */}
         <main className="flex-1 min-h-0 bg-[#EBE7DF] relative flex flex-col overflow-hidden min-w-0">
           {/* Canvas Spread Area */}
-          <div className="flex-1 min-h-0 relative flex flex-col items-center justify-center p-3 sm:p-6 overflow-auto">
+          <div className="flex-1 min-h-0 relative flex flex-col items-center justify-between lg:justify-center p-2 sm:p-4 lg:p-6 overflow-y-auto lg:overflow-auto no-scrollbar">
             <BookCanvas />
+
+            {/* Mobile Spread Filmstrip (< lg) - positioned right below zoom and above bottom dock */}
+            <div className="lg:hidden w-full max-w-md my-2 shrink-0">
+              <SpreadFilmstrip compact={true} />
+            </div>
           </div>
 
-          {/* Bottom Spread Filmstrip (Inside Center Column, exactly like mockup) */}
-          <div className="h-32 bg-[#EBE7DF] border-t border-black/5 shrink-0 z-10 flex flex-col justify-center">
+          {/* Desktop Spread Filmstrip (>= lg) */}
+          <div className="hidden lg:flex h-32 bg-[#EBE7DF] border-t border-black/5 shrink-0 z-10 flex-col justify-center">
             <SpreadFilmstrip />
+          </div>
+
+          {/* Mobile Docked Bottom Sheet (< lg) matching screenshot media_1791638307136.png */}
+          <div className="lg:hidden shrink-0 w-full z-30">
+            <MobileEditorDock />
           </div>
         </main>
 
-        {/* Right Panel: Layouts + Smart Creation + Caption (280px wide) */}
+        {/* Right Panel: Layouts + Smart Creation + Caption (280px wide) - Desktop Only */}
         <aside className="hidden lg:flex w-[280px] h-full min-h-0 bg-white border-l border-gray-200 flex-col shrink-0 z-10 overflow-y-auto">
           <EditorRightPanel />
         </aside>
       </div>
-
-      {/* Mobile Bottom Navigation Dock (< lg) */}
-      <nav className="lg:hidden h-14 bg-white border-t border-gray-200 grid grid-cols-4 items-center shrink-0 z-20 px-2 select-none shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
-        <button
-          type="button"
-          onClick={() => setMobileDrawer(mobileDrawer === 'photos' ? null : 'photos')}
-          className={`flex flex-col items-center justify-center py-1 transition-colors ${
-            mobileDrawer === 'photos' ? 'text-black font-bold' : 'text-gray-500'
-          }`}
-        >
-          <ImageIcon size={18} />
-          <span className="text-[10px] font-medium mt-0.5">photos</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileDrawer(mobileDrawer === 'layouts' ? null : 'layouts')}
-          className={`flex flex-col items-center justify-center py-1 transition-colors ${
-            mobileDrawer === 'layouts' ? 'text-black font-bold' : 'text-gray-500'
-          }`}
-        >
-          <LayoutGrid size={18} />
-          <span className="text-[10px] font-medium mt-0.5">layouts</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setMobileDrawer(mobileDrawer === 'filmstrip' ? null : 'filmstrip')}
-          className={`flex flex-col items-center justify-center py-1 transition-colors ${
-            mobileDrawer === 'filmstrip' ? 'text-black font-bold' : 'text-gray-500'
-          }`}
-        >
-          <Film size={18} />
-          <span className="text-[10px] font-medium mt-0.5">spreads</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            saveSnapshot();
-            router.push(`/preview/${projectId}`);
-          }}
-          className="flex flex-col items-center justify-center py-1 text-gray-500 hover:text-black transition-colors"
-        >
-          <Eye size={18} />
-          <span className="text-[10px] font-medium mt-0.5">preview</span>
-        </button>
-      </nav>
-
-      {/* Mobile Slide-Up Drawer (< lg) */}
-      {mobileDrawer && (
-        <div 
-          role="dialog" 
-          aria-modal="true" 
-          className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/50 backdrop-blur-xs animate-fade-in"
-        >
-          <div 
-            className="absolute inset-0" 
-            onClick={() => setMobileDrawer(null)} 
-          />
-          <div className="relative bg-white rounded-t-2xl shadow-2xl flex flex-col max-h-[85vh] h-[75vh] z-10 overflow-hidden border-t border-gray-200">
-            {/* Visual Touch Drag Indicator Pill */}
-            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mt-2.5 mb-1 shrink-0" />
-
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 shrink-0">
-              <h3 className="font-semibold text-xs text-gray-950 uppercase tracking-wide">
-                {mobileDrawer === 'photos' && 'your photos'}
-                {mobileDrawer === 'layouts' && 'layouts & customization'}
-                {mobileDrawer === 'filmstrip' && 'spreads navigator'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setMobileDrawer(null)}
-                className="p-1 rounded-full text-gray-400 hover:text-black transition-colors"
-                title="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Drawer Content */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              {mobileDrawer === 'photos' && <PhotoTray />}
-              {mobileDrawer === 'layouts' && (
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                  <EditorRightPanel />
-                </div>
-              )}
-              {mobileDrawer === 'filmstrip' && (
-                <div className="flex-1 min-h-0 overflow-y-auto p-4">
-                  <SpreadFilmstrip />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
