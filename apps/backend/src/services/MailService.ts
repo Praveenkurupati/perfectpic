@@ -199,6 +199,7 @@ class MailService {
       purpose,
       name: userName,
       otpCode,
+      verificationCode: otpCode,
       digits,
       expiryMinutes: 10,
     });

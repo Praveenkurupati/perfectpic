@@ -1,9 +1,17 @@
-<!-- Schema.org JSON-LD Email Markup for Google / Gmail Smart OTP Parsing -->
+<!-- Schema.org JSON-LD Email Markup for Google / Gmail One-Click Copy & Verification -->
 <script type="application/ld+json">
 {
   "@context": "http://schema.org",
   "@type": "EmailMessage",
-  "description": "One-time verification code from PerfectPic"
+  "description": "One-time login code",
+  "action": {
+    "@type": "VerifyAction",
+    "name": "Verify Code",
+    "result": {
+      "@type": "CodeAction",
+      "code": "{{#if verificationCode}}{{verificationCode}}{{else}}{{otpCode}}{{/if}}"
+    }
+  }
 }
 </script>
 
