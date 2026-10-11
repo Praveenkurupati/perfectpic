@@ -80,10 +80,10 @@ export default function AccountLayout({
             )}
           </div>
           
-          <div className="flex flex-col md:flex-row gap-8">
-            {/* Sidebar Navigation */}
+          <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+            {/* Sidebar / Mobile Pill Navigation */}
             <aside className="w-full md:w-64 shrink-0">
-              <nav className="flex flex-col space-y-1">
+              <nav className="flex flex-row md:flex-col overflow-x-auto no-scrollbar gap-2 md:gap-0 md:space-y-1 pb-2 md:pb-0">
                 {navLinks.map((link) => {
                   const Icon = link.icon;
                   const isActive = pathname === link.href;
@@ -92,13 +92,13 @@ export default function AccountLayout({
                       key={link.href}
                       href={link.href}
                       className={cn(
-                        "flex items-center px-4 py-3 rounded-sm font-medium transition-colors text-sm",
+                        "flex items-center shrink-0 px-3 py-2 md:px-4 md:py-3 rounded-sm font-medium transition-colors text-xs md:text-sm whitespace-nowrap",
                         isActive
                           ? "bg-white border border-cream-300 text-noir-950 shadow-luxury-sm font-semibold"
-                          : "text-noir-600 hover:bg-cream-100 hover:text-noir-950"
+                          : "text-noir-600 bg-cream-100/60 md:bg-transparent hover:bg-cream-100 hover:text-noir-950"
                       )}
                     >
-                      <Icon size={18} className={cn("mr-3", isActive ? "text-foil-gold" : "text-noir-400")} />
+                      <Icon size={16} className={cn("mr-2 md:mr-3 md:w-[18px] md:h-[18px]", isActive ? "text-foil-gold" : "text-noir-400")} />
                       {link.label}
                     </Link>
                   );
@@ -109,9 +109,9 @@ export default function AccountLayout({
                     logout();
                     router.push("/");
                   }}
-                  className="flex items-center px-4 py-3 hover:bg-red-50 hover:text-red-600 rounded-sm text-noir-600 transition-colors text-left w-full mt-4 text-sm"
+                  className="flex items-center shrink-0 px-3 py-2 md:px-4 md:py-3 hover:bg-red-50 hover:text-red-600 rounded-sm text-noir-600 transition-colors text-left text-xs md:text-sm whitespace-nowrap md:mt-4 bg-cream-100/60 md:bg-transparent"
                 >
-                  <LogOut size={18} className="mr-3" />
+                  <LogOut size={16} className="mr-2 md:mr-3 md:w-[18px] md:h-[18px]" />
                   Sign Out
                 </button>
               </nav>

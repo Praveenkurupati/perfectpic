@@ -1,13 +1,13 @@
 export default function PricingPage() {
   return (
-    <div className="container mx-auto px-4 py-20 min-h-screen">
+    <div className="container mx-auto px-4 pt-28 pb-20 md:pt-36 md:pb-24 min-h-screen">
       <div className="max-w-4xl mx-auto">
-        <h1 className="font-serif text-5xl text-noir-900 mb-6 text-center">Pricing & Specifications</h1>
-        <p className="text-center text-noir-700 mb-16 max-w-2xl mx-auto">
+        <h1 className="font-serif text-4xl md:text-5xl text-noir-900 mb-6 text-center">Pricing & Specifications</h1>
+        <p className="text-center text-noir-700 mb-12 md:mb-16 max-w-2xl mx-auto text-sm md:text-base">
           We believe in transparent pricing. No hidden fees, no shipping charges across India. Just premium quality photo books at fair prices.
         </p>
 
-        <div className="bg-white border border-cream-300 shadow-luxury-md rounded-sm overflow-hidden mb-20">
+        <div className="bg-white border border-cream-300 shadow-luxury-md rounded-sm overflow-x-auto mb-20">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-cream-100 border-b border-cream-300">

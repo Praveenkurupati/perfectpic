@@ -205,7 +205,7 @@ function ConfigureContent() {
   const currentPrice = basePrice + pageAdjustment + coverPrice + packagingPrice;
 
   return (
-    <div className="container mx-auto px-4 py-12 md:py-20 min-h-screen">
+    <div className="container mx-auto px-4 pt-28 pb-16 md:pt-32 md:pb-24 min-h-screen">
       {/* Template Header if template was selected */}
       {templateData && (
         <div className="mb-10 p-6 md:p-8 bg-cream-100 border border-cream-300 rounded-sm shadow-luxury-sm">

@@ -24,10 +24,10 @@ export default function FAQPage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-20 min-h-screen">
+    <div className="container mx-auto px-4 pt-28 pb-20 md:pt-36 md:pb-24 min-h-screen">
       <div className="max-w-3xl mx-auto">
-        <h1 className="font-serif text-5xl text-noir-900 mb-6 text-center">Frequently Asked Questions</h1>
-        <p className="text-center text-noir-700 mb-16">Everything you need to know about our products and services.</p>
+        <h1 className="font-serif text-4xl md:text-5xl text-noir-900 mb-6 text-center">Frequently Asked Questions</h1>
+        <p className="text-center text-noir-700 mb-12 md:mb-16 text-sm md:text-base">Everything you need to know about our products and services.</p>
 
         <div className="space-y-12">
           {faqs.map((cat, i) => (

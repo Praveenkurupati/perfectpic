@@ -20,6 +20,7 @@ import {
 import PortionCutModal from './PortionCutModal';
 import { getSpineMetrics } from '@/lib/spineCalculator';
 import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
+import { cn } from '@/lib/utils';
 
 interface SlotProps {
   slotId: string;
@@ -1009,6 +1010,42 @@ export default function BookCanvas() {
           <ChevronRight size={18} />
         </button>
       </div>
+
+      {/* Mobile Page View Segmented Toggle (Spread vs Left vs Right) */}
+      {!isCover && !isBack && !isPanoramic && (
+        <div className="flex md:hidden items-center justify-center gap-1 bg-white border border-neutral-300 rounded-full p-1 shadow-sm mt-3 mb-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setMobilePageView('spread')}
+            className={cn(
+              "px-3 py-1 rounded-full font-medium transition-colors text-[11px]",
+              mobilePageView === 'spread' ? "bg-neutral-900 text-white shadow-xs" : "text-neutral-600 hover:text-neutral-900"
+            )}
+          >
+            Spread
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePageView('left')}
+            className={cn(
+              "px-3 py-1 rounded-full font-medium transition-colors text-[11px]",
+              mobilePageView === 'left' ? "bg-neutral-900 text-white shadow-xs" : "text-neutral-600 hover:text-neutral-900"
+            )}
+          >
+            Page {leftPageNum}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePageView('right')}
+            className={cn(
+              "px-3 py-1 rounded-full font-medium transition-colors text-[11px]",
+              mobilePageView === 'right' ? "bg-neutral-900 text-white shadow-xs" : "text-neutral-600 hover:text-neutral-900"
+            )}
+          >
+            Page {rightPageNum}
+          </button>
+        </div>
+      )}
 
       {/* Page Numbers Below Spread (Mockup: 12 and 13) */}
       {!isCover && !isBack && (

@@ -105,9 +105,19 @@ export default function ProjectsPage() {
                       <button className="text-white text-xs hover:underline">Duplicate</button>
                     </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-serif text-lg leading-tight mb-1 truncate">{project.title}</h3>
-                    <p className="text-xs text-noir-500">Last edited {formatRelativeTime(project.updatedAt)}</p>
+                  <div className="p-4 flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/studio/${project.id}`} className="font-serif text-lg leading-tight mb-1 truncate block hover:text-foil-gold transition-colors">
+                        {project.title}
+                      </Link>
+                      <p className="text-xs text-noir-500">Last edited {formatRelativeTime(project.updatedAt)}</p>
+                    </div>
+                    <Link
+                      href={`/studio/${project.id}`}
+                      className="shrink-0 md:hidden bg-noir-950 text-cream-50 px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-noir-800 transition-colors"
+                    >
+                      {project.status === 'Draft' ? 'Edit' : 'View'}
+                    </Link>
                   </div>
                 </div>
               ))
