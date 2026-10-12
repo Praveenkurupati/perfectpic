@@ -55,7 +55,7 @@ export default function AccountLayout({
     { href: "/settings", label: "Account Settings", icon: Settings },
   ];
 
-  if (pathname === '/projects') {
+  if (pathname === '/projects' || pathname === '/orders' || pathname.startsWith('/track')) {
     return (
       <div className="flex min-h-screen flex-col bg-[#F4F2ED]">
         <Header />

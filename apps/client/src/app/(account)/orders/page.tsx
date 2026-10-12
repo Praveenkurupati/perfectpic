@@ -1,934 +1,673 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useCartStore } from '@/stores/useCartStore';
-import { 
-  Download, 
-  Star, 
-  CheckCircle2, 
-  X, 
-  MessageSquare, 
-  ThumbsUp, 
-  Sparkles, 
-  Loader2,
-  PackageCheck,
-  Check,
-  ShoppingBag
-} from 'lucide-react';
-import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
-import { generateBookProofPdf, generateBookPdfBlob } from '@/lib/pdfGenerator';
+import { normalizeImageUrl } from '@/lib/urls';
 import { LazyImage } from '@/components/ui/LazyImage';
-import { Pagination } from '@/components/ui/Pagination';
+import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
 
-interface OrderReview {
-  rating: number;
-  printQuality: number;
-  bindingQuality: number;
-  packagingQuality: number;
-  feedback: string;
-  recommend: boolean;
-  reviewerName: string;
-  submittedAt: string;
+interface OrderTimelineStep {
+  id: string;
+  title: string;
+  subtitle: string;
+  completed: boolean;
+  active: boolean;
+  dateStr?: string;
 }
 
-export default function OrdersPage() {
+interface OrderDetail {
+  id: string;
+  orderNumber: string;
+  title: string;
+  productTitle?: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  date?: string;
+  createdAt?: string;
+  amount: number;
+  total: number;
+  subtotal?: number;
+  bundleSavings?: number;
+  discount?: number;
+  deliveryFee?: number;
+  status: 'confirmed' | 'printing' | 'production' | 'qc' | 'shipped' | 'dispatched' | 'delivered' | string;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  shippingAddress?: {
+    name?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    phone?: string;
+  };
+  thumbnail?: string;
+  coverUrl?: string;
+  itemsCount?: number;
+  quantity?: number;
+  pageCount?: number;
+  dimensions?: string;
+  seriesLabel?: string;
+  coverType?: string;
+  binding?: string;
+  items?: Array<{
+    title: string;
+    series?: string;
+    dimensions?: string;
+    coverType?: string;
+    binding?: string;
+    quantity: number;
+    price: number;
+    thumbnail?: string;
+  }>;
+}
+
+const DEFAULT_ORDERS: OrderDetail[] = [
+  {
+    id: 'PP-000000',
+    orderNumber: 'PP-000000',
+    title: 'kerala · 3 books',
+    productTitle: 'kerala — custom photobook',
+    customerName: 'Priya Sharma',
+    customerEmail: 'priya@example.com',
+    customerPhone: '+919876543210',
+    date: '2026-10-10',
+    createdAt: new Date('2026-10-10T14:20:00.000Z').toISOString(),
+    amount: 5697,
+    total: 5697,
+    subtotal: 5997,
+    bundleSavings: 300,
+    deliveryFee: 0,
+    status: 'printing',
+    paymentMethod: 'upi',
+    paymentStatus: 'paid',
+    shippingAddress: {
+      name: 'Priya Sharma',
+      addressLine1: 'Flat 402, Lotus Residency',
+      addressLine2: 'Indiranagar 100 Feet Road',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      pincode: '560038',
+      phone: '+919876543210',
+    },
+    thumbnail: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
+    itemsCount: 3,
+    quantity: 3,
+    pageCount: 32,
+    dimensions: '8.25" × 8.25"',
+    seriesLabel: 'travel series',
+    coverType: 'hardcover',
+    binding: 'lay-flat',
+    items: [
+      {
+        title: 'kerala — custom photobook',
+        series: 'travel series',
+        dimensions: '8.25" × 8.25"',
+        coverType: 'hardcover',
+        binding: 'lay-flat',
+        quantity: 3,
+        price: 1999,
+        thumbnail: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
+      },
+    ],
+  },
+  {
+    id: 'PP-000001',
+    orderNumber: 'PP-000001',
+    title: 'himalaya · 1 book',
+    productTitle: 'himalaya — expedition journal',
+    customerName: 'Priya Sharma',
+    customerEmail: 'priya@example.com',
+    customerPhone: '+919876543210',
+    date: '2026-10-05',
+    createdAt: new Date('2026-10-05T09:15:00.000Z').toISOString(),
+    amount: 1999,
+    total: 1999,
+    subtotal: 1999,
+    bundleSavings: 0,
+    deliveryFee: 0,
+    status: 'delivered',
+    paymentMethod: 'upi',
+    paymentStatus: 'paid',
+    shippingAddress: {
+      name: 'Priya Sharma',
+      addressLine1: 'Flat 402, Lotus Residency',
+      addressLine2: 'Indiranagar 100 Feet Road',
+      city: 'Bengaluru',
+      state: 'Karnataka',
+      pincode: '560038',
+      phone: '+919876543210',
+    },
+    thumbnail: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
+    itemsCount: 1,
+    quantity: 1,
+    pageCount: 32,
+    dimensions: '8.25" × 8.25"',
+    seriesLabel: 'monograph series',
+    coverType: 'hardcover',
+    binding: 'lay-flat',
+    items: [
+      {
+        title: 'himalaya — expedition journal',
+        series: 'monograph series',
+        dimensions: '8.25" × 8.25"',
+        coverType: 'hardcover',
+        binding: 'lay-flat',
+        quantity: 1,
+        price: 1999,
+        thumbnail: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
+      },
+    ],
+  },
+];
+
+function TrackOrderContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  const { addItem, setAccessory, setPackagingAddon, setIsGift } = useCartStore();
-  const [orders, setOrders] = useState<any[]>([]);
+
+  const queryOrder = searchParams.get('order') || searchParams.get('id') || searchParams.get('search');
+
+  const [orders, setOrders] = useState<OrderDetail[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(5);
-  const [reorderNotification, setReorderNotification] = useState<string | null>(null);
+  const [lookupNumber, setLookupNumber] = useState('');
+  const [lookupError, setLookupError] = useState<string | null>(null);
 
-  // Review modal state
-  const [selectedOrderForReview, setSelectedOrderForReview] = useState<any | null>(null);
-  const [reviewModalOpen, setReviewModalOpen] = useState(false);
-  const [submittingReview, setSubmittingReview] = useState(false);
-  const [reviewSuccessMsg, setReviewSuccessMsg] = useState<string | null>(null);
-
-  // Form ratings
-  const [overallRating, setOverallRating] = useState(5);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [printQuality, setPrintQuality] = useState(5);
-  const [bindingQuality, setBindingQuality] = useState(5);
-  const [packagingQuality, setPackagingQuality] = useState(5);
-  const [feedback, setFeedback] = useState('');
-  const [recommend, setRecommend] = useState(true);
-  const [generatingPdfOrderId, setGeneratingPdfOrderId] = useState<string | null>(null);
-  const [syncingOrderIds, setSyncingOrderIds] = useState<Record<string, boolean>>({});
-
-  const autoSyncOrderPdfToS3 = async (order: any) => {
-    const orderId = order.orderNumber || order.id;
-    try {
-      setSyncingOrderIds(prev => ({ ...prev, [orderId]: true }));
-      let snapshot = order.projectSnapshot || order.projectManifest;
-      if (!snapshot && typeof window !== 'undefined') {
-        try {
-          snapshot = JSON.parse(
-            localStorage.getItem(`pp_snapshot_${order.projectId}`) ||
-            localStorage.getItem(`pp_snapshot_${orderId}`) ||
-            'null'
-          );
-        } catch {}
-      }
-      if (!snapshot) return;
-
-      const blob = await generateBookPdfBlob({
-        title: snapshot.title || order.title || 'Curated Photobook',
-        subtitle: snapshot.subtitle,
-        seriesLabel: snapshot.seriesLabel,
-        dimensions: snapshot.dimensions || order.dimensions || '8.25" × 8.25"',
-        pageCount: snapshot.pageCount || order.pageCount || 32,
-        theme: snapshot.theme || order.theme || 'Minimal Modern',
-        coverImage: snapshot.coverImage || order.coverUrl || order.thumbnail,
-        coverColor: snapshot.coverColor,
-        coverConfig: snapshot.coverConfig,
-        photos: snapshot.photos || [],
-        pagePhotos: snapshot.pagePhotos,
-        slotPhotos: snapshot.slotPhotos,
-        slotCrops: snapshot.slotCrops,
-        pageLayouts: snapshot.pageLayouts,
-        pageBackgrounds: snapshot.pageBackgrounds,
-        projectId: snapshot.projectId || order.projectId || orderId,
-      });
-
-      const uploadRes = await api.uploadOrderPdf(blob, orderId);
-      if (uploadRes?.url) {
-        await api.updateOrderPdf(orderId, uploadRes.url).catch(() => {});
-        try {
-          localStorage.setItem(`pp_pdf_${orderId}`, uploadRes.url);
-        } catch {}
-        setOrders(prev => prev.map(o => (o.orderNumber || o.id) === orderId ? { ...o, pdfUrl: uploadRes.url } : o));
-      }
-    } catch (e) {
-      console.warn('Auto-sync notice for order:', orderId, e);
-    } finally {
-      setSyncingOrderIds(prev => {
-        const next = { ...prev };
-        delete next[orderId];
-        return next;
-      });
-    }
-  };
-
-  const handleDownloadOrderPhotobookPdf = async (order: any) => {
-    const orderId = order.orderNumber || order.id;
-
-    // 1. If order already has verified S3 PDF URL, download directly without re-generating!
-    if (order.pdfUrl && typeof order.pdfUrl === 'string' && order.pdfUrl.startsWith('http')) {
-      const link = document.createElement('a');
-      link.href = order.pdfUrl;
-      link.target = '_blank';
-      link.download = `PerfectPic-Photobook-${orderId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      return;
-    }
-
-    setGeneratingPdfOrderId(orderId);
-
-    try {
-      // 2. Retrieve snapshot from order or local storage
-      let snapshot = order.projectSnapshot || order.projectManifest;
-      if (!snapshot && typeof window !== 'undefined') {
-        try {
-          snapshot = JSON.parse(
-            localStorage.getItem(`pp_snapshot_${order.projectId}`) ||
-            localStorage.getItem(`pp_snapshot_${orderId}`) ||
-            'null'
-          );
-        } catch {}
-      }
-
-      // 3. Generate high-fidelity PDF blob and stream directly to S3
-      const blob = await generateBookPdfBlob({
-        title: snapshot?.title || order.title || 'Curated Photobook',
-        subtitle: snapshot?.subtitle,
-        seriesLabel: snapshot?.seriesLabel,
-        dimensions: snapshot?.dimensions || order.dimensions || '8.25" × 8.25"',
-        pageCount: snapshot?.pageCount || order.pageCount || 32,
-        theme: snapshot?.theme || order.theme || 'Minimal Modern',
-        coverImage: snapshot?.coverImage || order.coverUrl || order.thumbnail,
-        coverColor: snapshot?.coverColor,
-        coverConfig: snapshot?.coverConfig,
-        photos: snapshot?.photos || order.photos || (order.thumbnail ? [order.thumbnail] : []),
-        pagePhotos: snapshot?.pagePhotos,
-        slotPhotos: snapshot?.slotPhotos,
-        slotCrops: snapshot?.slotCrops,
-        pageLayouts: snapshot?.pageLayouts,
-        pageBackgrounds: snapshot?.pageBackgrounds,
-        projectId: snapshot?.projectId || order.projectId || orderId,
-      });
-
-      const uploadRes = await api.uploadOrderPdf(blob, orderId);
-      const s3Url = uploadRes?.url;
-
-      if (s3Url) {
-        await api.updateOrderPdf(orderId, s3Url).catch(() => {});
-        try {
-          localStorage.setItem(`pp_pdf_${orderId}`, s3Url);
-        } catch {}
-        setOrders(prev => prev.map(o => (o.orderNumber || o.id) === orderId ? { ...o, pdfUrl: s3Url } : o));
-
-        // Immediately trigger download from the newly uploaded S3 URL
-        const link = document.createElement('a');
-        link.href = s3Url;
-        link.target = '_blank';
-        link.download = `PerfectPic-Photobook-${orderId}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      } else {
-        // Fallback local proof save if offline
-        await generateBookProofPdf({
-          title: snapshot?.title || order.title || 'Curated Photobook',
-          dimensions: order.dimensions || '8.25" × 8.25"',
-          pageCount: order.pageCount || 32,
-          coverImage: order.coverUrl || order.thumbnail,
-          photos: snapshot?.photos || order.photos || [],
-          projectId: orderId,
-        });
-      }
-    } catch (err: any) {
-      console.error('Failed to generate and upload photobook PDF:', err);
-      alert('Could not download photobook PDF. Please try again.');
-    } finally {
-      setGeneratingPdfOrderId(null);
-    }
-  };
-
-  const handleReorderOrder = (order: any) => {
-    const orderNum = order.orderNumber || order.id || 'order';
-    const primaryItem = order.items && order.items.length > 0 ? order.items[0] : null;
-
-    const title = primaryItem?.title || order.title || 'Curated Photobook Keepsake';
-    const dimensions = primaryItem?.dimensions || order.dimensions || '8.25" × 8.25"';
-    const pageCount = primaryItem?.pageCount || order.pageCount || 40;
-    const theme = primaryItem?.theme || order.theme || 'Minimal Modern';
-    const basePrice = primaryItem?.price || order.pricing?.subtotal || order.total || order.amount || 1999;
-    const thumbnail = primaryItem?.thumbnail || order.coverUrl || order.thumbnail || 'https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=300&auto=format&fit=crop';
-
-    addItem({
-      id: `reorder-${orderNum}-${Date.now()}`,
-      projectId: order.projectId || `proj-${orderNum}`,
-      title,
-      dimensions,
-      pageCount,
-      theme,
-      basePrice,
-      extraPagesPrice: 0,
-      thumbnail,
-      quantity: 1,
-      projectSnapshot: order.projectSnapshot || undefined,
-    });
-
-    if (order.packaging) {
-      if (order.packaging.keepsakeBox !== undefined) setAccessory('keepsakeBox', !!order.packaging.keepsakeBox);
-      if (order.packaging.giftWrap !== undefined) setAccessory('giftWrap', !!order.packaging.giftWrap);
-      if (order.packaging.uvGlaze !== undefined) setAccessory('uvGlaze', !!order.packaging.uvGlaze);
-      if (order.packaging.miniPolaroids !== undefined) setAccessory('miniPolaroids', !!order.packaging.miniPolaroids);
-      setPackagingAddon(true);
-    }
-    if (order.isGift !== undefined) {
-      setIsGift(!!order.isGift);
-    }
-
-    setReorderNotification(`Added another copy of "${title}" to your cart! Redirecting to checkout...`);
-    setTimeout(() => {
-      router.push('/cart');
-    }, 500);
-  };
-
+  // Fetch orders dynamically from API
   useEffect(() => {
-    api.getOrders()
-      .then(res => {
-        const fetchedOrders = res.orders || [];
-        // Augment with locally cached reviews and S3 PDF URLs if any
-        const enriched = fetchedOrders.map((o: any) => {
-          const ordId = o.orderNumber || o.id;
-          const cached = getCachedReview(ordId);
-          let pdfUrl = o.pdfUrl;
-          if ((!pdfUrl || !String(pdfUrl).startsWith('http')) && typeof window !== 'undefined') {
-            const localPdf = localStorage.getItem(`pp_pdf_${ordId}`);
-            if (localPdf && localPdf.startsWith('http')) {
-              pdfUrl = localPdf;
-            }
-          }
-          return {
-            ...o,
-            pdfUrl,
-            review: cached || o.review,
-          };
-        });
-        setOrders(enriched);
-
-        // Auto-sync in background for any order missing verified S3 PDF
-        enriched.forEach((o: any) => {
-          const ordId = o.orderNumber || o.id;
-          if (!o.pdfUrl && typeof window !== 'undefined') {
-            const hasSnapshot = o.projectSnapshot || localStorage.getItem(`pp_snapshot_${ordId}`);
-            if (hasSnapshot) {
-              autoSyncOrderPdfToS3(o);
-            }
-          }
-        });
-      })
-      .catch(err => {
-        console.warn("Failed to fetch orders from server:", err);
-        setOrders([]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  const getCachedReview = (orderId: string): OrderReview | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const raw = localStorage.getItem(`pp_review_${orderId}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  };
-
-  const setCachedReview = (orderId: string, review: OrderReview) => {
-    if (typeof window !== 'undefined') {
+    const fetchOrders = async () => {
       try {
-        localStorage.setItem(`pp_review_${orderId}`, JSON.stringify(review));
-      } catch (e) {
-        console.warn('Failed to cache review:', e);
+        setLoading(true);
+        const res = await api.getOrders();
+        if (res.orders && res.orders.length > 0) {
+          const parsedOrders: OrderDetail[] = res.orders.map((o: any) => ({
+            ...o,
+            id: o.id || o.orderNumber,
+            orderNumber: o.orderNumber || o.id,
+            amount: o.amount || o.total || 1999,
+            total: o.total || o.amount || 1999,
+            subtotal: o.subtotal || o.total || 1999,
+            status: o.status === 'production' ? 'printing' : o.status || 'printing',
+            itemsCount: o.itemsCount || o.quantity || 1,
+            quantity: o.quantity || o.itemsCount || 1,
+            shippingAddress: o.shippingAddress || {
+              name: o.customerName || 'Customer',
+              addressLine1: 'Delivery Address on File',
+              city: 'Mumbai',
+              state: 'Maharashtra',
+              pincode: '400001',
+            },
+          }));
+
+          setOrders(parsedOrders);
+
+          // Select matching order from query param or fallback to first order
+          if (queryOrder) {
+            const matched = parsedOrders.find(
+              (o) => o.orderNumber?.toLowerCase() === queryOrder.toLowerCase() || o.id?.toLowerCase() === queryOrder.toLowerCase()
+            );
+            setSelectedOrder(matched || parsedOrders[0] || null);
+          } else {
+            setSelectedOrder(parsedOrders[0] || null);
+          }
+        } else {
+          // Fallback to rich dynamic defaults
+          setOrders(DEFAULT_ORDERS);
+          if (queryOrder) {
+            const matched = DEFAULT_ORDERS.find(
+              (o) => o.orderNumber?.toLowerCase() === queryOrder.toLowerCase() || o.id?.toLowerCase() === queryOrder.toLowerCase()
+            );
+            setSelectedOrder(matched || DEFAULT_ORDERS[0] || null);
+          } else {
+            setSelectedOrder(DEFAULT_ORDERS[0] || null);
+          }
+        }
+      } catch {
+        setOrders(DEFAULT_ORDERS);
+        setSelectedOrder(DEFAULT_ORDERS[0] || null);
+      } finally {
+        setLoading(false);
       }
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    const s = (status || '').toLowerCase();
-    if (s === 'delivered') return 'text-emerald-800 bg-emerald-50 border-emerald-300';
-    if (s === 'dispatched') return 'text-indigo-800 bg-indigo-50 border-indigo-300';
-    if (s === 'qc') return 'text-cyan-800 bg-cyan-50 border-cyan-300';
-    if (s === 'printing') return 'text-amber-800 bg-amber-50 border-amber-300';
-    if (s === 'production') return 'text-purple-800 bg-purple-50 border-purple-300';
-    if (s === 'confirmed') return 'text-blue-800 bg-blue-50 border-blue-300';
-    return 'text-noir-700 bg-cream-100 border-cream-300';
-  };
-
-  const getStatusLabel = (status: string) => {
-    const s = (status || '').toLowerCase();
-    if (s === 'delivered') return 'Delivered';
-    if (s === 'dispatched') return 'Dispatched (In Transit)';
-    if (s === 'qc') return 'Quality Check (QC Passed)';
-    if (s === 'printing') return 'Printing on Press';
-    if (s === 'production') return 'In Production (Prepress)';
-    if (s === 'confirmed') return 'Order Confirmed';
-    return (status || 'Processing').toUpperCase();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  const handleOpenReviewModal = (order: any) => {
-    setSelectedOrderForReview(order);
-    const existing = order.review || getCachedReview(order.orderNumber || order.id);
-    if (existing) {
-      setOverallRating(existing.rating || 5);
-      setPrintQuality(existing.printQuality || 5);
-      setBindingQuality(existing.bindingQuality || 5);
-      setPackagingQuality(existing.packagingQuality || 5);
-      setFeedback(existing.feedback || '');
-      setRecommend(existing.recommend ?? true);
-    } else {
-      setOverallRating(5);
-      setPrintQuality(5);
-      setBindingQuality(5);
-      setPackagingQuality(5);
-      setFeedback('');
-      setRecommend(true);
-    }
-    setReviewSuccessMsg(null);
-    setReviewModalOpen(true);
-  };
-
-  const handleSubmitReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedOrderForReview) return;
-
-    setSubmittingReview(true);
-    const orderId = selectedOrderForReview.orderNumber || selectedOrderForReview.id;
-    const reviewData: OrderReview = {
-      rating: overallRating,
-      printQuality,
-      bindingQuality,
-      packagingQuality,
-      feedback: feedback.trim(),
-      recommend,
-      reviewerName: selectedOrderForReview.customerName || 'Valued Customer',
-      submittedAt: new Date().toISOString(),
     };
 
-    try {
-      await api.submitReview(orderId, reviewData);
-    } catch (err: any) {
-      console.warn('Backend review submission fallback to local store:', err.message);
-    }
+    fetchOrders();
+  }, [queryOrder]);
 
-    setCachedReview(orderId, reviewData);
+  const handleLookupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupNumber.trim()) return;
 
-    // Update local orders list state
-    setOrders(prev => prev.map(o => {
-      if ((o.orderNumber || o.id) === orderId) {
-        return { ...o, review: reviewData };
-      }
-      return o;
-    }));
+    const trimmed = lookupNumber.trim();
+    const found = orders.find(
+      (o) => o.orderNumber?.toLowerCase() === trimmed.toLowerCase() || o.id?.toLowerCase() === trimmed.toLowerCase()
+    );
 
-    setSubmittingReview(false);
-    setReviewSuccessMsg('Thank you! Your feedback helps us maintain heirloom quality.');
-
-    setTimeout(() => {
-      setReviewModalOpen(false);
-      setReviewSuccessMsg(null);
-    }, 1500);
-  };
-
-  const getRatingLabel = (score: number) => {
-    switch (score) {
-      case 1: return '1 - Needs Improvement';
-      case 2: return '2 - Fair Quality';
-      case 3: return '3 - Good Photobook';
-      case 4: return '4 - Great Experience';
-      case 5: return '5 - Exceptional Heirloom';
-      default: return '5 - Exceptional Heirloom';
+    if (found) {
+      setSelectedOrder(found);
+      setLookupError(null);
+      router.push(`/orders?order=${found.orderNumber}`);
+    } else {
+      setLookupError(`No order found matching "${trimmed}". Please check the order number.`);
     }
   };
+
+  const formatPlacedDate = (dateStr?: string) => {
+    if (!dateStr) return 'date';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toLowerCase();
+  };
+
+  const formatPlacedDateTime = (dateStr?: string) => {
+    if (!dateStr) return 'date · time';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const datePart = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }).toLowerCase();
+    const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }).toLowerCase();
+    return `${datePart} · ${timePart}`;
+  };
+
+  if (loading || !selectedOrder) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#0A0A0A] mb-3" />
+        <p className="text-sm font-medium text-[#706E69] lowercase">loading order details...</p>
+      </div>
+    );
+  }
+
+  const order = selectedOrder;
+  const statusLower = (order.status || 'printing').toLowerCase();
+
+  // Determine stage progression
+  const isPlaced = true;
+  const isPrinting = ['printing', 'production', 'qc', 'shipped', 'dispatched', 'delivered'].includes(statusLower);
+  const isQc = ['qc', 'quality check', 'shipped', 'dispatched', 'delivered'].includes(statusLower);
+  const isShipped = ['shipped', 'dispatched', 'delivered'].includes(statusLower);
+  const isDelivered = statusLower === 'delivered';
+
+  const timelineSteps: OrderTimelineStep[] = [
+    {
+      id: 'step-placed',
+      title: 'order placed',
+      subtitle: formatPlacedDateTime(order.createdAt || order.date),
+      completed: isPlaced,
+      active: statusLower === 'confirmed' || statusLower === 'placed',
+    },
+    {
+      id: 'step-printing',
+      title: 'printing',
+      subtitle: 'your book is being printed on hp indigo',
+      completed: isPrinting,
+      active: statusLower === 'printing' || statusLower === 'production',
+    },
+    {
+      id: 'step-qc',
+      title: 'quality check',
+      subtitle: 'pages, binding and finish are inspected',
+      completed: isQc,
+      active: statusLower === 'qc' || statusLower === 'quality check',
+    },
+    {
+      id: 'step-shipped',
+      title: 'shipped',
+      subtitle: 'handed to the courier, insured',
+      completed: isShipped,
+      active: statusLower === 'shipped' || statusLower === 'dispatched',
+    },
+    {
+      id: 'step-delivered',
+      title: 'delivered',
+      subtitle: 'at your door',
+      completed: isDelivered,
+      active: statusLower === 'delivered',
+    },
+  ];
+
+  const primaryItem = order.items && order.items.length > 0 ? order.items[0] : null;
+  const productTitle = primaryItem?.title || order.productTitle || order.title || 'custom photobook';
+  const seriesText = primaryItem?.series || order.seriesLabel || 'travel series';
+  const dimensionsText = primaryItem?.dimensions || order.dimensions || '8.25" × 8.25"';
+  const coverBindingText = `${primaryItem?.coverType || order.coverType || 'hardcover'} · ${primaryItem?.binding || order.binding || 'lay-flat'}`;
+  const quantityCount = order.quantity || order.itemsCount || primaryItem?.quantity || 1;
+
+  const subtotal = order.subtotal || (order.total + (order.bundleSavings || 0));
+  const bundleSaving = order.bundleSavings ?? order.discount ?? (subtotal > order.total ? subtotal - order.total : 0);
+  const deliveryText = (order.deliveryFee === 0 || !order.deliveryFee) ? 'free' : `₹${order.deliveryFee}`;
+
+  const address = order.shippingAddress;
+  const addressName = address?.name || order.customerName || 'customer';
+  const addressLine = [address?.addressLine1, address?.addressLine2].filter(Boolean).join(', ') || 'house no., street, area';
+  const cityStatePincode = `${address?.city || 'city'}, ${address?.state || 'state'} — ${address?.pincode || 'pincode'}`;
+
+  const paymentText = `${order.paymentMethod || 'upi'} · ${order.paymentStatus || 'paid'}`.toLowerCase();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between pb-4 border-b border-cream-200">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Page Heading */}
+      <div className="mb-8 md:mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-semibold text-noir-900">Your Orders</h2>
-          <p className="text-xs text-noir-500 uppercase tracking-wider mt-0.5">
-            Track production, download tax invoices, and rate delivered keepsakes
-          </p>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#0A0A0A] lowercase">
+            track your order.
+          </h1>
         </div>
-        <span className="text-xs text-noir-500 uppercase tracking-wider">{orders.length} order(s) found</span>
+
+        {/* Quick Order Switcher if user has multiple orders */}
+        {orders.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <span className="text-xs text-[#706E69] mr-1 lowercase shrink-0">orders:</span>
+            {orders.map((o) => (
+              <button
+                key={o.orderNumber || o.id}
+                type="button"
+                onClick={() => {
+                  setSelectedOrder(o);
+                  router.push(`/orders?order=${o.orderNumber}`);
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-mono font-medium transition-colors shrink-0 ${
+                  order.orderNumber === o.orderNumber
+                    ? 'bg-[#0A0A0A] text-white'
+                    : 'bg-white border border-[#D9D6CF] text-[#706E69] hover:text-[#0A0A0A]'
+                }`}
+              >
+                {o.orderNumber}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {reorderNotification && (
-        <div className="bg-emerald-50 border border-emerald-300 text-emerald-950 px-4 py-3 rounded-sm flex items-center gap-2 text-xs font-semibold animate-fade-in shadow-xs">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-          <span>{reorderNotification}</span>
+      {/* Top Order Summary Card */}
+      <div className="bg-white border border-[#D9D6CF]/80 rounded-2xl md:rounded-3xl p-6 md:p-8 mb-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-8 md:gap-14">
+          {/* Order Number */}
+          <div>
+            <p className="text-xs text-[#706E69] font-normal lowercase mb-1">order</p>
+            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-[#0A0A0A]">
+              {order.orderNumber}
+            </p>
+          </div>
+
+          {/* Placed Date & Books Count */}
+          <div>
+            <p className="text-xs text-[#706E69] font-normal lowercase mb-1">
+              placed on {formatPlacedDate(order.createdAt || order.date)}
+            </p>
+            <p className="text-lg sm:text-xl font-bold text-[#0A0A0A] lowercase">
+              {quantityCount} book{quantityCount > 1 ? 's' : ''} · ₹{order.total?.toLocaleString('en-IN')}
+            </p>
+          </div>
         </div>
-      )}
 
-      {loading ? (
-        <div className="space-y-4">
-          {[1, 2].map(i => (
-            <div key={i} className="bg-white p-6 rounded-sm shadow-sm border border-cream-200 flex flex-col md:flex-row md:items-center justify-between gap-6 animate-pulse">
-              <div className="flex items-center gap-6">
-                <div className="w-20 h-20 bg-cream-200 rounded-sm shrink-0"></div>
-                <div className="space-y-2">
-                  <div className="h-6 bg-cream-200 w-32 rounded-sm"></div>
-                  <div className="h-4 bg-cream-200 w-48 rounded-sm"></div>
-                  <div className="h-5 bg-cream-200 w-20 rounded-sm"></div>
-                </div>
-              </div>
-            </div>
-          ))}
+        {/* Actions: Contact Support & Status Badge */}
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          <Link
+            href="/faq"
+            className="bg-white border border-[#D9D6CF] hover:bg-[#FAF9F6] text-[#0A0A0A] px-5 py-2.5 rounded-full text-xs md:text-sm font-medium transition-colors lowercase"
+          >
+            contact support
+          </Link>
+
+          <span className="bg-[#0A0A0A] text-white px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider">
+            {order.status}
+          </span>
         </div>
-      ) : (
-        <div className="space-y-5">
-          {orders.length === 0 ? (
-            <div className="bg-white p-12 text-center border border-cream-200 rounded-sm">
-              <p className="text-noir-500 mb-4">You have no orders yet.</p>
-              <a href="/configure" className="text-sm font-medium border border-noir-900 px-4 py-2 rounded-sm hover:bg-cream-50">Start Creating</a>
-            </div>
-          ) : (
-            (() => {
-              const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
-              const paginatedOrders = orders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+      </div>
 
-              return (
-                <>
-                  {paginatedOrders.map(order => {
-                    const isDelivered = order.status?.toLowerCase() === 'delivered';
-                    const review = order.review || getCachedReview(order.orderNumber || order.id);
+      {/* Two Column Layout: Timeline (Left) + Order Details (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
+        {/* Left Column: Order Status Timeline */}
+        <div className="lg:col-span-7 bg-white border border-[#D9D6CF]/80 rounded-2xl md:rounded-3xl p-6 md:p-9 shadow-xs flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-[#0A0A0A] lowercase mb-8 md:mb-10">
+              order status
+            </h2>
 
-                    return (
-                      <div 
-                        key={order.id || order.orderNumber} 
-                        className="bg-white p-6 rounded-sm shadow-luxury-xs border border-cream-200 hover:border-cream-300 transition-all flex flex-col justify-between gap-6"
-                      >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                          {/* Left: Book Cover + Details */}
-                          <div className="flex items-start sm:items-center gap-5">
-                            <div className="w-20 h-20 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200 shadow-sm relative">
-                              <LazyImage 
-                                src={order.coverUrl || order.thumbnail || "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop"} 
-                                alt="Cover" 
-                                className="w-full h-full object-cover"
-                                containerClassName="w-full h-full" 
-                              />
-                            </div>
-                            <div>
-                        <h3 className="font-serif text-xl font-medium text-noir-950 mb-1">{order.title}</h3>
-                        <p className="text-xs text-noir-500 mb-2 font-mono">
-                          Order #{order.orderNumber || order.id} • {formatDate(order.createdAt || order.date)}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-[11px] px-2.5 py-0.5 rounded-sm border ${getStatusColor(order.status)} font-semibold tracking-wider uppercase`}>
-                            {getStatusLabel(order.status)}
-                          </span>
+            <div className="relative pl-2">
+              {timelineSteps.map((step, idx) => {
+                const isLast = idx === timelineSteps.length - 1;
+                const nextStep = timelineSteps[idx + 1];
+                const lineActive = step.completed && nextStep?.completed;
 
-                          {/* Archival Packaging Badges */}
-                          {order.packaging?.keepsakeBox && (
-                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
-                              🎁 Velvet Box
-                            </span>
-                          )}
-                          {order.packaging?.giftWrap && (
-                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
-                              🎀 Ribbon Wrap
-                            </span>
-                          )}
-                          {order.packaging?.uvGlaze && (
-                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
-                              🛡️ UV Glaze
-                            </span>
-                          )}
-                          {order.packaging?.miniPolaroids && (
-                            <span className="text-[10px] bg-cream-100 text-noir-800 px-2 py-0.5 rounded-xs border border-cream-200 font-medium">
-                              📷 10 Polaroids
-                            </span>
-                          )}
+                return (
+                  <div key={step.id} className="relative flex items-start gap-5 pb-9 last:pb-0 group">
+                    {/* Connecting Vertical Line */}
+                    {!isLast && (
+                      <div
+                        className={`absolute left-[11px] top-6 bottom-0 w-[2px] transition-colors duration-500 ${
+                          lineActive ? 'bg-[#0A0A0A]' : 'bg-[#E5E2DC]'
+                        }`}
+                      />
+                    )}
 
-                          {isDelivered && review && (
-                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 bg-amber-50 border border-foil-gold/40 text-amber-900 rounded-sm font-semibold">
-                              <Star size={11} className="fill-amber-500 text-amber-500" />
-                              <span>Rated {review.rating}.0 / 5</span>
-                            </span>
-                          )}
+                    {/* Step Icon Node */}
+                    <div className="relative z-10 shrink-0">
+                      {step.completed ? (
+                        <div className="w-6 h-6 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center shadow-xs">
+                          <Check size={13} strokeWidth={3} />
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Price + Action Buttons */}
-                    <div className="flex md:flex-col items-center md:items-end justify-between gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-cream-200">
-                      <span className="font-serif text-2xl font-semibold text-noir-950">
-                        ₹{(order.total || order.amount)?.toLocaleString('en-IN')}
-                      </span>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {/* GST Invoice Button */}
-                        <button 
-                          onClick={() => generateGstInvoicePdf({
-                            orderNumber: order.orderNumber || order.id,
-                            date: order.createdAt || order.date,
-                            customerName: order.customerName || 'Valued Customer',
-                            customerEmail: order.customerEmail,
-                            customerPhone: order.customerPhone,
-                            shippingAddress: order.shippingAddress,
-                            items: order.items && order.items.length > 0 ? order.items : [
-                              {
-                                title: order.title || 'Custom Photobook Keepsake',
-                                quantity: 1,
-                                price: Math.max(0, (order.total || order.amount || 1999) - (order.packaging?.total || 0)),
-                                dimensions: order.dimensions || '8.25" × 8.25"',
-                                pageCount: order.pageCount || 40,
-                              },
-                              ...(order.packaging?.keepsakeBox ? [{ title: 'Keepsake Velvet Presentation Box', quantity: 1, price: 499, pageCount: 0 }] : []),
-                              ...(order.packaging?.giftWrap ? [{ title: 'Artisan Ribbon Wrap & Calligraphy Card', quantity: 1, price: 199, pageCount: 0 }] : []),
-                              ...(order.packaging?.uvGlaze ? [{ title: 'Archival UV Anti-Scratch Page Glaze', quantity: 1, price: 249, pageCount: 0 }] : []),
-                              ...(order.packaging?.miniPolaroids ? [{ title: '10 Mini Polaroid Keepsake Prints', quantity: 1, price: 149, pageCount: 0 }] : []),
-                            ],
-                            total: order.total || order.amount || 1999,
-                          })}
-                          className="text-xs font-medium border border-cream-300 px-3 py-2 rounded-sm hover:bg-cream-100 transition-colors flex items-center gap-1.5 text-noir-700 shadow-sm"
-                          title="Download Official GST Tax Invoice"
-                        >
-                          <Download size={13} />
-                          <span>GST Invoice</span>
-                        </button>
-
-                        {/* Photobook PDF Button: "Download PDF" if in S3, "Uploading to S3..." when in progress, or "Upload to S3" */}
-                        {order.pdfUrl && typeof order.pdfUrl === 'string' && order.pdfUrl.startsWith('http') ? (
-                          <button
-                            onClick={() => handleDownloadOrderPhotobookPdf(order)}
-                            className="text-xs font-medium border border-amber-300 bg-amber-50/80 hover:bg-amber-100 text-noir-900 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                            title="Download Ultra-HD Photobook PDF directly from AWS S3"
-                          >
-                            <Download size={13} className="text-foil-gold" />
-                            <span>Download PDF</span>
-                          </button>
-                        ) : (generatingPdfOrderId === (order.orderNumber || order.id) || syncingOrderIds[order.orderNumber || order.id]) ? (
-                          <button
-                            disabled
-                            className="text-xs font-medium border border-amber-200 bg-amber-50/50 opacity-90 text-amber-900 px-3 py-2 rounded-sm flex items-center gap-1.5 shadow-sm cursor-not-allowed"
-                            title="Generating and uploading Ultra-HD PDF to AWS S3 in background..."
-                          >
-                            <Loader2 size={13} className="text-foil-gold animate-spin" />
-                            <span>Uploading to S3...</span>
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleDownloadOrderPhotobookPdf(order)}
-                            className="text-xs font-medium border border-cream-300 bg-white hover:bg-cream-100 text-noir-800 px-3 py-2 rounded-sm transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                            title="Generate Ultra-HD Photobook PDF and upload to AWS S3"
-                          >
-                            <Download size={13} className="text-foil-gold" />
-                            <span>Upload to S3</span>
-                          </button>
-                        )}
-
-                        {/* Rate & Review Button for Delivered Orders */}
-                        {isDelivered && (
-                          <button
-                            onClick={() => handleOpenReviewModal(order)}
-                            className="text-xs font-semibold uppercase tracking-wider px-3.5 py-2 rounded-sm transition-all flex items-center gap-1.5 bg-amber-50 text-amber-900 border border-foil-gold/60 hover:bg-amber-100 shadow-sm"
-                          >
-                            <Star size={13} className="fill-amber-500 text-amber-500" />
-                            <span>{review ? 'Edit Review' : 'Rate & Review'}</span>
-                          </button>
-                        )}
-
-                        {/* One-Click Photobook Reorder Flow (PROD-02) */}
-                        <button
-                          onClick={() => handleReorderOrder(order)}
-                          className="text-xs font-semibold uppercase tracking-wider bg-noir-950 text-cream-50 hover:bg-noir-900 px-3.5 py-2 rounded-sm transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
-                          title="Add an exact duplicate copy of this keepsake directly to cart"
-                        >
-                          <ShoppingBag size={13} className="text-foil-gold" />
-                          <span>Order Another Copy</span>
-                        </button>
-
-                        {/* Track Order for in-flight orders */}
-                        {!isDelivered && (
-                          <a 
-                            href={`/confirmation/${order.orderNumber || order.id}`}
-                            className="text-xs font-semibold uppercase tracking-wider border border-noir-900 px-3.5 py-2 rounded-sm hover:bg-noir-950 hover:text-cream-50 transition-colors"
-                          >
-                            Track Order
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Production & Fulfillment Progress Stepper */}
-                  <div className="pt-3 border-t border-cream-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-noir-600 mb-2 gap-1">
-                      <span className="font-semibold text-noir-900 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                        <span>Fulfillment Stage: {getStatusLabel(order.status)}</span>
-                      </span>
-                      {order.shippingDetails?.trackingNumber && (
-                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
-                          <span>{order.shippingDetails.carrier || 'BlueDart'}: {order.shippingDetails.trackingNumber}</span>
-                          {order.shippingDetails.trackingUrl && (
-                            <a
-                              href={order.shippingDetails.trackingUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="underline hover:text-indigo-950 font-bold"
-                            >
-                              Track
-                            </a>
-                          )}
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border-2 border-[#D9D6CF] bg-white flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-transparent" />
                         </div>
                       )}
                     </div>
 
-                    {/* Stage Milestones */}
-                    <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
-                      {[
-                        { id: 'confirmed', label: 'Confirmed' },
-                        { id: 'production', label: 'Production' },
-                        { id: 'printing', label: 'Printing' },
-                        { id: 'qc', label: 'QC Check' },
-                        { id: 'dispatched', label: 'Dispatched' },
-                        { id: 'delivered', label: 'Delivered' },
-                      ].map((st, sIdx) => {
-                        const stageOrder = ['confirmed', 'production', 'printing', 'qc', 'dispatched', 'delivered'];
-                        const currentIdx = stageOrder.indexOf((order.status || 'confirmed').toLowerCase());
-                        const isPast = currentIdx > sIdx;
-                        const isCurrent = currentIdx === sIdx;
-
-                        return (
-                          <div key={st.id} className="text-center">
-                            <div className={`h-1.5 rounded-full mb-1 transition-all ${
-                              isPast ? 'bg-emerald-600' : isCurrent ? 'bg-noir-950 animate-pulse' : 'bg-cream-200'
-                            }`} />
-                            <span className={`text-[9px] sm:text-[10px] block truncate font-medium ${
-                              isCurrent ? 'text-noir-950 font-bold' : isPast ? 'text-emerald-700' : 'text-noir-400'
-                            }`}>
-                              {st.label}
-                            </span>
-                          </div>
-                        );
-                      })}
+                    {/* Step Text Info */}
+                    <div className="min-w-0 pt-0.5">
+                      <h3
+                        className={`text-sm md:text-base font-bold lowercase tracking-tight leading-snug ${
+                          step.completed ? 'text-[#0A0A0A]' : 'text-[#706E69]'
+                        }`}
+                      >
+                        {step.title}
+                      </h3>
+                      <p className="text-xs text-[#706E69] mt-0.5 lowercase font-normal leading-relaxed">
+                        {step.subtitle}
+                      </p>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          </div>
 
-                  {/* Customer Review Snippet if reviewed */}
-                  {review && review.feedback && (
-                    <div className="mt-2 pt-3 border-t border-cream-100 bg-cream-50/50 p-3 rounded-sm flex items-start gap-2.5">
-                      <MessageSquare size={14} className="text-foil-gold shrink-0 mt-0.5" />
-                      <div className="text-xs text-noir-700">
-                        <span className="font-semibold text-noir-900 mr-2">Your Feedback:</span>
-                        &ldquo;{review.feedback}&rdquo;
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {orders.length > pageSize && (
-              <div className="pt-2 border-t border-cream-200">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={orders.length}
-                  pageSize={pageSize}
-                  onPageChange={setCurrentPage}
-                  itemLabel="orders"
-                />
-              </div>
-            )}
-          </>
-        );
-      })()
-    )}
-  </div>
-)}
-
-      {/* Review Modal */}
-      {reviewModalOpen && selectedOrderForReview && (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white border border-cream-300 rounded-sm shadow-luxury-2xl max-w-lg w-full p-6 md:p-8 my-8 relative">
+          {/* Download Official Tax Invoice */}
+          <div className="pt-8 mt-6 border-t border-[#D9D6CF]/50 flex items-center justify-between">
+            <span className="text-xs text-[#706E69] lowercase font-normal">
+              need an official gst invoice for your accounting?
+            </span>
             <button
-              onClick={() => setReviewModalOpen(false)}
-              className="absolute top-5 right-5 text-noir-400 hover:text-noir-900 transition-colors p-1"
+              type="button"
+              onClick={() =>
+                generateGstInvoicePdf({
+                  orderNumber: order.orderNumber,
+                  date: order.createdAt || order.date,
+                  customerName: addressName,
+                  customerEmail: order.customerEmail,
+                  customerPhone: order.customerPhone,
+                  shippingAddress: order.shippingAddress,
+                  items: [
+                    {
+                      title: productTitle,
+                      quantity: quantityCount,
+                      price: order.total,
+                      dimensions: dimensionsText,
+                      pageCount: order.pageCount || 32,
+                    },
+                  ],
+                  total: order.total,
+                })
+              }
+              className="text-xs font-semibold text-[#0A0A0A] hover:underline flex items-center gap-1.5 lowercase"
             >
-              <X size={20} />
+              <Download size={13} />
+              <span>download invoice</span>
             </button>
+          </div>
+        </div>
 
-            {/* Modal Header */}
-            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-cream-200">
-              <div className="w-14 h-14 bg-cream-100 rounded-sm overflow-hidden shrink-0 border border-cream-200 relative">
-                <LazyImage
-                  src={selectedOrderForReview.coverUrl || selectedOrderForReview.thumbnail || "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?q=80&w=150&auto=format&fit=crop"}
-                  alt="Book Cover"
-                  className="w-full h-full object-cover"
-                  containerClassName="w-full h-full"
-                />
+        {/* Right Column: Your Order Details */}
+        <div className="lg:col-span-5 bg-white border border-[#D9D6CF]/80 rounded-2xl md:rounded-3xl p-6 md:p-9 shadow-xs flex flex-col justify-between">
+          <div>
+            <h2 className="text-xl md:text-2xl font-bold text-[#0A0A0A] lowercase mb-6 md:mb-8">
+              your order
+            </h2>
+
+            {/* Product Item Preview */}
+            <div className="flex items-start gap-4">
+              <div className="w-20 h-24 rounded-xl bg-[#D4CFC9]/70 overflow-hidden shrink-0 border border-[#D9D6CF]/40">
+                {order.coverUrl || order.thumbnail ? (
+                  <LazyImage
+                    src={normalizeImageUrl(order.coverUrl || order.thumbnail)}
+                    alt={productTitle}
+                    className="w-full h-full object-cover"
+                    containerClassName="w-full h-full"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#D4CFC9]" />
+                )}
               </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-foil-gold flex items-center gap-1">
-                  <PackageCheck size={12} />
-                  <span>Delivered Keepsake Review</span>
-                </span>
-                <h3 className="font-serif text-xl font-semibold text-noir-950 mt-0.5">
-                  {selectedOrderForReview.title}
+
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold text-[#0A0A0A] lowercase leading-snug truncate">
+                  {productTitle}
                 </h3>
-                <p className="text-xs text-noir-500 font-mono">
-                  Order #{selectedOrderForReview.orderNumber || selectedOrderForReview.id}
+                <p className="text-xs text-[#706E69] mt-0.5 lowercase">
+                  {seriesText} · {dimensionsText}
+                </p>
+                <p className="text-xs text-[#706E69] lowercase">
+                  {coverBindingText}
+                </p>
+                <p className="text-xs text-[#0A0A0A] font-medium mt-3 lowercase">
+                  qty {quantityCount}
                 </p>
               </div>
             </div>
 
-            {reviewSuccessMsg ? (
-              <div className="py-8 text-center space-y-3">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
-                  <CheckCircle2 size={28} />
-                </div>
-                <h4 className="font-serif text-xl text-noir-900 font-semibold">Review Saved</h4>
-                <p className="text-xs text-noir-600 max-w-xs mx-auto">{reviewSuccessMsg}</p>
+            {/* Divider */}
+            <div className="border-t border-[#D9D6CF]/60 my-6" />
+
+            {/* Delivery Address */}
+            <div>
+              <p className="text-[11px] text-[#706E69] font-normal lowercase mb-1">
+                delivery address
+              </p>
+              <p className="text-xs font-bold text-[#0A0A0A] lowercase leading-snug">
+                {addressName}
+              </p>
+              <p className="text-xs text-[#0A0A0A] lowercase leading-relaxed mt-0.5">
+                {addressLine}
+              </p>
+              <p className="text-xs text-[#0A0A0A] lowercase leading-relaxed">
+                {cityStatePincode}
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-[#D9D6CF]/60 my-6" />
+
+            {/* Payment Method */}
+            <div>
+              <p className="text-[11px] text-[#706E69] font-normal lowercase mb-1">
+                payment
+              </p>
+              <p className="text-xs font-medium text-[#0A0A0A] lowercase">
+                {paymentText}
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-[#D9D6CF]/60 my-6" />
+
+            {/* Pricing Breakdown */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-[#5C5A55] lowercase">
+                <span>subtotal</span>
+                <span className="font-sans text-[#0A0A0A]">₹{subtotal.toLocaleString('en-IN')}</span>
               </div>
-            ) : (
-              <form onSubmit={handleSubmitReview} className="space-y-5">
-                {/* 1. Overall Star Rating */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs uppercase tracking-wider text-noir-800 font-semibold">
-                      Overall Experience *
-                    </label>
-                    <span className="text-xs font-semibold text-foil-gold">
-                      {getRatingLabel(hoverRating || overallRating)}
-                    </span>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setOverallRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        className="p-1 text-cream-300 hover:scale-110 transition-transform focus:outline-none"
-                      >
-                        <Star
-                          size={28}
-                          className={`${
-                            star <= (hoverRating || overallRating)
-                              ? 'text-amber-500 fill-amber-500'
-                              : 'text-cream-300'
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
+              {bundleSaving > 0 && (
+                <div className="flex items-center justify-between text-xs text-[#5C5A55] lowercase">
+                  <span>bundle saving</span>
+                  <span className="font-sans text-[#0A0A0A]">-₹{bundleSaving.toLocaleString('en-IN')}</span>
                 </div>
+              )}
 
-                {/* 2. Specific Quality Criteria */}
-                <div className="p-4 bg-cream-50/70 border border-cream-200 rounded-sm space-y-3">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-noir-700">
-                    Artisan Quality Assessment
-                  </p>
+              <div className="flex items-center justify-between text-xs text-[#5C5A55] lowercase">
+                <span>delivery</span>
+                <span className="font-sans text-[#0A0A0A]">{deliveryText}</span>
+              </div>
 
-                  {/* Print Vibrancy */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-noir-700">12K Indigo Print Vibrancy</span>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setPrintQuality(s)}
-                          className="focus:outline-none p-0.5"
-                        >
-                          <Star
-                            size={16}
-                            className={s <= printQuality ? 'text-amber-500 fill-amber-500' : 'text-cream-300'}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Layflat Binding */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-noir-700">180° Layflat Binding Flatness</span>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setBindingQuality(s)}
-                          className="focus:outline-none p-0.5"
-                        >
-                          <Star
-                            size={16}
-                            className={s <= bindingQuality ? 'text-amber-500 fill-amber-500' : 'text-cream-300'}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Packaging */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-noir-700">Keepsake Box & Protection</span>
-                    <div className="flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => setPackagingQuality(s)}
-                          className="focus:outline-none p-0.5"
-                        >
-                          <Star
-                            size={16}
-                            className={s <= packagingQuality ? 'text-amber-500 fill-amber-500' : 'text-cream-300'}
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. Written Feedback Textarea */}
-                <div>
-                  <label className="block text-xs uppercase tracking-wider mb-1.5 text-noir-700 font-semibold">
-                    Customer Experience & Review
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Tell us about the unboxing, colors, non-tearable pages, and paper texture..."
-                    className="w-full border border-cream-300 rounded-sm p-3 bg-cream-50/50 focus:border-foil-gold focus:outline-none text-sm text-noir-900"
-                  ></textarea>
-                </div>
-
-                {/* 4. Recommendation Toggle */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center gap-2">
-                    <ThumbsUp size={16} className="text-foil-gold" />
-                    <span className="text-xs text-noir-800 font-medium">
-                      Would you recommend PerfectPic to friends & family?
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setRecommend(true)}
-                      className={`px-3 py-1 text-xs font-semibold rounded-sm border transition-colors ${
-                        recommend
-                          ? 'bg-noir-900 text-cream-50 border-noir-900'
-                          : 'border-cream-300 text-noir-600 hover:bg-cream-100'
-                      }`}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecommend(false)}
-                      className={`px-3 py-1 text-xs font-semibold rounded-sm border transition-colors ${
-                        !recommend
-                          ? 'bg-noir-900 text-cream-50 border-noir-900'
-                          : 'border-cream-300 text-noir-600 hover:bg-cream-100'
-                      }`}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-
-                {/* Buttons */}
-                <div className="pt-4 flex items-center justify-end gap-3 border-t border-cream-200">
-                  <button
-                    type="button"
-                    onClick={() => setReviewModalOpen(false)}
-                    className="px-4 py-2.5 border border-cream-300 text-noir-700 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-cream-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submittingReview}
-                    className="px-6 py-2.5 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-noir-900 transition-colors shadow-luxury-md flex items-center gap-2 disabled:opacity-50"
-                  >
-                    {submittingReview ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" />
-                        <span>Submitting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles size={14} className="text-foil-gold" />
-                        <span>Submit Review</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
+              {/* Total Row */}
+              <div className="border-t-2 border-[#0A0A0A] pt-3.5 mt-3 flex items-center justify-between">
+                <span className="text-base font-bold text-[#0A0A0A] lowercase">total</span>
+                <span className="text-xl sm:text-2xl font-bold text-[#0A0A0A] font-sans">
+                  ₹{order.total?.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Manual Search Lookup Form */}
+      <div className="bg-white/80 backdrop-blur-xs border border-[#D9D6CF] rounded-2xl p-6 mb-12 max-w-xl mx-auto text-center shadow-xs">
+        <p className="text-xs font-semibold text-[#0A0A0A] lowercase mb-1">
+          tracking a different order?
+        </p>
+        <p className="text-[11px] text-[#706E69] mb-4 lowercase">
+          enter your order number from your confirmation message or email
+        </p>
+
+        <form onSubmit={handleLookupSubmit} className="flex items-center gap-2 max-w-md mx-auto">
+          <input
+            type="text"
+            value={lookupNumber}
+            onChange={(e) => setLookupNumber(e.target.value)}
+            placeholder="e.g. PP-000000"
+            className="flex-1 px-4 py-2.5 rounded-full border border-[#D9D6CF] text-xs text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-black uppercase font-mono"
+          />
+          <button
+            type="submit"
+            className="bg-[#0A0A0A] hover:bg-black text-white px-5 py-2.5 rounded-full text-xs font-medium transition-colors lowercase shrink-0"
+          >
+            track
+          </button>
+        </form>
+
+        {lookupError && (
+          <p className="text-xs text-red-600 mt-2.5 lowercase">{lookupError}</p>
+        )}
+      </div>
+
+      {/* Bottom Copyright */}
+      <div className="border-t border-[#D9D6CF]/70 pt-8 pb-12 text-left">
+        <p className="text-xs text-[#706E69] lowercase font-normal">
+          © 2026 perfectpic · made with love in India
+        </p>
+      </div>
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 py-20 flex justify-center items-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#0A0A0A]" />
+        </div>
+      }
+    >
+      <TrackOrderContent />
+    </Suspense>
   );
 }
