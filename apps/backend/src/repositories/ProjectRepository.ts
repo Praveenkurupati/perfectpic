@@ -11,7 +11,68 @@ export interface IProjectScope {
   isAdmin?: boolean;
 }
 
-const mockProjects: any[] = [];
+const mockProjects: any[] = [
+  {
+    id: 'proj-kerala-draft',
+    _id: 'proj-kerala-draft',
+    title: 'kerala · untitled book',
+    template: 'kerala-travel',
+    status: 'Draft',
+    pageCount: 32,
+    completedPages: 24,
+    progressPercentage: 75,
+    lastStep: 'studio',
+    coverImage: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
+    bookSize: '8.25x8.25',
+    coverType: 'cov-1',
+    theme: 'theme-1',
+    color: 'col-1',
+    packaging: 'pack-1',
+    updatedAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'proj-netravati-draft',
+    _id: 'proj-netravati-draft',
+    title: 'netravati · weekend trek',
+    template: 'adventure-trek',
+    status: 'Draft',
+    pageCount: 32,
+    completedPages: 12,
+    progressPercentage: 38,
+    lastStep: 'studio',
+    coverImage: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
+    bookSize: '8.25x8.25',
+    coverType: 'cov-2',
+    theme: 'theme-2',
+    color: 'col-2',
+    packaging: 'pack-1',
+    updatedAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'proj-wedding-draft',
+    _id: 'proj-wedding-draft',
+    title: 'wedding · our day',
+    template: 'first-anniversary',
+    status: 'Draft',
+    pageCount: 32,
+    completedPages: 6,
+    progressPercentage: 19,
+    lastStep: 'studio',
+    coverImage: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop',
+    bookSize: '10x10',
+    coverType: 'cov-2',
+    theme: 'theme-1',
+    color: 'col-3',
+    packaging: 'pack-2',
+    updatedAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+  },
+];
 
 export class ProjectRepository {
   /**
@@ -65,11 +126,12 @@ export class ProjectRepository {
     if (scope?.isAdmin) {
       // return all
     } else if (scope?.userId) {
-      filtered = filtered.filter((p) => p.userId === scope.userId || String(p.userId) === String(scope.userId));
+      filtered = filtered.filter((p) => !p.userId || p.userId === scope.userId || String(p.userId) === String(scope.userId));
     } else if (scope?.guestSessionId) {
-      filtered = filtered.filter((p) => p.guestSessionId === scope.guestSessionId);
+      filtered = filtered.filter((p) => !p.guestSessionId || p.guestSessionId === scope.guestSessionId);
     } else {
-      return { projects: [], total: 0, page, totalPages: 1, limit };
+      // In development fallback, allow viewing demo projects
+      filtered = [...mockProjects];
     }
 
     if (filter?.status) {

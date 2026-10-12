@@ -80,6 +80,25 @@ export class ProjectService {
     return safeData;
   }
 
+  public static async duplicateProject(id: string, scope?: IProjectScope) {
+    const original = await this.getProjectById(id, scope);
+    const originalObj = (original as any).toObject ? (original as any).toObject() : { ...original };
+    delete originalObj._id;
+    delete originalObj.id;
+    delete originalObj.createdAt;
+    delete originalObj.updatedAt;
+    originalObj.title = `${originalObj.title || 'Untitled Project'} (Copy)`;
+    originalObj.status = 'Draft';
+    return await this.createProject(originalObj, scope);
+  }
+
+  public static async renameProject(id: string, title: string, scope?: IProjectScope) {
+    if (!title || !title.trim()) {
+      throw ApiError.badRequest('Project title cannot be empty.');
+    }
+    return await this.updateProject(id, { title: title.trim() }, scope);
+  }
+
   public static async deleteProject(id: string, scope?: IProjectScope) {
     const deleted = await ProjectRepository.delete(id, scope);
     if (!deleted) {

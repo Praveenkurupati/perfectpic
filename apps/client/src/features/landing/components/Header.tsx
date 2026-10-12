@@ -98,11 +98,11 @@ export function Header() {
             <Link href="/templates" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
               templates
             </Link>
-            <Link href="/pricing" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
-              pricing
+            <Link href="/projects" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
+              my projects
             </Link>
-            <Link href="/faq" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
-              about
+            <Link href="/orders" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
+              track order
             </Link>
           </nav>
 

@@ -74,6 +74,80 @@ export class ProjectController {
     }
   }
 
+  public static async duplicateProject(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const scope = extractScope(req);
+      const cloned = await ProjectService.duplicateProject(id, scope);
+      return res.status(201).json({
+        message: 'Project duplicated successfully',
+        id: (cloned as any).id || (cloned as any)._id,
+        project: cloned,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async renameProject(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const { title } = req.body;
+      const scope = extractScope(req);
+      const updated = await ProjectService.renameProject(id, title, scope);
+      return res.status(200).json({
+        message: 'Project renamed successfully',
+        project: updated,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async getAbandonedProjects(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { ProjectReminderService } = await import('../services/ProjectReminderService');
+      const thresholdHours = req.query.hours ? parseInt(req.query.hours as string, 10) : 24;
+      const abandoned = await ProjectReminderService.getAbandonedProjects({ thresholdHours });
+      return res.status(200).json({
+        total: abandoned.length,
+        projects: abandoned,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async sendResumeReminder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const { channel, customPhone, customEmail, customName } = req.body || {};
+      const { ProjectReminderService } = await import('../services/ProjectReminderService');
+      const result = await ProjectReminderService.sendResumeReminder(id, {
+        channel,
+        customPhone,
+        customEmail,
+        customName,
+      });
+      return res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  public static async processReminders(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { ProjectReminderService } = await import('../services/ProjectReminderService');
+      const summary = await ProjectReminderService.processPendingReminders();
+      return res.status(200).json({
+        message: 'Automated project re-engagement reminders processed successfully',
+        summary,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async deleteProject(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);

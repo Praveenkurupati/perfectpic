@@ -144,6 +144,10 @@ export const CreateProjectSchema = z.object({
   photos: z.array(z.any()).optional().default([]),
   pages: z.array(z.any()).optional().default([]),
   guestSessionId: z.string().optional(),
+  completedPages: z.number().int().min(0).optional().default(0),
+  progressPercentage: z.number().min(0).max(100).optional().default(0),
+  lastStep: z.string().optional().default('studio'),
+  status: z.string().optional().default('draft'),
 });
 export type CreateProjectInput = z.infer<typeof CreateProjectSchema>;
 

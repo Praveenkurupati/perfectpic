@@ -149,6 +149,27 @@ export const api = {
       method: 'DELETE',
       headers: authHeaders(),
     }),
+  duplicateProject: (id: string) =>
+    fetcher<{ message: string; id: string; project: any }>(`/projects/${id}/duplicate`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  renameProject: (id: string, title: string) =>
+    fetcher<{ message: string; project: any }>(`/projects/${id}/rename`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ title }),
+    }),
+  sendProjectReminder: (id: string, options?: { channel?: 'whatsapp' | 'email' | 'all'; customPhone?: string; customEmail?: string }) =>
+    fetcher<any>(`/projects/${id}/reminder`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(options || {}),
+    }),
+  getAbandonedProjects: (hours?: number) =>
+    fetcher<{ total: number; projects: any[] }>(`/projects/abandoned${hours ? `?hours=${hours}` : ''}`, {
+      headers: authHeaders(),
+    }),
 
   // Orders
   getOrders: (opts?: { page?: number; limit?: number; status?: string }) => {

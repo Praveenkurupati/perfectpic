@@ -10,6 +10,12 @@ export interface IProject extends Document {
   coverUrl?: string;
   coverImage?: string;
   pageCount?: number;
+  completedPages?: number;
+  progressPercentage?: number;
+  lastStep?: string;
+  lastEditedAt?: Date;
+  abandonedReminderSentAt?: Date;
+  reminderCount?: number;
   bookSize?: string;
   coverType?: string;
   theme?: string;
@@ -30,7 +36,13 @@ const ProjectSchema: Schema = new Schema(
     status: { type: String, default: 'Draft', index: true },
     coverUrl: { type: String },
     coverImage: { type: String },
-    pageCount: { type: Number, default: 40 },
+    pageCount: { type: Number, default: 32 },
+    completedPages: { type: Number, default: 0 },
+    progressPercentage: { type: Number, default: 0, index: true },
+    lastStep: { type: String, default: 'studio' },
+    lastEditedAt: { type: Date, default: Date.now },
+    abandonedReminderSentAt: { type: Date },
+    reminderCount: { type: Number, default: 0 },
     bookSize: { type: String, default: '8.25x8.25' },
     coverType: { type: String, default: 'cov-1' },
     theme: { type: String, default: 'theme-1' },

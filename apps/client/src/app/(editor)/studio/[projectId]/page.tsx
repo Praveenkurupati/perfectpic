@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { generateBookProofPdf } from '@/lib/pdfGenerator';
 import { trackEvent } from '@/lib/analytics';
+import { api } from '@/lib/api';
 
 const BookCanvas = dynamic(() => import('@/features/editor/components/BookCanvas'), { ssr: false });
 const PhotoTray = dynamic(() => import('@/features/editor/components/PhotoTray'), { ssr: false });
@@ -110,6 +111,26 @@ function StudioContent() {
     const combinedUserPhotos = Array.from(new Set([...slotPhotoUrls, ...pagePhotoUrls]));
     const allPhotos = combinedUserPhotos.length > 0 ? combinedUserPhotos : samplePhotos;
 
+    const filledPageSet = new Set<number>();
+    Object.entries(slotPhotos || {}).forEach(([slotId, photo]) => {
+      if (photo && (photo as any).url) {
+        const pageNum = parseInt(slotId.split('_')[0] || '0', 10);
+        if (!isNaN(pageNum) && pageNum > 0 && pageNum <= pageCount) {
+          filledPageSet.add(pageNum);
+        }
+      }
+    });
+    Object.entries(pagePhotos || {}).forEach(([pageNumStr, photo]) => {
+      if (photo && (photo as any).url) {
+        const pageNum = parseInt(pageNumStr, 10);
+        if (!isNaN(pageNum) && pageNum > 0 && pageNum <= pageCount) {
+          filledPageSet.add(pageNum);
+        }
+      }
+    });
+    const completedPages = filledPageSet.size > 0 ? filledPageSet.size : Math.min(pageCount, allPhotos.length);
+    const progressPercentage = Math.min(100, Math.round((completedPages / pageCount) * 100));
+
     const projectSnapshot = {
       projectId,
       title: template?.displayName || template?.title || 'Heirloom Custom Photobook',
@@ -117,6 +138,10 @@ function StudioContent() {
       seriesLabel: template?.seriesLabel || 'THE TRAVEL SERIES',
       dimensions: bookConfig.size || '8.25" × 8.25"',
       pageCount,
+      completedPages,
+      progressPercentage,
+      lastStep: 'studio',
+      lastEditedAt: new Date().toISOString(),
       theme: bookConfig.theme || 'Minimal Modern',
       coverImage: template?.coverImage || samplePhotos[0],
       coverColor: template?.coverColor || '#F8BAC7',
@@ -135,6 +160,17 @@ function StudioContent() {
         localStorage.setItem(`pp_snapshot_${projectId}`, JSON.stringify(projectSnapshot));
       } catch {}
     }
+
+    // Sync progress to backend if project exists
+    api.updateProject(projectId, {
+      title: projectSnapshot.title,
+      pageCount,
+      completedPages,
+      progressPercentage,
+      lastStep: 'studio',
+      coverUrl: projectSnapshot.coverImage,
+    }).catch(() => {});
+
     return projectSnapshot;
   };
 

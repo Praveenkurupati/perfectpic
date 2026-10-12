@@ -13,11 +13,26 @@ router.use(optionalAuth);
 // List projects (scoped to authenticated user, guest session, or all if admin)
 router.get('/', ProjectController.getProjects);
 
+// List abandoned projects eligible for re-engagement reminders
+router.get('/abandoned', ProjectController.getAbandonedProjects);
+
+// Process batch re-engagement reminders across WhatsApp and Email
+router.post('/process-reminders', ProjectController.processReminders);
+
 // Get single project by ID (verifies tenant ownership)
 router.get('/:id', ProjectController.getProjectById);
 
 // Create new project draft with schema validation
 router.post('/', validateBody(CreateProjectSchema), ProjectController.createProject);
+
+// Duplicate existing project
+router.post('/:id/duplicate', ProjectController.duplicateProject);
+
+// Rename project
+router.patch('/:id/rename', ProjectController.renameProject);
+
+// Send personalized resume project reminder via WhatsApp and Email
+router.post('/:id/reminder', ProjectController.sendResumeReminder);
 
 // Update project canvas / spreads / photos (verifies tenant ownership and validates schema)
 router.put('/:id', validateBody(UpdateProjectSchema), ProjectController.updateProject);

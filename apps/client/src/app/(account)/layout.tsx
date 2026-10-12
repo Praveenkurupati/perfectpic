@@ -55,6 +55,17 @@ export default function AccountLayout({
     { href: "/settings", label: "Account Settings", icon: Settings },
   ];
 
+  if (pathname === '/projects') {
+    return (
+      <div className="flex min-h-screen flex-col bg-[#F4F2ED]">
+        <Header />
+        <main className="flex-1 pt-28 pb-20">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-cream-50">
       <Header />
