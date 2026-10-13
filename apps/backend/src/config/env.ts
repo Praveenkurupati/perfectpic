@@ -61,19 +61,72 @@ export const env = {
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_KEY || '',
   S3_BUCKET: process.env.S3_BUCKET || process.env.AWS_BUCKET || 'perfectpic-assets-2026',
 
+  // Domain & Base URLs (Auto-resolves based on local vs prod/dev environment)
+  APP_DOMAIN: (process.env.APP_DOMAIN || 'perfectpic.in').trim(),
+
   // Frontend and Admin URLs
-  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
-  ADMIN_URL: process.env.ADMIN_URL || 'http://localhost:3001',
+  FRONTEND_URL: (() => {
+    const isProd = process.env.NODE_ENV === 'production';
+    const appDomain = (process.env.APP_DOMAIN || 'perfectpic.in').trim();
+    if (process.env.FRONTEND_URL) {
+      const val = process.env.FRONTEND_URL.trim();
+      // Auto-correct localhost fallback in production
+      if (isProd && (val.includes('localhost') || val.includes('127.0.0.1'))) {
+        return `https://${appDomain}`;
+      }
+      return val;
+    }
+    return isProd ? `https://${appDomain}` : 'http://localhost:3000';
+  })(),
+
+  ADMIN_URL: (() => {
+    const isProd = process.env.NODE_ENV === 'production';
+    const appDomain = (process.env.APP_DOMAIN || 'perfectpic.in').trim();
+    if (process.env.ADMIN_URL) {
+      const val = process.env.ADMIN_URL.trim();
+      if (isProd && (val.includes('localhost') || val.includes('127.0.0.1'))) {
+        return `https://admin.${appDomain}`;
+      }
+      return val;
+    }
+    return isProd ? `https://admin.${appDomain}` : 'http://localhost:3001';
+  })(),
 
   // OAuth 2.0 (Google & Apple)
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',
-  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/google/callback',
+  GOOGLE_CALLBACK_URL: (() => {
+    const isProd = process.env.NODE_ENV === 'production';
+    const appDomain = (process.env.APP_DOMAIN || 'perfectpic.in').trim();
+    if (process.env.GOOGLE_CALLBACK_URL) {
+      const val = process.env.GOOGLE_CALLBACK_URL.trim();
+      if (isProd && (val.includes('localhost') || val.includes('127.0.0.1'))) {
+        return `https://${appDomain}/api/v1/auth/google/callback`;
+      }
+      return val;
+    }
+    return isProd
+      ? `https://${appDomain}/api/v1/auth/google/callback`
+      : 'http://localhost:4000/api/v1/auth/google/callback';
+  })(),
   APPLE_CLIENT_ID: process.env.APPLE_CLIENT_ID || '',
   APPLE_TEAM_ID: process.env.APPLE_TEAM_ID || '',
   APPLE_KEY_ID: process.env.APPLE_KEY_ID || '',
   APPLE_PRIVATE_KEY: process.env.APPLE_PRIVATE_KEY || '',
-  APPLE_CALLBACK_URL: process.env.APPLE_CALLBACK_URL || 'http://localhost:4000/api/v1/auth/apple/callback',
+  APPLE_CALLBACK_URL: (() => {
+    const isProd = process.env.NODE_ENV === 'production';
+    const appDomain = (process.env.APP_DOMAIN || 'perfectpic.in').trim();
+    if (process.env.APPLE_CALLBACK_URL) {
+      const val = process.env.APPLE_CALLBACK_URL.trim();
+      if (isProd && (val.includes('localhost') || val.includes('127.0.0.1'))) {
+        return `https://${appDomain}/api/v1/auth/apple/callback`;
+      }
+      return val;
+    }
+    return isProd
+      ? `https://${appDomain}/api/v1/auth/apple/callback`
+      : 'http://localhost:4000/api/v1/auth/apple/callback';
+  })(),
 
   // WhatsApp / Kapso.ai Meta Cloud API v24.0
   KAPSO_API_KEY: process.env.KAPSO_API_KEY || '',

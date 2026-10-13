@@ -198,7 +198,7 @@ export class OAuthService {
   /**
    * Returns OAuth provider status and public credentials
    */
-  public static getOAuthConfig() {
+  public static getOAuthConfig(overrides?: { googleCallbackUrl?: string; appleCallbackUrl?: string }) {
     const isGoogleConfigured = Boolean(env.GOOGLE_CLIENT_ID && !env.GOOGLE_CLIENT_ID.includes('your_google_client_id'));
     const isAppleConfigured = Boolean(env.APPLE_CLIENT_ID && !env.APPLE_CLIENT_ID.includes('com.perfectpic'));
 
@@ -206,12 +206,12 @@ export class OAuthService {
       google: {
         enabled: isGoogleConfigured,
         clientId: isGoogleConfigured ? env.GOOGLE_CLIENT_ID : null,
-        callbackUrl: env.GOOGLE_CALLBACK_URL,
+        callbackUrl: overrides?.googleCallbackUrl || env.GOOGLE_CALLBACK_URL,
       },
       apple: {
         enabled: isAppleConfigured,
         clientId: isAppleConfigured ? env.APPLE_CLIENT_ID : null,
-        callbackUrl: env.APPLE_CALLBACK_URL,
+        callbackUrl: overrides?.appleCallbackUrl || env.APPLE_CALLBACK_URL,
       },
     };
   }

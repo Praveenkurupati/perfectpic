@@ -235,28 +235,56 @@ export class AuthController {
 
   public static async getOAuthConfig(req: Request, res: Response, next: NextFunction) {
     try {
-      const config = OAuthService.getOAuthConfig();
+      const googleCallbackUrl = AuthController.getCallbackUrl(req, 'google');
+      const appleCallbackUrl = AuthController.getCallbackUrl(req, 'apple');
+      const config = OAuthService.getOAuthConfig({
+        googleCallbackUrl,
+        appleCallbackUrl,
+      });
       return res.status(200).json(config);
     } catch (err) {
       next(err);
     }
   }
 
-  private static getCallbackUrl(req: Request, provider: 'google' | 'apple'): string {
-    const envCallback = provider === 'google' ? env.GOOGLE_CALLBACK_URL : env.APPLE_CALLBACK_URL;
-    // When defined in environment (.env), ALWAYS use the authoritative configured callback URL
-    if (envCallback && envCallback.trim().length > 0) {
-      return envCallback.trim();
+  public static getCallbackUrl(req: Request, provider: 'google' | 'apple'): string {
+    const rawEnvCallback = provider === 'google' ? env.GOOGLE_CALLBACK_URL : env.APPLE_CALLBACK_URL;
+    const configuredCallback = (rawEnvCallback || '').trim();
+
+    // 1. Detect host and protocol from incoming request (supports Nginx, CloudFront, ALB reverse proxies)
+    const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
+    const host = (rawHost.split(',')[0] || '').trim();
+    const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : '');
+
+    const isLocalhostHost = !host || host.startsWith('localhost') || host.startsWith('127.0.0.1');
+    const isDomainHost = Boolean(host && !isLocalhostHost && (host.includes('.') || host.includes(':')));
+    const isProductionEnv = env.isProd;
+
+    // Default to HTTPS for all domain or production environments, HTTP for local testing
+    const proto = rawProto || (isProductionEnv || isDomainHost ? 'https' : 'http');
+
+    // 2. If configured callback in env is explicitly a non-localhost custom domain URL, honor it
+    if (configuredCallback && !configuredCallback.includes('localhost') && !configuredCallback.includes('127.0.0.1')) {
+      return configuredCallback;
     }
 
-    const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
-    const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
-    const host = (rawHost.split(',')[0] || '').trim();
-    const proto = (rawProto.split(',')[0] || 'http').trim();
-    if (host) {
+    // 3. If incoming request is via a domain (e.g. perfectpic.in, dev.perfectpic.in, api.perfectpic.in)
+    if (host && isDomainHost) {
       return `${proto}://${host}/api/v1/auth/${provider}/callback`;
     }
 
+    // 4. In production mode or when APP_DOMAIN is configured, use authoritative domain fallback
+    if (isProductionEnv || env.APP_DOMAIN) {
+      const domain = env.APP_DOMAIN || 'perfectpic.in';
+      return `https://${domain}/api/v1/auth/${provider}/callback`;
+    }
+
+    // 5. Configured local dev callback
+    if (configuredCallback) {
+      return configuredCallback;
+    }
+
+    // 6. Default local development fallback
     return `http://localhost:4000/api/v1/auth/${provider}/callback`;
   }
 
@@ -272,22 +300,43 @@ export class AuthController {
     }
   }
 
-  private static getFrontendUrl(req: Request): string {
-    if (env.FRONTEND_URL && env.FRONTEND_URL.trim().length > 0) {
+  public static getFrontendUrl(req: Request): string {
+    // 1. If FRONTEND_URL is explicitly configured to a custom domain (not localhost), honor it
+    if (env.FRONTEND_URL && !env.FRONTEND_URL.includes('localhost') && !env.FRONTEND_URL.includes('127.0.0.1')) {
       return env.FRONTEND_URL.trim().replace(/\/+$/, '');
     }
+
     const rawHost = req.get('x-forwarded-host') || req.get('host') || '';
-    const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : 'http');
     const host = (rawHost.split(',')[0] || '').trim();
-    const proto = (rawProto.split(',')[0] || 'http').trim();
+    const isLocalhostHost = !host || host.startsWith('localhost') || host.startsWith('127.0.0.1');
+    const isDomainHost = Boolean(host && !isLocalhostHost && (host.includes('.') || host.includes(':')));
+    const isProductionEnv = env.isProd;
+
+    const rawProto = req.get('x-forwarded-proto') || (req.secure ? 'https' : '');
+    const proto = rawProto || (isProductionEnv || isDomainHost ? 'https' : 'http');
+
     if (host) {
       const hostname = host.split(':')[0] || host;
       const port = host.includes(':') ? host.split(':')[1] : '';
-      if (port === '4000') {
-        return `${proto}://${hostname}:3000`;
+      if (isLocalhostHost) {
+        if (port === '4000') {
+          return `${proto}://${hostname}:3000`;
+        }
+        return `${proto}://${host}`;
+      }
+      // On domain: if host is api.perfectpic.in, route frontend to https://perfectpic.in
+      if (hostname.startsWith('api.')) {
+        return `${proto}://${hostname.replace(/^api\./, '')}`;
       }
       return `${proto}://${host}`;
     }
+
+    // In production mode, fallback to production storefront domain
+    if (isProductionEnv || env.APP_DOMAIN) {
+      const domain = env.APP_DOMAIN || 'perfectpic.in';
+      return `https://${domain}`;
+    }
+
     return 'http://localhost:3000';
   }
 

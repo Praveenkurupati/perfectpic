@@ -64,6 +64,13 @@ function dispatchRequest(
       res.statusCode = code;
       return res;
     };
+    res.redirect = (url: string) => {
+      res.statusCode = 302;
+      resHeaders['location'] = url;
+      res.emit('finish');
+      resolve({ status: 302, body: { location: url }, headers: resHeaders });
+      return res;
+    };
     res.json = (data: any) => {
       res.emit('finish');
       resolve({ status: res.statusCode, body: data, headers: resHeaders });
@@ -864,6 +871,52 @@ async function runTests() {
     expectedStatus: 200,
     passed: eraseRes.status === 200 && eraseRes.body?.success === true && !!eraseRes.body?.summary?.statutoryRetentionNote,
     details: `Drafts purged & PII redacted with Section 36 CGST tax retention notice`,
+  });
+
+  // 43. OAuth 2.0 Config: Local Development Fallback
+  console.log('Testing: GET /api/v1/auth/oauth/config (Local Dev Fallback)');
+  const localOauthRes = await dispatchRequest('GET', '/api/v1/auth/oauth/config');
+  const localGoogleCb = localOauthRes.body?.google?.callbackUrl || '';
+  results.push({
+    endpoint: '/api/v1/auth/oauth/config (Local)',
+    method: 'GET',
+    status: localOauthRes.status,
+    expectedStatus: 200,
+    passed: localOauthRes.status === 200 && (localGoogleCb.includes('localhost:4000') || localGoogleCb.includes('perfectpic.in')),
+    details: `Resolved Local Callback: ${localGoogleCb}`,
+  });
+
+  // 44. OAuth 2.0 Config: Domain Fallback Resolution (perfectpic.in)
+  console.log('Testing: GET /api/v1/auth/oauth/config (Domain Fallback: perfectpic.in)');
+  const domainOauthRes = await dispatchRequest('GET', '/api/v1/auth/oauth/config', undefined, {
+    'x-forwarded-host': 'perfectpic.in',
+    'x-forwarded-proto': 'https',
+  });
+  const domainGoogleCb = domainOauthRes.body?.google?.callbackUrl || '';
+  results.push({
+    endpoint: '/api/v1/auth/oauth/config (Domain)',
+    method: 'GET',
+    status: domainOauthRes.status,
+    expectedStatus: 200,
+    passed: domainOauthRes.status === 200 && domainGoogleCb === 'https://perfectpic.in/api/v1/auth/google/callback',
+    details: `Resolved Domain Callback: ${domainGoogleCb}`,
+  });
+
+  // 45. OAuth 2.0 Google Init: Dynamic Subdomain/Dev Domain (dev.perfectpic.in)
+  console.log('Testing: GET /api/v1/auth/google (Dynamic Dev Domain: dev.perfectpic.in)');
+  const googleInitRes = await dispatchRequest('GET', '/api/v1/auth/google?redirect=/checkout', undefined, {
+    'x-forwarded-host': 'dev.perfectpic.in',
+    'x-forwarded-proto': 'https',
+  });
+  const locationHeader = googleInitRes.headers?.location || '';
+  const expectedRedirectUri = encodeURIComponent('https://dev.perfectpic.in/api/v1/auth/google/callback');
+  results.push({
+    endpoint: '/api/v1/auth/google (Dynamic Domain)',
+    method: 'GET',
+    status: googleInitRes.status,
+    expectedStatus: 302,
+    passed: googleInitRes.status === 302 && (locationHeader.includes(expectedRedirectUri) || locationHeader.includes('dev.perfectpic.in')),
+    details: `Redirect Location: ${locationHeader.slice(0, 75)}...`,
   });
 
   // Print results
