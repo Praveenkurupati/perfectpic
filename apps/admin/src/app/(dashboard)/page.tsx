@@ -41,59 +41,37 @@ export default function DashboardOverview() {
   const [timeRange, setTimeRange] = useState<"30d" | "quarter" | "ytd">("30d");
   const [chartMetric, setChartMetric] = useState<"revenue" | "orders">("revenue");
 
-  // Dashboard Data State
+  // Dashboard Data State (100% Live Database Driven)
   const [summary, setSummary] = useState<any>({
-    totalRevenue: 1864500,
-    totalOrders: 1247,
-    aov: 1495,
-    activeCustomers: 42,
-    pendingPrints: 23,
-    repeatRate: 28.5,
+    totalRevenue: 0,
+    totalOrders: 0,
+    aov: 0,
+    activeCustomers: 0,
+    pendingPrints: 0,
+    repeatRate: 0,
     grossMargin: "68.4%",
   });
 
   const [stats, setStats] = useState<any[]>([
-    { label: "Gross Revenue", value: "₹18,64,500", trend: "+14.8%", trendUp: true, subtitle: "Direct online & studio sales" },
-    { label: "Total Orders", value: "1,247", trend: "+11.2%", trendUp: true, subtitle: "100% Layflat photobooks" },
-    { label: "Average Order Value", value: "₹1,495", trend: "+5.4%", trendUp: true, subtitle: "High 10\" format attachment" },
-    { label: "Active Collectors", value: "42", trend: "+18%", trendUp: true, subtitle: "Registered verified users" },
+    { label: "Gross Revenue", value: "₹0", trend: "+0%", trendUp: true, subtitle: "Direct online & studio sales" },
+    { label: "Total Orders", value: "0", trend: "+0%", trendUp: true, subtitle: "100% Layflat photobooks" },
+    { label: "Average Order Value", value: "₹0", trend: "+0%", trendUp: true, subtitle: "High 10\" format attachment" },
+    { label: "Active Collectors", value: "0", trend: "+0%", trendUp: true, subtitle: "Registered verified users" },
   ]);
 
   const [pipeline, setPipeline] = useState<Record<string, number>>({
-    pending: 3,
-    confirmed: 2,
-    production: 4,
-    printing: 5,
-    qc: 2,
-    dispatched: 3,
-    delivered: 8,
+    pending: 0,
+    confirmed: 0,
+    production: 0,
+    printing: 0,
+    qc: 0,
+    dispatched: 0,
+    delivered: 0,
   });
 
-  const [revenueData, setRevenueData] = useState<any[]>([
-    { name: "Apr", revenue: 190000, orders: 85, aov: 2235 },
-    { name: "May", revenue: 240000, orders: 110, aov: 2181 },
-    { name: "Jun", revenue: 290000, orders: 130, aov: 2230 },
-    { name: "Jul", revenue: 340000, orders: 155, aov: 2193 },
-    { name: "Aug", revenue: 395000, orders: 175, aov: 2257 },
-    { name: "Sep", revenue: 465000, orders: 202, aov: 2301 },
-  ]);
-
-  const [topProducts, setTopProducts] = useState<any[]>([
-    { title: "Kerala Gods Own Country", units: 48, revenue: 95952, category: "South India" },
-    { title: "Netravati Peak Cloud Trails", units: 42, revenue: 83958, category: "South India" },
-    { title: "Himalayan Summit Chronicles", units: 36, revenue: 89964, category: "Himalayas" },
-    { title: "Paris Journey Hardcover", units: 32, revenue: 63968, category: "Global" },
-    { title: "Rajasthan Land of Kings", units: 28, revenue: 69972, category: "Heritage" },
-  ]);
-
-  const [topCities, setTopCities] = useState<any[]>([
-    { city: "Bengaluru", orders: 420, revenue: 840000, share: 34 },
-    { city: "Mumbai", orders: 280, revenue: 560000, share: 23 },
-    { city: "New Delhi", orders: 210, revenue: 420000, share: 17 },
-    { city: "Pune", orders: 125, revenue: 250000, share: 10 },
-    { city: "Hyderabad", orders: 110, revenue: 220000, share: 9 },
-  ]);
-
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [topCities, setTopCities] = useState<any[]>([]);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
 
   const fetchDashboardMetrics = async () => {

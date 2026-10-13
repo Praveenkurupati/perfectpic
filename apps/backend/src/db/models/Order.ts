@@ -52,6 +52,7 @@ export interface IProjectSnapshot {
 
 export interface IOrder extends Document {
   id?: string;
+  userId?: mongoose.Types.ObjectId | string;
   orderNumber: string;
   title: string;
   customerName?: string;
@@ -188,6 +189,7 @@ export interface IOrder extends Document {
 
 const OrderSchema: Schema = new Schema(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     orderNumber: { type: String, required: true, unique: true, index: true },
     title: { type: String, required: true },
     customerName: { type: String, default: 'Guest User' },
@@ -237,6 +239,7 @@ const OrderSchema: Schema = new Schema(
 
 // High-concurrency compound query indexes
 OrderSchema.index({ customerEmail: 1, createdAt: -1 });
+OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1, createdAt: -1 });
 OrderSchema.index({ createdAt: -1 });
 

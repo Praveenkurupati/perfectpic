@@ -47,10 +47,17 @@ async function runSeed() {
     console.log(`  ✨ Successfully inserted ${createdProducts.length} photobook templates into Atlas with rich trip photos!`);
 
     // 2. Seed Users (Admin, Personal, Key Customers & 30 Standard Users)
-    console.log('\n👥 Step 2: Seeding User Accounts (Admin, Personal & Customers)...');
-    await User.deleteMany({});
-    console.log('  🧹 Cleared existing users collection in Atlas.');
+    console.log('\n👥 Step 2: Ensuring User Accounts (Admin, Personal & Customers)...');
+    const existingUserCount = await User.countDocuments();
+    const shouldFreshSeedUsers = process.env.FORCE_SEED === 'true' || existingUserCount === 0;
 
+    if (shouldFreshSeedUsers && process.env.FORCE_SEED === 'true') {
+      await User.deleteMany({});
+      console.log('  🧹 Cleared existing users collection in Atlas (FORCE_SEED=true).');
+    }
+
+    const bootstrapAdminPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin@PerfectPic2026!';
+    const adminPasswordHash = await bcrypt.hash(bootstrapAdminPassword, 12);
     const defaultPasswordHash = await bcrypt.hash('password123', 10);
 
     const coreUsers: Array<{
@@ -65,7 +72,7 @@ async function runSeed() {
         name: 'Admin PerfectPic',
         email: 'admin@perfectpic.in',
         phone: '+91 99999 00000',
-        password: defaultPasswordHash,
+        password: adminPasswordHash,
         role: 'admin',
         avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop'
       },
@@ -143,41 +150,50 @@ async function runSeed() {
       }
     ];
 
-    for (const u of coreUsers) {
-      await User.create(u);
+    if (shouldFreshSeedUsers) {
+      for (const u of coreUsers) {
+        await User.create(u);
+      }
+
+      const indianNames = [
+        'Aarav Sharma', 'Diya Patel', 'Rohan Verma', 'Ananya Iyer', 'Kabir Mehta',
+        'Ishaan Nair', 'Mira Reddy', 'Aditya Joshi', 'Pooja Bhatt', 'Vikram Singh',
+        'Sneha Rao', 'Arjun Kapoor', 'Tanvi Desai', 'Siddharth Roy', 'Rhea Sen',
+        'Karan Malhotra', 'Tara Nambiar', 'Dev Singhania', 'Kavya Pillai', 'Varun Dhawan',
+        'Nisha Hegde', 'Gautam Chopra', 'Meera Kulkarni', 'Dhruv Saxena', 'Avani Banerji',
+        'Harsh Vardhan', 'Shreya Ghoshal', 'Nikhil Kamath', 'Alia Bhatt', 'Sanya Kapoor'
+      ];
+
+      const usersToInsert = [];
+      for (let i = 1; i <= 30; i++) {
+        usersToInsert.push({
+          name: indianNames[i - 1] || `Customer ${i}`,
+          email: `user${i}@perfectpic.in`,
+          phone: `+91 98000 ${String(i).padStart(5, '0')}`,
+          password: defaultPasswordHash,
+          role: 'user',
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`
+        });
+      }
+
+      const createdNumberedUsers = await User.insertMany(usersToInsert as any[]);
+      console.log(`  ✨ Successfully inserted ${coreUsers.length + createdNumberedUsers.length} user accounts!`);
+    } else {
+      console.log(`  ℹ️ Users collection already has ${existingUserCount} accounts. Preserving existing accounts.`);
+      const adminExists = await User.findOne({ email: 'admin@perfectpic.in' });
+      if (!adminExists) {
+        await User.create(coreUsers[0]!);
+        console.log('  ✨ Idempotently created authoritative admin@perfectpic.in in database.');
+      }
     }
-
-    const indianNames = [
-      'Aarav Sharma', 'Diya Patel', 'Rohan Verma', 'Ananya Iyer', 'Kabir Mehta',
-      'Ishaan Nair', 'Mira Reddy', 'Aditya Joshi', 'Pooja Bhatt', 'Vikram Singh',
-      'Sneha Rao', 'Arjun Kapoor', 'Tanvi Desai', 'Siddharth Roy', 'Rhea Sen',
-      'Karan Malhotra', 'Tara Nambiar', 'Dev Singhania', 'Kavya Pillai', 'Varun Dhawan',
-      'Nisha Hegde', 'Gautam Chopra', 'Meera Kulkarni', 'Dhruv Saxena', 'Avani Banerji',
-      'Harsh Vardhan', 'Shreya Ghoshal', 'Nikhil Kamath', 'Alia Bhatt', 'Sanya Kapoor'
-    ];
-
-    const usersToInsert = [];
-    for (let i = 1; i <= 30; i++) {
-      usersToInsert.push({
-        name: indianNames[i - 1] || `Customer ${i}`,
-        email: `user${i}@perfectpic.in`,
-        phone: `+91 98000 ${String(i).padStart(5, '0')}`,
-        password: defaultPasswordHash,
-        role: 'user',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=user${i}`
-      });
-    }
-
-    const createdNumberedUsers = await User.insertMany(usersToInsert as any[]);
-    console.log(`  ✨ Successfully inserted ${coreUsers.length + createdNumberedUsers.length} user accounts!`);
-    console.log('     🔑 Admin: admin@perfectpic.in / password123');
-    console.log('     🔑 Personal: praveen@perfectpic.in / password123');
-    console.log('     🔑 Customers: priya@example.com, rahul@example.com, etc. / password123');
-    console.log('     🔑 Test Users: user1@perfectpic.in to user30@perfectpic.in / password123');
 
     // 3. Seed Sample Orders with Rich Trip Themes & Full Stages
-    console.log('\n📦 Step 3: Seeding realistic production orders...');
-    await Order.deleteMany({});
+    console.log('\n📦 Step 3: Checking production orders...');
+    const existingOrderCount = await Order.countDocuments();
+    const shouldFreshSeedOrders = process.env.FORCE_SEED === 'true' || existingOrderCount === 0;
+    if (shouldFreshSeedOrders && process.env.FORCE_SEED === 'true') {
+      await Order.deleteMany({});
+    }
     const initialOrders = [
       {
         orderNumber: 'PP-8491',
@@ -487,14 +503,22 @@ async function runSeed() {
       }
     ];
 
-    for (const order of initialOrders) {
-      await Order.create(order);
+    if (shouldFreshSeedOrders) {
+      for (const order of initialOrders) {
+        await Order.create(order);
+      }
+      console.log(`  ✨ Successfully inserted ${initialOrders.length} production orders across all status stages!`);
+    } else {
+      console.log(`  ℹ️ Orders collection already contains ${existingOrderCount} records. Preserving existing orders.`);
     }
-    console.log(`  ✨ Successfully inserted ${initialOrders.length} production orders across all status stages!`);
 
     // 4. Seed User Projects (Ready-to-Test Drafts with Full Photo Sets)
-    console.log('\n📦 Step 4: Seeding ready-to-test user draft photobooks...');
-    await Project.deleteMany({});
+    console.log('\n📦 Step 4: Checking user draft photobooks...');
+    const existingProjectCount = await Project.countDocuments();
+    const shouldFreshSeedProjects = process.env.FORCE_SEED === 'true' || existingProjectCount === 0;
+    if (shouldFreshSeedProjects && process.env.FORCE_SEED === 'true') {
+      await Project.deleteMany({});
+    }
     const initialProjects = [
       {
         title: 'Kerala Backwaters & Houseboat Trip',
@@ -616,14 +640,22 @@ async function runSeed() {
       }
     ];
 
-    for (const proj of initialProjects) {
-      await Project.create(proj);
+    if (shouldFreshSeedProjects) {
+      for (const proj of initialProjects) {
+        await Project.create(proj);
+      }
+      console.log(`  ✨ Successfully inserted ${initialProjects.length} initial test drafts with full trip photo sets!`);
+    } else {
+      console.log(`  ℹ️ Projects collection already contains ${existingProjectCount} records. Preserving existing projects.`);
     }
-    console.log(`  ✨ Successfully inserted ${initialProjects.length} initial test drafts with full trip photo sets!`);
 
     // 5. Seed Support Tickets
-    console.log('\n🎫 Step 5: Seeding support desk tickets...');
-    await Ticket.deleteMany({});
+    console.log('\n🎫 Step 5: Checking support desk tickets...');
+    const existingTicketCount = await Ticket.countDocuments();
+    const shouldFreshSeedTickets = process.env.FORCE_SEED === 'true' || existingTicketCount === 0;
+    if (shouldFreshSeedTickets && process.env.FORCE_SEED === 'true') {
+      await Ticket.deleteMany({});
+    }
     const initialTickets: any[] = [
       {
         ticketNumber: 'TCK-1001',
@@ -683,10 +715,14 @@ async function runSeed() {
       }
     ];
 
-    for (const ticket of initialTickets) {
-      await Ticket.create(ticket);
+    if (shouldFreshSeedTickets) {
+      for (const ticket of initialTickets) {
+        await Ticket.create(ticket);
+      }
+      console.log(`  ✨ Successfully inserted ${initialTickets.length} support tickets into Atlas!`);
+    } else {
+      console.log(`  ℹ️ Tickets collection already contains ${existingTicketCount} records. Preserving existing tickets.`);
     }
-    console.log(`  ✨ Successfully inserted ${initialTickets.length} support tickets into Atlas!`);
 
     // 6. Redis Cache Flush
     console.log('\n⚡ Step 6: Invalidating Redis cache...');

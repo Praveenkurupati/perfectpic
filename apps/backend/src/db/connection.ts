@@ -151,21 +151,22 @@ async function seedDefaultData() {
       console.log(`✅ ${pageCountOptions.length} page options seeded into MongoDB!`);
     }
 
-    // Ensure dedicated Administrator account exists
+    // Ensure authoritative Administrator account exists idempotently
     const { User } = await import('./models/User');
-    const adminUser = await User.findOne({ role: 'admin' });
-    if (!adminUser) {
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@perfectpic.in').toLowerCase().trim();
+    const existingAdmin = await User.findOne({ email: adminEmail });
+    if (!existingAdmin) {
       const bcrypt = (await import('bcryptjs')).default;
-      const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const adminPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin@PerfectPic2026!';
+      const hashedPassword = await bcrypt.hash(adminPassword, 12);
       await User.create({
         name: 'PerfectPic Administrator',
-        email: (process.env.ADMIN_EMAIL || 'admin@perfectpic.in').toLowerCase().trim(),
-        phone: '+919999999999',
+        email: adminEmail,
+        phone: '+919999900000',
         password: hashedPassword,
         role: 'admin',
       });
-      console.log('✅ Administrator account initialized in MongoDB!');
+      console.log(`✅ Authoritative administrator account initialized in MongoDB (${adminEmail}, cost factor 12).`);
     }
   } catch (seedErr) {
     console.error('Error seeding MongoDB collections:', seedErr);

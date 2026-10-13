@@ -82,9 +82,16 @@ export class ProductRepository {
       }
     } catch (err: any) {
       logger.error('MongoDB product query error in repository:', err.message);
+      if (isDbConnected()) {
+        return { products: [], total: 0, page, totalPages: 1, limit };
+      }
     }
 
-    // 3. Fallback to in-memory templates
+    // Fallback to in-memory templates only when database is disconnected (offline dev)
+    if (isDbConnected()) {
+      return { products: [], total: 0, page, totalPages: 1, limit };
+    }
+
     let filtered = templates;
     if (category && typeof category === 'string' && category.toLowerCase() !== 'all') {
       filtered = filtered.filter(
@@ -145,12 +152,15 @@ export class ProductRepository {
           await cacheSet(cacheKey, product, 300);
           return product;
         }
+        // When database is connected, it is the persistent source of truth
+        return null;
       }
     } catch (err: any) {
       logger.error('MongoDB single product query error:', err.message);
+      if (isDbConnected()) return null;
     }
 
-    // In-memory fallback
+    // In-memory fallback for offline local development only
     let product = templates.find(
       (t) =>
         t.slug === slugParam ||
@@ -188,6 +198,7 @@ export class ProductRepository {
       }
     } catch (err: any) {
       logger.error('Featured query error:', err.message);
+      if (isDbConnected()) return { products: [] };
     }
 
     const featured = templates.filter((t) => t.featured).sort((a: any, b: any) => (b.priority || 0) - (a.priority || 0));
@@ -196,8 +207,45 @@ export class ProductRepository {
     return res;
   }
 
-  public static getCategories() {
-    return { categories };
+  public static async getCategories() {
+    const cacheKey = 'products:categories';
+    const cached = await cacheGet<{ categories: any[] }>(cacheKey);
+    if (cached) return cached;
+
+    if (isDbConnected()) {
+      try {
+        const catAgg = await Product.aggregate([
+          { $group: { _id: '$category', count: { $sum: 1 } } },
+          { $sort: { count: -1 } }
+        ]);
+
+        if (catAgg && catAgg.length > 0) {
+          const catMap = new Map(categories.map(c => [c.name.toLowerCase(), c]));
+          const dynamicCats = catAgg.map(ca => {
+            const name = ca._id || 'Travel';
+            const existing = catMap.get(name.toLowerCase());
+            return {
+              id: existing ? existing.id : `cat-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+              name,
+              slug: existing ? existing.slug : name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+              description: existing ? existing.description : `Handcrafted luxury photobooks celebrating ${name.toLowerCase()}`,
+              emoji: existing ? existing.emoji : '✨',
+              count: ca.count,
+            };
+          });
+
+          const res = { categories: dynamicCats };
+          await cacheSet(cacheKey, res, 600);
+          return res;
+        }
+      } catch (err: any) {
+        logger.error('Dynamic getCategories error:', err.message);
+      }
+    }
+
+    const res = { categories };
+    await cacheSet(cacheKey, res, 600);
+    return res;
   }
 
   public static async getConfig() {

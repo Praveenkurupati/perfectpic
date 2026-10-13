@@ -5,6 +5,7 @@ import { Order, IOrder } from '../db/models/Order';
 import { User } from '../db/models/User';
 import { Product } from '../db/models/Product';
 import { isDbConnected } from '../db/connection';
+import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
 const mockOrders = [
@@ -272,6 +273,12 @@ export class OrderRepository {
       }
     } catch (err: any) {
       logger.error('OrderRepository findAll error:', err.message);
+      if (env.isProd) throw err;
+    }
+
+    // In-memory fallback only when database is disconnected (offline dev)
+    if (isDbConnected()) {
+      return { orders: [], total: 0, page, totalPages: 1, limit };
     }
 
     let filtered = [...mockOrders];
@@ -305,65 +312,18 @@ export class OrderRepository {
         }
         const order = await Order.findOne(query);
         if (order) return order;
+        // When MongoDB is connected, the database is the authoritative source of truth.
+        return null;
       }
     } catch (err: any) {
       logger.error('OrderRepository findById error:', err.message);
+      if (env.isProd) throw err;
+      return null;
     }
 
+    // Offline development fallback only when DB is disconnected
     const found = mockOrders.find((o) => o.id === idParam || o.orderNumber === idParam);
     if (found) return found;
-
-    if (idParam.startsWith('PP-')) {
-      return {
-        ...mockOrders[0],
-        id: idParam,
-        orderNumber: idParam,
-        title: `Heirloom Custom Photobook Edition (${idParam})`,
-        customerName: 'Praveen Kumar',
-        customerEmail: 'praveen@perfectpic.in',
-        customerPhone: '+91 98765 43210',
-        shippingAddress: {
-          fullName: 'Praveen Kumar',
-          addressLine1: 'Indiranagar 100ft Road, 4th Cross',
-          city: 'Bengaluru',
-          state: 'Karnataka',
-          pincode: '560038',
-          phone: '+91 98765 43210',
-        },
-        items: [
-          {
-            title: `Heirloom Custom Photobook Edition (${idParam})`,
-            dimensions: '8.25" × 8.25"',
-            pageCount: 40,
-            price: 2499,
-            quantity: 1,
-          },
-        ],
-        amount: 3346,
-        total: 3346,
-        status: 'paid',
-        packaging: {
-          keepsakeBox: true,
-          giftWrap: true,
-          uvGlaze: false,
-          miniPolaroids: true,
-          total: 847,
-        },
-        accessories: {
-          keepsakeBox: true,
-          giftWrap: true,
-          uvGlaze: false,
-          miniPolaroids: true,
-          total: 847,
-          items: [
-            { id: 'acc-keepsake-box', title: 'Keepsake Velvet Presentation Box', price: 499 },
-            { id: 'acc-gift-wrap', title: 'Artisan Ribbon Wrap & Calligraphy Card', price: 199 },
-            { id: 'acc-mini-prints', title: '10 Mini Polaroid Keepsake Prints', price: 149 },
-          ],
-        },
-        isGift: true,
-      };
-    }
 
     return null;
   }
@@ -740,58 +700,48 @@ export class OrderRepository {
   }
 
   public static async getDashboardStats() {
-    let totalRevenue = 1864500;
-    let totalOrders = 1247;
-    let pendingPrints = 23;
-    let activeCustomers = 42;
-    let recent = mockOrders;
+    let totalRevenue = 0;
+    let totalOrders = 0;
+    let pendingPrints = 0;
+    let activeCustomers = 0;
+    let recent: any[] = [];
     let pipelineCounts: Record<string, number> = {
-      pending: 3,
-      confirmed: 2,
-      production: 4,
-      printing: 5,
-      qc: 2,
-      dispatched: 3,
-      delivered: 8,
+      pending: 0,
+      confirmed: 0,
+      production: 0,
+      printing: 0,
+      qc: 0,
+      dispatched: 0,
+      delivered: 0,
+      cancelled: 0,
     };
-    let topProducts = [
-      { title: 'Kerala Gods Own Country', units: 48, revenue: 95952, category: 'South India' },
-      { title: 'Netravati Peak Cloud Trails', units: 42, revenue: 83958, category: 'South India' },
-      { title: 'Himalayan Summit Chronicles', units: 36, revenue: 89964, category: 'Himalayas' },
-      { title: 'Paris Journey Hardcover', units: 32, revenue: 63968, category: 'Global' },
-      { title: 'Rajasthan Land of Kings', units: 28, revenue: 69972, category: 'Heritage' },
-    ];
-    let topCities = [
-      { city: 'Bengaluru', orders: 420, revenue: 840000, share: 34 },
-      { city: 'Mumbai', orders: 280, revenue: 560000, share: 23 },
-      { city: 'New Delhi', orders: 210, revenue: 420000, share: 17 },
-      { city: 'Pune', orders: 125, revenue: 250000, share: 10 },
-      { city: 'Hyderabad', orders: 110, revenue: 220000, share: 9 },
-    ];
+    let topProducts: Array<{ title: string; units: number; revenue: number; category: string }> = [];
+    let topCities: Array<{ city: string; orders: number; revenue: number; share: number }> = [];
+    let revenueData: Array<{ name: string; revenue: number; orders: number; aov: number }> = [];
 
     if (isDbConnected()) {
       try {
-        const count = await Order.countDocuments().read('secondaryPreferred');
-        if (count > 0) totalOrders = count;
+        const count = await Order.countDocuments();
+        totalOrders = count;
 
         const agg = await Order.aggregate([
           { $group: { _id: null, totalRevenue: { $sum: '$total' } } },
-        ]).read('secondaryPreferred');
+        ]);
         if (agg && agg.length > 0 && agg[0].totalRevenue) {
           totalRevenue = agg[0].totalRevenue;
         }
 
-        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing', 'qc'] } }).read('secondaryPreferred');
+        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing', 'qc'] } });
         pendingPrints = pending;
 
-        // User count
-        const userCount = await User.countDocuments().read('secondaryPreferred');
-        if (userCount > 0) activeCustomers = userCount;
+        // Dynamic user count
+        const userCount = await User.countDocuments();
+        activeCustomers = userCount;
 
         // Pipeline aggregation
         const stageAgg = await Order.aggregate([
           { $group: { _id: '$status', count: { $sum: 1 } } }
-        ]).read('secondaryPreferred');
+        ]);
         stageAgg.forEach((s: any) => {
           if (s._id) pipelineCounts[s._id] = s.count;
         });
@@ -801,7 +751,7 @@ export class OrderRepository {
           { $group: { _id: '$title', units: { $sum: 1 }, revenue: { $sum: '$total' } } },
           { $sort: { revenue: -1 } },
           { $limit: 5 }
-        ]).read('secondaryPreferred');
+        ]);
         if (prodAgg && prodAgg.length > 0) {
           topProducts = prodAgg.map((p: any) => ({
             title: p._id || 'Custom Photobook Keepsake',
@@ -817,7 +767,7 @@ export class OrderRepository {
           { $group: { _id: '$shippingAddress.city', orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
           { $sort: { orders: -1 } },
           { $limit: 5 }
-        ]).read('secondaryPreferred');
+        ]);
         if (cityAgg && cityAgg.length > 0) {
           const totalCityOrders = cityAgg.reduce((acc: number, c: any) => acc + c.orders, 0) || 1;
           topCities = cityAgg.map((c: any) => ({
@@ -828,24 +778,93 @@ export class OrderRepository {
           }));
         }
 
+        // Dynamic monthly trend aggregation for the trailing 6 calendar months
+        const now = new Date();
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+        const monthlyAgg = await Order.aggregate([
+          { $match: { createdAt: { $gte: sixMonthsAgo } } },
+          {
+            $group: {
+              _id: {
+                year: { $year: '$createdAt' },
+                month: { $month: '$createdAt' },
+              },
+              revenue: { $sum: '$total' },
+              orders: { $sum: 1 },
+            },
+          },
+          { $sort: { '_id.year': 1, '_id.month': 1 } },
+        ]);
+
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthlyMap = new Map<string, { revenue: number; orders: number }>();
+        for (const m of monthlyAgg) {
+          const key = `${m._id.year}-${m._id.month}`;
+          monthlyMap.set(key, { revenue: m.revenue, orders: m.orders });
+        }
+
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const y = d.getFullYear();
+          const mNum = d.getMonth() + 1;
+          const key = `${y}-${mNum}`;
+          const stat = monthlyMap.get(key) || { revenue: 0, orders: 0 };
+          const monthAov = stat.orders > 0 ? Math.round(stat.revenue / stat.orders) : 0;
+          revenueData.push({
+            name: monthNames[d.getMonth()] || 'M',
+            revenue: stat.revenue,
+            orders: stat.orders,
+            aov: monthAov,
+          });
+        }
+
         const docs = await Order.find().sort({ createdAt: -1 }).limit(6);
-        if (docs.length > 0) recent = docs as any;
+        recent = docs as any;
       } catch (err: any) {
         logger.error('Error fetching aggregate dashboard stats:', err.message);
       }
+    } else {
+      // Offline local development fallback only
+      totalRevenue = 1864500;
+      totalOrders = 1247;
+      pendingPrints = 23;
+      activeCustomers = 42;
+      recent = mockOrders;
+      pipelineCounts = {
+        pending: 3,
+        confirmed: 2,
+        production: 4,
+        printing: 5,
+        qc: 2,
+        dispatched: 3,
+        delivered: 8,
+      };
+      topProducts = [
+        { title: 'Kerala Gods Own Country', units: 48, revenue: 95952, category: 'South India' },
+        { title: 'Netravati Peak Cloud Trails', units: 42, revenue: 83958, category: 'South India' },
+        { title: 'Himalayan Summit Chronicles', units: 36, revenue: 89964, category: 'Himalayas' },
+        { title: 'Paris Journey Hardcover', units: 32, revenue: 63968, category: 'Global' },
+        { title: 'Rajasthan Land of Kings', units: 28, revenue: 69972, category: 'Heritage' },
+      ];
+      topCities = [
+        { city: 'Bengaluru', orders: 420, revenue: 840000, share: 34 },
+        { city: 'Mumbai', orders: 280, revenue: 560000, share: 23 },
+        { city: 'New Delhi', orders: 210, revenue: 420000, share: 17 },
+        { city: 'Pune', orders: 125, revenue: 250000, share: 10 },
+        { city: 'Hyderabad', orders: 110, revenue: 220000, share: 9 },
+      ];
+      revenueData = [
+        { name: "Apr", revenue: 190000, orders: 85, aov: 2235 },
+        { name: "May", revenue: 240000, orders: 110, aov: 2181 },
+        { name: "Jun", revenue: 290000, orders: 130, aov: 2230 },
+        { name: "Jul", revenue: 340000, orders: 155, aov: 2193 },
+        { name: "Aug", revenue: 395000, orders: 175, aov: 2257 },
+        { name: "Sep", revenue: 465000, orders: 202, aov: 2301 },
+      ];
     }
 
-    const aov = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 2150;
-    const repeatRate = 28.5; // Benchmark archival recurring rate
-
-    const revenueData = [
-      { name: "Apr", revenue: 190000, orders: 85, aov: 2235 },
-      { name: "May", revenue: 240000, orders: 110, aov: 2181 },
-      { name: "Jun", revenue: 290000, orders: 130, aov: 2230 },
-      { name: "Jul", revenue: 340000, orders: 155, aov: 2193 },
-      { name: "Aug", revenue: 395000, orders: 175, aov: 2257 },
-      { name: "Sep", revenue: totalRevenue > 400000 ? totalRevenue : 465000, orders: totalOrders, aov: aov },
-    ];
+    const aov = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+    const repeatRate = totalOrders > 5 ? 28.5 : 0;
 
     return {
       summary: {

@@ -74,6 +74,13 @@ export class TicketRepository {
       }
     } catch (err: any) {
       logger.error('TicketRepository findAll error:', err.message);
+      if (isDbConnected()) {
+        return { tickets: [], total: 0, page: safePage, totalPages: 1, limit: safeLimit };
+      }
+    }
+
+    if (isDbConnected()) {
+      return { tickets: [], total: 0, page: safePage, totalPages: 1, limit: safeLimit };
     }
 
     let filtered = [...mockTickets];
@@ -87,8 +94,11 @@ export class TicketRepository {
   }
 
   public static async findById(idParam: string) {
-    if (isDbConnected() && mongoose.isValidObjectId(idParam)) {
-      return await Ticket.findById(idParam);
+    if (isDbConnected()) {
+      if (mongoose.isValidObjectId(idParam)) {
+        return await Ticket.findById(idParam);
+      }
+      return await Ticket.findOne({ ticketNumber: idParam });
     }
     return mockTickets.find((t) => t.id === idParam || t.ticketNumber === idParam) || null;
   }

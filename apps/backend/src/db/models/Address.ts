@@ -45,5 +45,7 @@ const AddressSchema: Schema = new Schema(
   }
 );
 
+AddressSchema.index({ userId: 1, isDefault: -1 });
+
 export const Address: mongoose.Model<IAddress> =
   (mongoose.models.Address as mongoose.Model<IAddress>) || mongoose.model<IAddress>('Address', AddressSchema);

@@ -38,6 +38,10 @@ export const env = {
   
   // CORS
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
+
+  // Admin Credentials & Bootstrapping
+  ADMIN_EMAIL: (process.env.ADMIN_EMAIL || 'admin@perfectpic.in').toLowerCase().trim(),
+  ADMIN_BOOTSTRAP_PASSWORD: process.env.ADMIN_BOOTSTRAP_PASSWORD || process.env.ADMIN_PASSWORD || 'Admin@PerfectPic2026!',
   
   // Mail / SMTP (Zoho SMTP default: smtppro.zoho.in:465)
   SMTP_HOST: process.env.SMTP_HOST || 'smtppro.zoho.in',

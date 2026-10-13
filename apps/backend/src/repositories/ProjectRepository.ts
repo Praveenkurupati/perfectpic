@@ -121,7 +121,12 @@ export class ProjectRepository {
       if (env.isProd) throw err;
     }
 
-    // In-memory fallback for local development with identical tenant scoping
+    // When MongoDB is connected, return real empty result instead of falling through to mock projects
+    if (isDbConnected()) {
+      return { projects: [], total: 0, page, totalPages: 1, limit };
+    }
+
+    // In-memory fallback for offline local development only
     let filtered = [...mockProjects];
     if (scope?.isAdmin) {
       // return all
@@ -130,8 +135,8 @@ export class ProjectRepository {
     } else if (scope?.guestSessionId) {
       filtered = filtered.filter((p) => !p.guestSessionId || p.guestSessionId === scope.guestSessionId);
     } else {
-      // In development fallback, allow viewing demo projects
-      filtered = [...mockProjects];
+      // Unauthenticated requests without session scope receive zero projects (defend against IDOR leakage)
+      filtered = [];
     }
 
     if (filter?.status) {
@@ -152,7 +157,10 @@ export class ProjectRepository {
    */
   public static async findById(idParam: string, scope?: IProjectScope) {
     try {
-      if (isDbConnected() && mongoose.isValidObjectId(idParam)) {
+      if (isDbConnected()) {
+        if (!mongoose.isValidObjectId(idParam)) {
+          return null;
+        }
         const query: any = { _id: idParam };
 
         if (!scope?.isAdmin) {
@@ -165,13 +173,15 @@ export class ProjectRepository {
 
         const project = await Project.findOne(query);
         if (project) return project;
+        return null;
       }
     } catch (err: any) {
       logger.error('ProjectRepository findById error:', err.message);
       if (env.isProd) throw err;
+      return null;
     }
 
-    // In-memory fallback
+    // In-memory fallback for offline local development only
     const found = mockProjects.find((p) => p.id === idParam || p._id === idParam);
     if (!found) return null;
 

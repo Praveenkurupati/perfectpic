@@ -29,6 +29,7 @@ export class OrderController {
         skip: skip ? parseInt(skip as string, 10) : undefined,
         page: page ? parseInt(page as string, 10) : undefined,
       });
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       return res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -37,6 +38,7 @@ export class OrderController {
 
   public static async getOrderById(req: Request, res: Response, next: NextFunction) {
     try {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
       const id = String(req.params.id);
       const order = await OrderService.getOrderById(id);
       const user = (req as any).user;

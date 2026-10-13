@@ -123,7 +123,8 @@ const tabs = ["All", "Confirmed", "Production", "Printing", "QC", "Dispatched", 
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("All");
-  const [orders, setOrders] = useState<any[]>(recentOrders);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -140,9 +141,10 @@ export default function OrdersPage() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
 
   const fetchOrders = () => {
+    setIsLoading(true);
     adminApi.getOrders()
       .then(res => {
-        if (res && res.orders && res.orders.length > 0) {
+        if (res && Array.isArray(res.orders)) {
           const apiOrders = res.orders.map((o: any) => {
             const items = Array.isArray(o.items) ? o.items : [];
             const hasKeepsakeBox = Boolean(
@@ -182,7 +184,7 @@ export default function OrdersPage() {
               customerName: o.customerName || 'Valued Customer',
               customerPhone: o.customerPhone || o.shippingAddress?.phone || '',
               customerEmail: o.customerEmail || o.email || '',
-              date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '26 Sep 2026',
+              date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
               pages: o.pageCount || 40,
               size: o.dimensions || '8.25" × 8.25"',
               status: normalizedStatus,
@@ -199,6 +201,10 @@ export default function OrdersPage() {
       })
       .catch(err => {
         console.warn("Using offline mock orders:", err);
+        setOrders(recentOrders);
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
   };
 

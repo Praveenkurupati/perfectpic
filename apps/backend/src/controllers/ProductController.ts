@@ -14,6 +14,7 @@ export class ProductController {
         skip: skip ? parseInt(skip as string, 10) : undefined,
         page: page ? parseInt(page as string, 10) : undefined,
       });
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
       return res.status(200).json(result);
     } catch (err) {
       next(err);
@@ -24,6 +25,7 @@ export class ProductController {
     try {
       const slug = String(req.params.slug);
       const product = await ProductService.getProductBySlugOrId(slug);
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
       return res.status(200).json(product);
     } catch (err) {
       next(err);
@@ -33,20 +35,27 @@ export class ProductController {
   public static async getFeatured(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await ProductService.getFeatured();
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
       return res.status(200).json(result);
     } catch (err) {
       next(err);
     }
   }
 
-  public static async getCategories(req: Request, res: Response) {
-    const result = ProductService.getCategories();
-    return res.status(200).json(result);
+  public static async getCategories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await ProductService.getCategories();
+      res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=1200');
+      return res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
   }
 
   public static async getConfig(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await ProductService.getConfig();
+      res.setHeader('Cache-Control', 'public, max-age=600, stale-while-revalidate=1200');
       return res.status(200).json(result);
     } catch (err) {
       next(err);

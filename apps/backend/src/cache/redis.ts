@@ -50,32 +50,75 @@ export function getRedisClient(): Redis | null {
   return redisClient;
 }
 
-export async function cacheGet<T>(key: string): Promise<T | null> {
-  if (!isRedisConnected() || !redisClient) return null;
-  try {
-    const data = await redisClient.get(key);
-    if (!data) return null;
-    return JSON.parse(data) as T;
-  } catch (err: any) {
-    console.warn(`Redis get error for key "${key}":`, err.message);
-    return null;
+// Bounded in-memory TTL cache fallback when Redis is offline or undergoing maintenance
+interface LocalCacheEntry {
+  value: any;
+  expiresAt: number;
+}
+const localMemoryCache = new Map<string, LocalCacheEntry>();
+const MAX_LOCAL_CACHE_SIZE = 500;
+
+function pruneLocalMemoryCache(): void {
+  const now = Date.now();
+  for (const [k, entry] of localMemoryCache.entries()) {
+    if (entry.expiresAt <= now) {
+      localMemoryCache.delete(k);
+    }
   }
+  // Enforce bounded size
+  if (localMemoryCache.size > MAX_LOCAL_CACHE_SIZE) {
+    const keysToRemove = Array.from(localMemoryCache.keys()).slice(0, localMemoryCache.size - MAX_LOCAL_CACHE_SIZE);
+    for (const k of keysToRemove) {
+      localMemoryCache.delete(k);
+    }
+  }
+}
+
+export async function cacheGet<T>(key: string): Promise<T | null> {
+  if (isRedisConnected() && redisClient) {
+    try {
+      const data = await redisClient.get(key);
+      if (!data) return null;
+      return JSON.parse(data) as T;
+    } catch (err: any) {
+      console.warn(`Redis get error for key "${key}":`, err.message);
+    }
+  }
+
+  // Local memory fallback
+  pruneLocalMemoryCache();
+  const entry = localMemoryCache.get(key);
+  if (entry && entry.expiresAt > Date.now()) {
+    return entry.value as T;
+  }
+  if (entry) {
+    localMemoryCache.delete(key);
+  }
+  return null;
 }
 
 export async function cacheSet(key: string, value: any, ttlSeconds = 300): Promise<boolean> {
-  if (!isRedisConnected() || !redisClient) return false;
-  try {
-    const serialized = JSON.stringify(value);
-    await redisClient.setex(key, ttlSeconds, serialized);
-    return true;
-  } catch (err: any) {
-    console.warn(`Redis set error for key "${key}":`, err.message);
-    return false;
+  const expiresAt = Date.now() + ttlSeconds * 1000;
+  pruneLocalMemoryCache();
+  localMemoryCache.set(key, { value, expiresAt });
+
+  if (isRedisConnected() && redisClient) {
+    try {
+      const serialized = JSON.stringify(value);
+      await redisClient.setex(key, ttlSeconds, serialized);
+      return true;
+    } catch (err: any) {
+      console.warn(`Redis set error for key "${key}":`, err.message);
+    }
   }
+
+  return true;
 }
 
 export async function cacheDel(key: string): Promise<boolean> {
-  if (!isRedisConnected() || !redisClient) return false;
+  localMemoryCache.delete(key);
+
+  if (!isRedisConnected() || !redisClient) return true;
   try {
     await redisClient.del(key);
     return true;
@@ -86,6 +129,13 @@ export async function cacheDel(key: string): Promise<boolean> {
 }
 
 export async function cacheDelByPrefix(prefix: string): Promise<void> {
+  // Clear from local memory cache
+  for (const k of Array.from(localMemoryCache.keys())) {
+    if (k.startsWith(prefix)) {
+      localMemoryCache.delete(k);
+    }
+  }
+
   if (!isRedisConnected() || !redisClient) return;
   try {
     let cursor = '0';
@@ -102,7 +152,9 @@ export async function cacheDelByPrefix(prefix: string): Promise<void> {
 }
 
 export async function cacheFlushAll(): Promise<boolean> {
-  if (!isRedisConnected() || !redisClient) return false;
+  localMemoryCache.clear();
+
+  if (!isRedisConnected() || !redisClient) return true;
   try {
     await redisClient.flushall();
     return true;

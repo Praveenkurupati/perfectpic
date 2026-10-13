@@ -7,13 +7,13 @@ import { Search, Mail, Phone, Loader2 } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 
 export default function CustomersPage() {
-  const [customerList, setCustomerList] = useState<any[]>(fallbackCustomers);
+  const [customerList, setCustomerList] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [totalItems, setTotalItems] = useState(fallbackCustomers.length);
-  const [totalPages, setTotalPages] = useState(Math.ceil(fallbackCustomers.length / 10));
-  const [isLoading, setIsLoading] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setCurrentPage(1);

@@ -19,8 +19,8 @@ export class ProductService {
     return await ProductRepository.findFeatured();
   }
 
-  public static getCategories() {
-    return ProductRepository.getCategories();
+  public static async getCategories() {
+    return await ProductRepository.getCategories();
   }
 
   public static async getConfig() {

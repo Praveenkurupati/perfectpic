@@ -1,6 +1,8 @@
 // apps/backend/src/services/CustomerService.ts
 import { UserRepository } from '../repositories/UserRepository';
-import { OrderRepository } from '../repositories/OrderRepository';
+import { Order } from '../db/models/Order';
+import { isDbConnected } from '../db/connection';
+import { logger } from '../utils/logger';
 
 const fallbackCustomers = [
   { id: "CUST-001", name: "Priya Sharma", email: "priya@example.com", phone: "+91 98765 43210", joinedDate: "Sep 15, 2026", ordersCount: 3, totalSpent: "5,997" },
@@ -15,18 +17,51 @@ export class CustomerService {
     const safeLimit = Math.max(1, limit);
     const skip = (safePage - 1) * safeLimit;
 
-    const { users } = await UserRepository.findAll(100, 0);
+    const { users } = await UserRepository.findAll(500, 0);
 
     if (users && users.length > 0) {
-      const customers = users.map((u: any, idx: number) => ({
-        id: `CUST-${String(idx + 1).padStart(3, '0')}`,
-        name: u.name || 'Customer',
-        email: u.email,
-        phone: u.phone || '+91 98765 00000',
-        joinedDate: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Sep 2026',
-        ordersCount: 1,
-        totalSpent: '1,999',
-      }));
+      // Real aggregation of user orders and total spent from MongoDB
+      const userEmails = users.map((u: any) => (u.email || '').toLowerCase().trim()).filter(Boolean);
+      const statsMap = new Map<string, { count: number; totalSpent: number }>();
+
+      if (isDbConnected()) {
+        try {
+          const orderAgg = await Order.aggregate([
+            { $match: { customerEmail: { $in: userEmails } } },
+            {
+              $group: {
+                _id: { $toLower: '$customerEmail' },
+                count: { $sum: 1 },
+                totalSpent: { $sum: '$total' },
+              },
+            },
+          ]);
+          for (const s of orderAgg) {
+            statsMap.set(String(s._id).toLowerCase(), {
+              count: s.count || 0,
+              totalSpent: s.totalSpent || 0,
+            });
+          }
+        } catch (err: any) {
+          logger.error('Error aggregating customer order metrics:', err.message);
+        }
+      }
+
+      const customers = users.map((u: any, idx: number) => {
+        const emailLower = (u.email || '').toLowerCase().trim();
+        const stat = statsMap.get(emailLower) || { count: 0, totalSpent: 0 };
+        return {
+          id: `CUST-${String(idx + 1).padStart(3, '0')}`,
+          name: u.name || 'Customer',
+          email: u.email,
+          phone: u.phone || '+91 98765 00000',
+          joinedDate: u.createdAt
+            ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            : 'Recent',
+          ordersCount: stat.count,
+          totalSpent: stat.totalSpent.toLocaleString('en-IN'),
+        };
+      });
 
       let filtered = customers;
       if (searchQuery) {
@@ -38,6 +73,10 @@ export class CustomerService {
       const totalPages = Math.max(1, Math.ceil(total / safeLimit));
       const paged = filtered.slice(skip, skip + safeLimit);
       return { customers: paged, total, page: safePage, totalPages, limit: safeLimit };
+    }
+
+    if (isDbConnected()) {
+      return { customers: [], total: 0, page: safePage, totalPages: 1, limit: safeLimit };
     }
 
     let result = [...fallbackCustomers];
