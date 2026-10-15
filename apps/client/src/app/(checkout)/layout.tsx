@@ -12,8 +12,8 @@ export default function CheckoutLayout({
 }) {
   const pathname = usePathname();
 
-  // The Cart page renders its own dedicated full-page layout matching the new brand system
-  if (pathname === "/cart") {
+  // The Cart & Checkout pages render their own dedicated full-page layout matching the new brand system
+  if (pathname === "/cart" || pathname === "/checkout") {
     return <>{children}</>;
   }
 
