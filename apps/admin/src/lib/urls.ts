@@ -51,7 +51,12 @@ export function getApiBaseUrl(): string {
       return `${protocol}//${hostname}:4000`;
     }
 
-    // Reverse proxy production setup (e.g. https://perfectpic.in)
+    // Production domain setup: backend API is hosted at api.perfectpic.in
+    if (hostname === 'perfectpic.in' || hostname.endsWith('.perfectpic.in')) {
+      return `${protocol}//api.perfectpic.in`;
+    }
+
+    // Reverse proxy production setup fallback
     return `${protocol}//${hostname}`;
   }
   return 'http://localhost:4000';
