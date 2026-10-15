@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 
@@ -10,13 +7,6 @@ export default function CheckoutLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
-  // The Cart & Checkout pages render their own dedicated full-page layout matching the new brand system
-  if (pathname === "/cart" || pathname === "/checkout") {
-    return <>{children}</>;
-  }
-
   return (
     <div className="min-h-screen bg-cream-50 flex flex-col">
       <header className="bg-white border-b border-cream-300 py-5">

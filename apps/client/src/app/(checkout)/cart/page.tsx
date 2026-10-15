@@ -1,163 +1,98 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BrandLogo } from "@/components/brand/BrandLogo";
-import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useCartStore } from "@/stores/useCartStore";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { 
+  Trash2, 
+  ArrowRight, 
+  ShoppingBag, 
+  ShieldCheck, 
+  Gift, 
+  CheckCircle2, 
+  Sparkles, 
+  Tag, 
+  X, 
+  Loader2,
+  AlertCircle,
+  Plus,
+  Minus,
+  Boxes,
+  Truck
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
-import { Check, Minus, Plus, X } from "lucide-react";
-
-const POPULAR_TEMPLATES = [
-  {
-    slug: "kerala",
-    series: "travel series",
-    title: "kerala",
-    price: 1999,
-    coverImage:
-      "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop",
-  },
-  {
-    slug: "netravati",
-    series: "trek series",
-    title: "netravati",
-    price: 1999,
-    coverImage:
-      "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop",
-  },
-  {
-    slug: "himalaya",
-    series: "trek series",
-    title: "himalaya",
-    price: 1999,
-    coverImage:
-      "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop",
-  },
-  {
-    slug: "wedding",
-    series: "celebration",
-    title: "wedding",
-    price: 1999,
-    coverImage:
-      "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&auto=format&fit=crop",
-  },
-];
 
 export default function CartPage() {
   const router = useRouter();
-  const {
-    items,
-    removeItem,
+  const { 
+    items, 
+    removeItem, 
     increaseQuantity,
     decreaseQuantity,
+    setQuantity,
     fetchBundleTiers,
     getPhotobookCount,
     getBundleDiscount,
-    getSubtotal,
-    getTotal,
+    getSubtotal, 
+    getTotal, 
     discount,
-    discountAmount,
-    promoCode,
-    applyPromoCode,
+    discountAmount, 
+    promoCode, 
+    appliedPromo,
+    applyPromoCode, 
     removePromoCode,
+    packagingAddon, 
+    setPackagingAddon 
   } = useCartStore();
-
   const { user, isAuthenticated } = useAuthStore();
-
+  
   const [mounted, setMounted] = useState(false);
-  const [discountInput, setDiscountInput] = useState("");
-  const [discountStatus, setDiscountStatus] = useState<"idle" | "success" | "error">("idle");
-  const [discountMessage, setDiscountMessage] = useState("");
-  const [isApplyingCode, setIsApplyingCode] = useState(false);
-
-  // Delivery Pincode checker state
-  const [pincode, setPincode] = useState("");
-  const [pincodeChecked, setPincodeChecked] = useState(false);
-  const [pincodeMessage, setPincodeMessage] = useState<string | null>(null);
-
-  // Remove confirmation modal state
-  const [removeModalOpen, setRemoveModalOpen] = useState(false);
-  const [itemToRemoveId, setItemToRemoveId] = useState<string | null>(null);
+  const [inputCode, setInputCode] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
+  const [promoMessage, setPromoMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
   useEffect(() => {
     setMounted(true);
     fetchBundleTiers();
   }, [fetchBundleTiers]);
 
-  // Handle promo code apply
-  const handleApplyDiscount = async () => {
-    const code = discountInput.trim().toUpperCase();
+  const handleApplyPromo = async (codeToApply?: string) => {
+    const code = (codeToApply || inputCode).trim().toUpperCase();
     if (!code) return;
 
-    setIsApplyingCode(true);
-    setDiscountStatus("idle");
-    setDiscountMessage("");
+    setIsApplying(true);
+    setPromoMessage(null);
 
-    try {
-      const res = await applyPromoCode(code, user?.email, user?.id);
-      if (res.success) {
-        setDiscountStatus("success");
-        setDiscountMessage("code applied — bundle saving added");
-      } else {
-        setDiscountStatus("error");
-        setDiscountMessage("that code isn't valid or has expired.");
-      }
-    } catch {
-      setDiscountStatus("error");
-      setDiscountMessage("that code isn't valid or has expired.");
-    } finally {
-      setIsApplyingCode(false);
+    const res = await applyPromoCode(code, user?.email, user?.id);
+    if (res.success) {
+      setPromoMessage({ text: res.message, error: false });
+      setInputCode("");
+    } else {
+      setPromoMessage({ text: res.message, error: true });
     }
+    setIsApplying(false);
   };
 
-  const handleClearDiscount = () => {
+  const handleRemovePromo = () => {
     removePromoCode();
-    setDiscountInput("");
-    setDiscountStatus("idle");
-    setDiscountMessage("");
+    setPromoMessage(null);
+    setInputCode("");
   };
 
-  // Handle pincode check
-  const handleCheckPincode = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!pincode.trim() || pincode.trim().length < 6) {
-      setPincodeMessage("please enter a valid 6-digit pincode.");
-      setPincodeChecked(true);
-      return;
-    }
-    setPincodeChecked(true);
-    setPincodeMessage("delivery available · free standard delivery in 3–5 days.");
-  };
-
-  // Trigger Remove Modal
-  const promptRemoveItem = (id: string) => {
-    setItemToRemoveId(id);
-    setRemoveModalOpen(true);
-  };
-
-  const handleConfirmRemove = () => {
-    if (itemToRemoveId) {
-      removeItem(itemToRemoveId);
-      setItemToRemoveId(null);
-    }
-    setRemoveModalOpen(false);
-  };
-
-  // Proceed to Checkout
-  const handleProceedCheckout = (asGuest = false) => {
+  const handleProceedToCheckout = () => {
     if (items.length === 0) return;
     trackEvent("cart_action", "Proceed to Checkout Clicked", {
       itemsCount: items.length,
-      asGuest,
       subtotal: getSubtotal(),
       total: getTotal(),
+      promoCode: promoCode || null,
+      discountAmount,
+      isAuthenticated,
     });
-
-    if (asGuest) {
-      router.push("/checkout?guest=true");
-    } else if (isAuthenticated) {
+    if (isAuthenticated) {
       router.push("/checkout");
     } else {
       router.push("/login?redirect=/checkout");
@@ -166,468 +101,352 @@ export default function CartPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen bg-[#F4F2ED] flex items-center justify-center font-sans">
-        <div className="w-7 h-7 border-2 border-[#0A0A0A] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-cream-50 flex items-center justify-center font-sans text-noir-900">
+        <div className="w-8 h-8 border-2 border-noir-900 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  const totalBooks = getPhotobookCount();
+  if (items.length === 0) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-4 font-sans text-noir-900">
+        <div className="w-20 h-20 bg-cream-200/80 rounded-full flex items-center justify-center mb-6">
+          <ShoppingBag size={32} className="text-noir-600" />
+        </div>
+        <h2 className="font-serif text-3xl mb-3">Your cart is empty</h2>
+        <p className="text-noir-600 max-w-md mb-8">
+          It looks like you haven&apos;t added any photobooks to your cart yet. Design your first custom book in 60 seconds.
+        </p>
+        <Link 
+          href="/templates" 
+          className="inline-flex items-center space-x-2 bg-noir-950 text-cream-50 px-8 py-3.5 rounded-sm font-medium hover:bg-noir-900 transition-colors tracking-widest uppercase text-sm"
+        >
+          <span>Explore Templates</span>
+          <ArrowRight size={16} />
+        </Link>
+      </div>
+    );
+  }
+
   const subtotal = getSubtotal();
+  const effectiveDiscount = discountAmount > 0 ? discountAmount : Math.round(subtotal * (discount || 0));
+  const totalBooks = getPhotobookCount();
   const bundleInfo = getBundleDiscount();
   const bundleDiscount = bundleInfo.discountAmount;
-  const promoDiscountVal =
-    discountAmount > 0 ? discountAmount : Math.round(subtotal * (discount || 0));
-  const totalSavings = bundleDiscount + promoDiscountVal;
-  const grandTotal = getTotal();
-
-  const totalCartCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
   return (
-    <div className="min-h-screen bg-[#F4F2ED] text-[#0A0A0A] font-sans flex flex-col justify-between selection:bg-[#0A0A0A] selection:text-white">
-      {/* 1. Top Announcement Bar */}
-      <div>
-        <div className="bg-[#0A0A0A] text-[#D9D6CF] py-2 px-4 text-center text-[11px] md:text-xs font-medium tracking-wide">
-          bundle &amp; save · free delivery across india · 100% reprint policy
-        </div>
+    <div className="min-h-screen bg-cream-50 py-12 font-sans text-noir-900">
+      <div className="container mx-auto px-4 md:px-8 max-w-6xl">
+        <h1 className="font-serif text-3xl md:text-4xl mb-8">Shopping Cart</h1>
 
-        {/* 2. Global Header */}
-        <header className="border-b border-[#D9D6CF]/70 bg-[#F4F2ED]">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            {/* Logo */}
-            <Link href="/" className="flex items-center" aria-label="perfectpic homepage">
-              <BrandLogo variant="light" height={32} className="h-7 md:h-8 w-auto" />
-            </Link>
-
-            {/* Nav Links */}
-            <nav className="hidden md:flex items-center space-x-8">
-              <Link
-                href="/templates"
-                className="text-xs md:text-sm font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase"
-              >
-                shop
-              </Link>
-              <Link
-                href="/templates"
-                className="text-xs md:text-sm font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase"
-              >
-                templates
-              </Link>
-              <Link
-                href="/projects"
-                className="text-xs md:text-sm font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase"
-              >
-                my projects
-              </Link>
-              <Link
-                href="/orders"
-                className="text-xs md:text-sm font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase"
-              >
-                track order
-              </Link>
-            </nav>
-
-            {/* Cart Pill */}
-            <Link
-              href="/cart"
-              className="border border-[#0A0A0A] rounded-full px-5 py-2 text-xs md:text-sm font-medium text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white transition-all lowercase"
-              aria-label="Shopping Cart"
-            >
-              cart ({totalCartCount})
-            </Link>
-          </div>
-        </header>
-      </div>
-
-      {/* 3. Main Content: Empty Cart vs Cart With Items */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 w-full">
-        {items.length === 0 ? (
-          /* ========================================================
-             EMPTY CART STATE (media_1792048542783.png)
-             ======================================================== */
-          <div className="py-6 sm:py-12">
-            {/* Empty Graphic + Callouts */}
-            <div className="text-center max-w-xl mx-auto mb-16 sm:mb-24">
-              {/* Minimalist Book Outline Icon in Circle */}
-              <div className="w-16 h-16 rounded-full bg-white border border-[#D9D6CF] shadow-xs flex items-center justify-center mx-auto mb-6">
-                <svg
-                  width="24"
-                  height="20"
-                  viewBox="0 0 24 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="text-[#0A0A0A]"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="2" y="2" width="20" height="16" rx="3.5" />
-                </svg>
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#0A0A0A] lowercase mb-3">
-                your cart is empty.
-              </h1>
-
-              <p className="text-xs sm:text-sm md:text-base text-[#706E69] font-normal mb-8">
-                start a book and it will wait for you here.
-              </p>
-
-              {/* Action Buttons */}
-              <div className="flex flex-row items-center justify-center gap-3 sm:gap-4">
-                <Link
-                  href="/templates"
-                  className="bg-[#0A0A0A] hover:bg-black text-white px-6 sm:px-7 py-3 rounded-full text-xs sm:text-sm font-medium transition-colors shadow-xs lowercase"
-                >
-                  browse books
-                </Link>
-
-                <Link
-                  href="/templates"
-                  className="bg-white border border-[#0A0A0A] text-[#0A0A0A] hover:bg-[#FAF9F6] px-6 sm:px-7 py-3 rounded-full text-xs sm:text-sm font-medium transition-colors shadow-xs lowercase"
-                >
-                  explore templates
-                </Link>
-              </div>
-            </div>
-
-            {/* Popular Right Now Grid */}
-            <div className="pt-6">
-              <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0A0A0A] lowercase mb-6 text-left">
-                popular right now
-              </h2>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {POPULAR_TEMPLATES.map((tpl) => (
-                  <Link
-                    key={tpl.slug}
-                    href={`/configure?template=${tpl.slug}`}
-                    className="group block text-left"
-                  >
-                    <div className="aspect-[1/1.05] rounded-3xl bg-[#DDD8D0] overflow-hidden relative mb-3 transition-transform duration-300 group-hover:scale-102">
-                      <img
-                        src={tpl.coverImage}
-                        alt={tpl.title}
-                        className="w-full h-full object-cover group-hover:opacity-95 transition-opacity"
-                        loading="lazy"
-                      />
-                    </div>
-
-                    <span className="text-[11px] font-medium text-[#706E69] lowercase block mb-0.5">
-                      {tpl.series}
-                    </span>
-                    <h3 className="text-base sm:text-lg font-bold text-[#0A0A0A] lowercase leading-snug">
-                      {tpl.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm font-semibold text-[#0A0A0A] mt-0.5">
-                      from ₹{tpl.price.toLocaleString("en-IN")}
-                    </p>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ========================================================
-             CART WITH ITEMS STATE (media_1792048654548.png)
-             ======================================================== */
-          <div>
-            {/* Header: Title & Subtitle */}
-            <div className="mb-8">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-[#0A0A0A] lowercase">
-                your cart.
-              </h1>
-              <p className="text-xs sm:text-sm text-[#706E69] mt-1 font-normal lowercase">
-                {items.length} {items.length === 1 ? "item" : "items"}
-              </p>
-            </div>
-
-            {/* Two-Column Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              {/* Left Column: Items List & Promo Code */}
-              <div className="lg:col-span-7 space-y-4">
-                {items.map((item) => {
-                  const unitPrice = item.basePrice + (item.extraPagesPrice || 0);
-                  const itemQuantity = item.quantity || 1;
-                  const itemTotal = unitPrice * itemQuantity;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-3xl p-5 sm:p-6 border border-[#D9D6CF]/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
-                      {/* Left: Thumbnail & Info */}
-                      <div className="flex items-start sm:items-center gap-4 min-w-0">
-                        {/* Square Thumbnail */}
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-[#DDD8D0] overflow-hidden shrink-0">
-                          <img
-                            src={
-                              item.thumbnail ||
-                              "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop"
-                            }
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-
-                        {/* Title, Details, Actions */}
-                        <div className="min-w-0">
-                          <h3 className="text-base sm:text-lg font-bold text-[#0A0A0A] lowercase leading-snug truncate">
-                            {item.title} — custom photobook
-                          </h3>
-                          <p className="text-xs text-[#706E69] mt-0.5 mb-3 lowercase font-normal">
-                            {item.theme || "travel series"} · {item.dimensions || '8.25" × 8.25"'} ·{" "}
-                            {item.coverType || "hardcover"}
-                          </p>
-
-                          {/* Stepper + Action Links */}
-                          <div className="flex flex-wrap items-center gap-4">
-                            <Link
-                              href={item.projectId ? `/studio/${item.projectId}` : "/configure"}
-                              className="text-xs font-medium text-[#0A0A0A] hover:underline lowercase"
-                            >
-                              edit book
-                            </Link>
-
-                            <button
-                              type="button"
-                              onClick={() => promptRemoveItem(item.id)}
-                              className="text-xs font-medium text-[#706E69] hover:text-[#0A0A0A] transition-colors lowercase"
-                            >
-                              remove
-                            </button>
-
-                            {/* Stepper: - N + */}
-                            <div className="inline-flex items-center gap-3 border border-[#D9D6CF] rounded-full px-3 py-1 text-xs font-medium bg-white">
-                              <button
-                                type="button"
-                                onClick={() => decreaseQuantity(item.id)}
-                                className="text-[#0A0A0A] hover:opacity-60 transition-opacity p-0.5"
-                                aria-label="Decrease quantity"
-                              >
-                                <Minus size={12} strokeWidth={2.5} />
-                              </button>
-                              <span className="font-semibold min-w-[12px] text-center text-[#0A0A0A]">
-                                {itemQuantity}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => increaseQuantity(item.id)}
-                                className="text-[#0A0A0A] hover:opacity-60 transition-opacity p-0.5"
-                                aria-label="Increase quantity"
-                              >
-                                <Plus size={12} strokeWidth={2.5} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Price */}
-                      <div className="text-right sm:self-center shrink-0">
-                        <span className="text-lg sm:text-xl font-bold text-[#0A0A0A] font-sans">
-                          ₹{itemTotal.toLocaleString("en-IN")}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {/* Discount Code Card */}
-                <div className="bg-white rounded-3xl p-5 sm:p-6 border border-[#D9D6CF]/80 shadow-xs">
-                  <label className="block text-xs font-bold text-[#0A0A0A] lowercase mb-2.5">
-                    discount code
-                  </label>
-
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      value={discountInput}
-                      onChange={(e) => setDiscountInput(e.target.value.toUpperCase())}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleApplyDiscount();
-                      }}
-                      placeholder="e.g. BUNDLE3"
-                      className="flex-1 rounded-2xl border border-[#0A0A0A] px-4 py-3 text-xs sm:text-sm uppercase tracking-wider font-medium text-[#0A0A0A] bg-transparent focus:outline-none focus:ring-1 focus:ring-black"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleApplyDiscount}
-                      disabled={isApplyingCode || !discountInput.trim()}
-                      className="bg-[#0A0A0A] hover:bg-black text-white px-6 sm:px-7 py-3 rounded-full text-xs sm:text-sm font-medium transition-colors lowercase shrink-0 disabled:opacity-50"
-                    >
-                      {isApplyingCode ? "applying..." : "apply"}
-                    </button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          {/* Items List */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Volume Bundle Savings Progress Banner */}
+            <div className="bg-gradient-to-r from-cream-100 via-amber-50/60 to-cream-100 border border-foil-gold/40 rounded-sm p-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-noir-950 text-cream-50 flex items-center justify-center shrink-0 shadow-xs">
+                    <Boxes size={18} className="text-foil-gold" />
                   </div>
+                  <div>
+                    <h3 className="font-serif text-base font-bold text-noir-950">
+                      {bundleInfo.qualifyingTier ? (
+                        <span className="text-emerald-800">
+                          🎉 {bundleInfo.qualifyingTier.name} Applied: Saved ₹{bundleDiscount.toLocaleString('en-IN')} off!
+                        </span>
+                      ) : (
+                        <span>Multi-Book Volume Savings</span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-noir-600">
+                      {bundleInfo.nextTier ? (
+                        <span>
+                          Add <strong>{bundleInfo.booksNeededForNext} more {bundleInfo.booksNeededForNext === 1 ? 'copy' : 'copies'}</strong> to unlock <strong>Save ₹{bundleInfo.nextTier.discountAmount.toLocaleString('en-IN')} off</strong> + Free Shipping!
+                        </span>
+                      ) : (
+                        <span className="text-emerald-700 font-medium">
+                          👑 Maximum volume tier unlocked (₹4,500 Saved + Free All-India Express Delivery)!
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
 
-                  {/* Feedback states */}
-                  {discountStatus === "success" && (
-                    <div className="mt-3 text-xs text-[#0A0A0A] font-medium flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Check size={14} className="text-[#0A0A0A]" />
-                        <span>{discountMessage}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={handleClearDiscount}
-                        className="text-[#706E69] hover:text-[#0A0A0A] transition-colors p-1"
-                        title="Remove code"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  )}
-
-                  {discountStatus === "error" && (
-                    <div className="mt-3 text-xs text-[#0A0A0A] font-medium">
-                      {discountMessage}
-                    </div>
-                  )}
-
-                  {promoCode && discountStatus !== "success" && (
-                    <div className="mt-3 text-xs text-[#0A0A0A] font-medium flex items-center justify-between">
-                      <span>✓ code &ldquo;{promoCode}&rdquo; active</span>
-                      <button
-                        type="button"
-                        onClick={handleClearDiscount}
-                        className="text-xs text-[#706E69] hover:underline lowercase"
-                      >
-                        remove
-                      </button>
-                    </div>
-                  )}
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-cream-300 rounded-full text-xs font-mono font-bold text-noir-950 self-start sm:self-auto shadow-2xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>{totalBooks} {totalBooks === 1 ? 'Book' : 'Books'} in Cart</span>
                 </div>
               </div>
 
-              {/* Right Column: Order Summary Card */}
-              <div className="lg:col-span-5">
-                <div className="bg-white rounded-3xl p-6 sm:p-8 border border-[#D9D6CF]/80 shadow-xs sticky top-24">
-                  <h2 className="text-xl font-bold text-[#0A0A0A] lowercase mb-5">
-                    order summary
-                  </h2>
+              {/* Progress Milestones Bar */}
+              <div className="relative mt-2 pt-1">
+                <div className="w-full h-2 bg-cream-200/90 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-noir-950 transition-all duration-500 ease-out rounded-full"
+                    style={{
+                      width: `${Math.min(100, Math.max(8, Math.round((totalBooks / 12) * 100)))}%`,
+                    }}
+                  />
+                </div>
 
-                  {/* Delivery Pincode Checker */}
-                  <div className="mb-5">
-                    <label className="block text-xs text-[#706E69] lowercase mb-1.5">
-                      delivery to pincode
-                    </label>
-                    <form onSubmit={handleCheckPincode} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        maxLength={6}
-                        value={pincode}
-                        onChange={(e) => setPincode(e.target.value.replace(/\D/g, ""))}
-                        placeholder="000000"
-                        className="flex-1 rounded-xl border border-[#D9D6CF] px-4 py-2.5 text-xs sm:text-sm text-[#0A0A0A] tracking-wider font-mono focus:outline-none focus:ring-1 focus:ring-black"
-                      />
-                      <button
-                        type="submit"
-                        className="border border-[#0A0A0A] hover:bg-[#FAF9F6] text-[#0A0A0A] px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors lowercase shrink-0"
-                      >
-                        check
-                      </button>
-                    </form>
+                <div className="flex justify-between items-center text-[10px] font-mono text-noir-600 mt-2 font-medium">
+                  <span className={cn(totalBooks >= 3 ? "text-emerald-700 font-bold" : "")}>
+                    3 Books (Save ₹300)
+                  </span>
+                  <span className={cn(totalBooks >= 6 ? "text-emerald-700 font-bold" : "")}>
+                    6 Books (Save ₹1,800)
+                  </span>
+                  <span className={cn(totalBooks >= 12 ? "text-emerald-700 font-bold" : "")}>
+                    12 Books (Save ₹4,500)
+                  </span>
+                </div>
+              </div>
+            </div>
 
-                    <p className="text-xs text-[#0A0A0A] font-medium mt-2 lowercase">
-                      {pincodeMessage || "free delivery across india"}
-                    </p>
+            <div className="bg-white rounded-sm shadow-sm border border-cream-200 divide-y divide-cream-200">
+              {items.map((item) => (
+                <div key={item.id} className="p-6 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+                  <div className="w-24 h-24 bg-cream-100 rounded-sm overflow-hidden flex-shrink-0 border border-cream-200">
+                    <img 
+                      src={item.thumbnail || "https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop"} 
+                      alt={item.title} 
+                      className="w-full h-full object-cover"
+                    />
                   </div>
 
-                  <div className="border-t border-[#D9D6CF]/70 my-4" />
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-medium text-noir-950">{item.title}</h3>
+                    <div className="text-xs text-noir-500 mt-1 space-y-0.5">
+                      <p>Format: {item.dimensions} • {item.pageCount} Pages (Lay-Flat Archival)</p>
+                      <p>Theme: {item.theme.replace(/-/g, " ")}</p>
+                    </div>
 
-                  {/* Line Items */}
-                  <div className="space-y-3 text-xs sm:text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#706E69] lowercase">
-                        subtotal ({totalBooks} {totalBooks === 1 ? "book" : "books"})
-                      </span>
-                      <span className="font-medium text-[#0A0A0A]">
-                        ₹{subtotal.toLocaleString("en-IN")}
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center gap-3 mt-3">
+                      <div className="inline-flex items-center border border-cream-300 rounded-sm bg-cream-50 overflow-hidden shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => decreaseQuantity(item.id)}
+                          className="px-2.5 py-1 text-noir-600 hover:text-black hover:bg-cream-200 transition-colors text-sm font-bold"
+                          title="Decrease quantity"
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span className="px-3 py-1 text-xs font-mono font-bold text-noir-950 min-w-[28px] text-center bg-white">
+                          {item.quantity || 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => increaseQuantity(item.id)}
+                          className="px-2.5 py-1 text-noir-600 hover:text-black hover:bg-cream-200 transition-colors text-sm font-bold"
+                          title="Increase quantity"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+
+                      <span className="text-[11px] text-noir-500 font-mono">
+                        ₹{(item.basePrice + (item.extraPagesPrice || 0)).toLocaleString("en-IN")} each
                       </span>
                     </div>
 
-                    {totalSavings > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-[#706E69] lowercase">bundle saving</span>
-                        <span className="font-medium text-[#0A0A0A]">
-                          −₹{totalSavings.toLocaleString("en-IN")}
+                    <div className="mt-2.5 font-bold text-noir-900 font-mono text-sm">
+                      Total: ₹{((item.basePrice + (item.extraPagesPrice || 0)) * (item.quantity || 1)).toLocaleString("en-IN")}
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => removeItem(item.id)}
+                    className="text-noir-400 hover:text-red-600 transition-colors p-2"
+                    title="Remove item"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Packaging Addon */}
+            <div className="bg-white p-6 rounded-sm shadow-sm border border-cream-200 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-cream-100 flex items-center justify-center text-noir-800">
+                  <Gift size={20} />
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm">Add Keepsake Gift Presentation Box (+₹499)</h4>
+                  <p className="text-xs text-noir-500">Rigid archival magnetic-closure box embossed with gold foil.</p>
+                </div>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={packagingAddon}
+                onChange={(e) => setPackagingAddon(e.target.checked)}
+                className="w-5 h-5 accent-noir-950 rounded cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Right Column: Order Summary & Promo Engine */}
+          <div className="lg:col-span-1">
+            <div className="bg-white p-6 rounded-sm shadow-sm border border-cream-200 sticky top-8 space-y-6">
+              <h3 className="font-serif text-xl border-b border-cream-200 pb-3">Order Summary</h3>
+              
+              {/* Promo Code Input / Applied State */}
+              <div>
+                <label className="block text-xs uppercase tracking-wider font-semibold text-noir-700 mb-1.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-noir-800" />
+                  Have a Promo Code?
+                </label>
+
+                {promoCode ? (
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-sm flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="font-mono font-bold text-xs uppercase text-emerald-950 tracking-wider">
+                          {promoCode}
                         </span>
+                        <p className="text-[11px] text-emerald-700">
+                          {appliedPromo?.description || `Saved ₹${effectiveDiscount.toLocaleString("en-IN")}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleRemovePromo}
+                      className="text-emerald-800 hover:text-red-600 text-xs font-semibold p-1 transition-colors flex items-center gap-0.5"
+                      title="Remove coupon"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Remove</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={inputCode}
+                        onChange={(e) => setInputCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleApplyPromo(); }}
+                        placeholder="e.g. LAUNCH20" 
+                        className="flex-1 font-mono uppercase border border-cream-300 rounded-sm px-3 py-2 text-sm focus:outline-none focus:border-noir-900 bg-cream-50" 
+                      />
+                      <button 
+                        onClick={() => handleApplyPromo()}
+                        disabled={isApplying || !inputCode.trim()}
+                        className="bg-noir-950 text-cream-50 px-4 py-2 rounded-sm text-xs font-semibold tracking-wider uppercase hover:bg-noir-900 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                      >
+                        {isApplying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Apply"}
+                      </button>
+                    </div>
+
+                    {promoMessage && (
+                      <div className={`p-2 rounded text-xs flex items-start gap-1.5 ${
+                        promoMessage.error 
+                          ? "bg-red-50 border border-red-200 text-red-700" 
+                          : "bg-emerald-50 border border-emerald-200 text-emerald-800"
+                      }`}>
+                        {promoMessage.error ? (
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        )}
+                        <span>{promoMessage.text}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-[#706E69] lowercase">delivery</span>
-                      <span className="font-medium text-[#0A0A0A] lowercase">free</span>
+                    {/* Quick Suggestion Chips */}
+                    <div className="pt-2">
+                      <span className="text-[10px] uppercase tracking-wider text-noir-400 font-semibold block mb-1.5">
+                        Available Offers
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleApplyPromo("LAUNCH20")}
+                          className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-1 rounded bg-cream-100 hover:bg-cream-200 border border-cream-300 text-noir-800 transition-colors"
+                        >
+                          <Sparkles className="w-3 h-3 text-foil-gold" />
+                          <span>LAUNCH20</span>
+                          <span className="text-[10px] text-noir-500 font-sans">(20% OFF)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleApplyPromo("FIRSTPIC")}
+                          className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-1 rounded bg-cream-100 hover:bg-cream-200 border border-cream-300 text-noir-800 transition-colors"
+                        >
+                          <span>FIRSTPIC</span>
+                          <span className="text-[10px] text-noir-500 font-sans">(₹300 OFF)</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
+                )}
+              </div>
 
-                  <div className="border-t border-[#D9D6CF]/70 my-4" />
+              {/* Price Breakdown */}
+              <div className="space-y-3 text-sm pt-4 border-t border-cream-200">
+                <div className="flex justify-between">
+                  <span className="text-noir-600">Subtotal</span>
+                  <span>₹{subtotal.toLocaleString("en-IN")}</span>
+                </div>
 
-                  {/* Grand Total */}
-                  <div className="flex justify-between items-baseline pt-1">
-                    <div>
-                      <span className="text-lg font-bold text-[#0A0A0A] lowercase block">
-                        total
+                {bundleDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-medium">
+                    <span className="flex items-center gap-1">
+                      <span>Volume Bundle Savings</span>
+                      <span className="font-mono text-xs bg-emerald-100/70 text-emerald-900 px-1.5 py-0.5 rounded font-bold">
+                        {totalBooks} Books
                       </span>
-                      <span className="text-[11px] text-[#706E69] lowercase block">
-                        inclusive of all taxes
-                      </span>
-                    </div>
-                    <span className="text-2xl sm:text-3xl font-bold text-[#0A0A0A] font-sans">
-                      ₹{grandTotal.toLocaleString("en-IN")}
                     </span>
+                    <span className="font-mono font-bold">-₹{bundleDiscount.toLocaleString("en-IN")}</span>
                   </div>
+                )}
 
-                  {/* Checkout & Guest Buttons */}
-                  <div className="mt-6 space-y-2.5">
-                    <button
-                      type="button"
-                      onClick={() => handleProceedCheckout(false)}
-                      className="w-full py-4 rounded-full bg-[#0A0A0A] hover:bg-black text-white font-medium text-xs sm:text-sm transition-colors shadow-xs lowercase"
-                    >
-                      checkout
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleProceedCheckout(true)}
-                      className="w-full py-4 rounded-full border border-[#0A0A0A] text-[#0A0A0A] hover:bg-[#FAF9F6] font-medium text-xs sm:text-sm transition-colors shadow-xs lowercase"
-                    >
-                      continue as guest
-                    </button>
+                {effectiveDiscount > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-medium">
+                    <span className="flex items-center gap-1">
+                      <span>Coupon Discount</span>
+                      {promoCode && (
+                        <span className="font-mono text-xs bg-emerald-100/70 px-1 py-0.5 rounded">
+                          {promoCode}
+                        </span>
+                      )}
+                    </span>
+                    <span>-₹{effectiveDiscount.toLocaleString("en-IN")}</span>
                   </div>
+                )}
 
-                  {/* Returning Customer Link */}
-                  <div className="mt-5 text-center">
-                    <Link
-                      href="/login?redirect=/checkout"
-                      className="text-xs text-[#706E69] hover:text-[#0A0A0A] hover:underline transition-colors lowercase"
-                    >
-                      returning customer? sign in to use saved addresses.
-                    </Link>
+                {packagingAddon && (
+                  <div className="flex justify-between text-noir-600">
+                    <span>Keepsake Box Addon</span>
+                    <span>₹499</span>
                   </div>
+                )}
+
+                <div className="flex justify-between">
+                  <span className="text-noir-600">Shipping (All-India)</span>
+                  <span className="text-emerald-700 font-medium">FREE</span>
                 </div>
               </div>
+
+              {/* Total */}
+              <div className="flex justify-between font-serif text-2xl pt-4 border-t border-cream-200">
+                <span>Total</span>
+                <span>₹{getTotal().toLocaleString("en-IN")}</span>
+              </div>
+
+              <button 
+                onClick={handleProceedToCheckout}
+                className="w-full bg-noir-950 text-cream-50 py-4 rounded-sm font-medium tracking-widest uppercase hover:bg-noir-900 transition-colors shadow-luxury-md"
+              >
+                Proceed to Checkout
+              </button>
             </div>
           </div>
-        )}
-      </main>
-
-      {/* 4. Bottom Footer */}
-      <footer className="border-t border-[#D9D6CF]/70 py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <p className="text-xs text-[#706E69] lowercase font-normal">
-          © 2026 perfectpic · made with love in india
-        </p>
-      </footer>
-
-      {/* 5. Remove Confirmation Modal (media_1792048593432.png Modal 1) */}
-      <ConfirmationModal
-        isOpen={removeModalOpen}
-        type="remove-book"
-        onCancel={() => setRemoveModalOpen(false)}
-        onConfirm={handleConfirmRemove}
-      />
+        </div>
+      </div>
     </div>
   );
 }
