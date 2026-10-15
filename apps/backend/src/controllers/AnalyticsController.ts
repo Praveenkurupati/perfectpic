@@ -4,6 +4,8 @@ import { OrderRepository } from '../repositories/OrderRepository';
 import { AnalyticsRepository, BehaviourFilters } from '../repositories/AnalyticsRepository';
 import { MetaCapiService } from '../services/MetaCapiService';
 import { ApiResponse } from '../utils/apiResponse';
+import { OperationsService } from '../services/OperationsService';
+import { SlaService } from '../services/SlaService';
 
 export class AnalyticsController {
   public static async getDashboardStats(req: Request, res: Response) {
@@ -14,6 +16,105 @@ export class AnalyticsController {
   public static async getRevenueData(req: Request, res: Response) {
     const data = await OrderRepository.getDashboardStats();
     return ApiResponse.success(res, data.revenueData, 'Revenue trend retrieved successfully');
+  }
+
+  /**
+   * Command Center Master Business Intelligence (Health, Realtime, Alerts, SLA, Financials)
+   * GET /api/v1/analytics/command-center
+   */
+  public static async getCommandCenterStats(req: Request, res: Response) {
+    try {
+      const dashboard = await OrderRepository.getDashboardStats();
+      const ordersRes = await OrderRepository.findAll();
+      const orders: any[] = ordersRes?.orders || [];
+      const sla = SlaService.calculateOverview(orders);
+      const realtime = await OperationsService.getRealtimeStatus();
+      const health = OperationsService.calculateBusinessHealth(sla, realtime);
+      const alerts = await OperationsService.getAttentionItems();
+      const financials = await OperationsService.getFinancials();
+      const dailySummary = await OperationsService.getDailySummary();
+
+      const data = {
+        ...dashboard,
+        health,
+        realtime,
+        alerts,
+        sla,
+        financials,
+        dailySummary,
+      };
+
+      return ApiResponse.success(res, data, 'Command Center business data retrieved successfully');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to retrieve command center data', 500, 'COMMAND_CENTER_ERROR');
+    }
+  }
+
+  /**
+   * SLA & Operations Intelligence
+   * GET /api/v1/analytics/sla
+   */
+  public static async getSlaMetrics(req: Request, res: Response) {
+    try {
+      const ordersRes = await OrderRepository.findAll();
+      const orders: any[] = ordersRes?.orders || [];
+      const sla = SlaService.calculateOverview(orders);
+      return ApiResponse.success(res, sla, 'SLA operational metrics retrieved');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to calculate SLA metrics', 500, 'SLA_ERROR');
+    }
+  }
+
+  /**
+   * Attention Required Center Alerts
+   * GET /api/v1/analytics/alerts
+   */
+  public static async getAlerts(req: Request, res: Response) {
+    try {
+      const alerts = await OperationsService.getAttentionItems();
+      return ApiResponse.success(res, { alerts, total: alerts.length }, 'Attention alerts retrieved');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to retrieve alerts', 500, 'ALERTS_ERROR');
+    }
+  }
+
+  /**
+   * Financial Decomposition & Unit Economics
+   * GET /api/v1/analytics/financials
+   */
+  public static async getFinancials(req: Request, res: Response) {
+    try {
+      const financials = await OperationsService.getFinancials();
+      return ApiResponse.success(res, financials, 'Financial decomposition and unit economics retrieved');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to retrieve financials', 500, 'FINANCIALS_ERROR');
+    }
+  }
+
+  /**
+   * 9-Step Photobook Funnel & Drop-off Analytics
+   * GET /api/v1/analytics/funnel
+   */
+  public static async getFunnelAnalytics(req: Request, res: Response) {
+    try {
+      const funnel = OperationsService.getFunnelAnalytics();
+      return ApiResponse.success(res, funnel, 'Photobook conversion funnel analytics retrieved');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to retrieve funnel analytics', 500, 'FUNNEL_ERROR');
+    }
+  }
+
+  /**
+   * Daily Business Summary
+   * GET /api/v1/analytics/daily-summary
+   */
+  public static async getDailySummary(req: Request, res: Response) {
+    try {
+      const summary = await OperationsService.getDailySummary();
+      return ApiResponse.success(res, summary, 'Daily business summary retrieved');
+    } catch (err: any) {
+      return ApiResponse.error(res, err.message || 'Failed to retrieve daily summary', 500, 'SUMMARY_ERROR');
+    }
   }
 
   /**

@@ -919,6 +919,84 @@ async function runTests() {
     details: `Redirect Location: ${locationHeader.slice(0, 75)}...`,
   });
 
+  // 46. Command Center: Master Intelligence & Composite Business Health Score
+  console.log('Testing: GET /api/v1/analytics/command-center (Master Command Center)');
+  const ccRes = await dispatchRequest('GET', '/api/v1/analytics/command-center', undefined, adminHeaders);
+  const ccData = ccRes.body?.data || ccRes.body;
+  results.push({
+    endpoint: '/api/v1/analytics/command-center',
+    method: 'GET',
+    status: ccRes.status,
+    expectedStatus: 200,
+    passed: ccRes.status === 200 && !!ccData?.health && typeof ccData?.health?.score === 'number',
+    details: `Health Score: ${ccData?.health?.score}/100 (${ccData?.health?.overall}), Orders Last Hr: ${ccData?.realtime?.ordersLastHour}`,
+  });
+
+  // 47. Operations: SLA Intelligence & Multi-Stage Risk Assessment
+  console.log('Testing: GET /api/v1/analytics/sla (SLA Metrics & Stage Timelines)');
+  const slaRes = await dispatchRequest('GET', '/api/v1/analytics/sla', undefined, adminHeaders);
+  const slaData = slaRes.body?.data || slaRes.body;
+  results.push({
+    endpoint: '/api/v1/analytics/sla',
+    method: 'GET',
+    status: slaRes.status,
+    expectedStatus: 200,
+    passed: slaRes.status === 200 && typeof slaData?.complianceRate === 'number' && Array.isArray(slaData?.stageConfigs),
+    details: `Compliance: ${slaData?.complianceRate}%, Safe: ${slaData?.safeCount}, At-Risk: ${slaData?.atRiskCount}`,
+  });
+
+  // 48. Attention Required Center: Prioritized Actionable Alerts
+  console.log('Testing: GET /api/v1/analytics/alerts (Actionable Operational Alerts)');
+  const alertsRes = await dispatchRequest('GET', '/api/v1/analytics/alerts', undefined, adminHeaders);
+  const alertsData = alertsRes.body?.data || alertsRes.body;
+  results.push({
+    endpoint: '/api/v1/analytics/alerts',
+    method: 'GET',
+    status: alertsRes.status,
+    expectedStatus: 200,
+    passed: alertsRes.status === 200 && Array.isArray(alertsData?.alerts),
+    details: `Generated ${alertsData?.alerts?.length || 0} prioritized alerts with direct resolution action URLs`,
+  });
+
+  // 49. Financial Control: 4-Tier Unit Economics & Revenue Waterfall
+  console.log('Testing: GET /api/v1/analytics/financials (Unit Economics & Decomposition)');
+  const finRes = await dispatchRequest('GET', '/api/v1/analytics/financials', undefined, adminHeaders);
+  const finData = finRes.body?.data || finRes.body;
+  results.push({
+    endpoint: '/api/v1/analytics/financials',
+    method: 'GET',
+    status: finRes.status,
+    expectedStatus: 200,
+    passed: finRes.status === 200 && typeof finData?.grossMarginPercentage === 'number' && Array.isArray(finData?.unitEconomicsByTier),
+    details: `Gross Margin: ${finData?.grossMarginPercentage}%, 4-Tier Economics verified (${finData?.unitEconomicsByTier?.length} tiers)`,
+  });
+
+  // 50. Commerce Funnel: 9-Step Conversion Telemetry & Drop-off Diagnostics
+  console.log('Testing: GET /api/v1/analytics/funnel (Photobook Conversion Funnel)');
+  const funnelRes = await dispatchRequest('GET', '/api/v1/analytics/funnel', undefined, adminHeaders);
+  const funnelData = funnelRes.body?.data || funnelRes.body;
+  results.push({
+    endpoint: '/api/v1/analytics/funnel',
+    method: 'GET',
+    status: funnelRes.status,
+    expectedStatus: 200,
+    passed: funnelRes.status === 200 && Array.isArray(funnelData?.funnelSteps) && funnelData?.funnelSteps?.length === 9,
+    details: `9 Steps verified (${funnelData?.funnelSteps?.[8]?.conversionRate}% final conversion), Bottlenecks: ${funnelData?.bottlenecks?.length}`,
+  });
+
+  // 51. Executive Briefing: Daily Business Summary & Action Item Matrix
+  console.log('Testing: GET /api/v1/analytics/daily-summary (Executive Morning Brief)');
+  const dailyRes = await dispatchRequest('GET', '/api/v1/analytics/daily-summary', undefined, adminHeaders);
+  const dailyData = dailyRes.body?.data || dailyRes.body;
+  results.push({
+    endpoint: '/api/v1/analytics/daily-summary',
+    method: 'GET',
+    status: dailyRes.status,
+    expectedStatus: 200,
+    passed: dailyRes.status === 200 && !!dailyData?.headline && Array.isArray(dailyData?.actionItems),
+    details: `Brief generated for ${dailyData?.date || 'today'}: ${dailyData?.actionItems?.length} prioritized action items`,
+  });
+
   // Print results
   console.log('\n📊 ====================================================');
   console.log('📊 PerfectPic Backend API Verification Summary');

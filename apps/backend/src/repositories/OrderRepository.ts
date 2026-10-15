@@ -243,7 +243,7 @@ const mockOrders = [
 ];
 
 export class OrderRepository {
-  public static async findAll(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number }) {
+  public static async findAll(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number } = {}) {
     const limit = Math.max(1, filter.limit ? Number(filter.limit) : 50);
     const page = Math.max(1, filter.page ? Number(filter.page) : (filter.skip !== undefined ? Math.floor(Number(filter.skip) / limit) + 1 : 1));
     const skip = filter.skip !== undefined ? Number(filter.skip) : (page - 1) * limit;

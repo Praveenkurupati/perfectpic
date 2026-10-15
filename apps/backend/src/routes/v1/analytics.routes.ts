@@ -19,6 +19,24 @@ router.get('/live-feed', authenticate, adminOnly, AnalyticsController.getLiveJou
 // Executive Dashboard stats (Admin only)
 router.get('/dashboard', authenticate, adminOnly, AnalyticsController.getDashboardStats);
 
+// Command Center Master Intelligence (Admin only)
+router.get('/command-center', authenticate, adminOnly, AnalyticsController.getCommandCenterStats);
+
+// SLA Operational Intelligence & Stage Risk (Admin only)
+router.get('/sla', authenticate, adminOnly, AnalyticsController.getSlaMetrics);
+
+// Attention Required Center Alerts (Admin only)
+router.get('/alerts', authenticate, adminOnly, AnalyticsController.getAlerts);
+
+// Financial Decomposition & 4-Tier Unit Economics (Admin only)
+router.get('/financials', authenticate, adminOnly, AnalyticsController.getFinancials);
+
+// 9-Step Photobook Conversion Funnel & Drop-off (Admin only)
+router.get('/funnel', authenticate, adminOnly, AnalyticsController.getFunnelAnalytics);
+
+// Daily Business Summary (Admin only)
+router.get('/daily-summary', authenticate, adminOnly, AnalyticsController.getDailySummary);
+
 // Revenue Trend (Admin only)
 router.get('/revenue', authenticate, adminOnly, AnalyticsController.getRevenueData);
 

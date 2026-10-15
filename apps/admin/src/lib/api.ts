@@ -295,8 +295,14 @@ export const adminApi = {
       body: JSON.stringify({ status }),
     }),
 
-  // Analytics & Dashboard
+  // Analytics & Command Center
   getDashboardStats: () => fetcher<any>('/analytics/dashboard', { headers: authHeaders() }),
+  getCommandCenterStats: () => fetcher<any>('/analytics/command-center', { headers: authHeaders() }),
+  getSlaMetrics: () => fetcher<any>('/analytics/sla', { headers: authHeaders() }),
+  getAlerts: () => fetcher<{ alerts: any[]; total: number }>('/analytics/alerts', { headers: authHeaders() }),
+  getFinancials: () => fetcher<any>('/analytics/financials', { headers: authHeaders() }),
+  getFunnelAnalytics: () => fetcher<any>('/analytics/funnel', { headers: authHeaders() }),
+  getDailySummary: () => fetcher<any>('/analytics/daily-summary', { headers: authHeaders() }),
   getRevenueTrend: () => fetcher<any>('/analytics/revenue', { headers: authHeaders() }),
   getBehaviourAnalytics: (filters?: Record<string, string>) => {
     const params = new URLSearchParams(filters || {}).toString();
