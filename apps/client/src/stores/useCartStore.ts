@@ -15,6 +15,8 @@ export interface CartItem {
   thumbnail: string;
   quantity?: number;
   pdfUrl?: string;
+  coverType?: string;
+  series?: string;
   projectSnapshot?: any;
 }
 

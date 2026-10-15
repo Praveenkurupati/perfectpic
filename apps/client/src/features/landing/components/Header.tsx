@@ -199,20 +199,12 @@ export function Header() {
               </Link>
             )}
 
-            <Link href="/cart" className="relative text-[#0A0A0A] hover:text-[#5C5A55] transition-colors p-1" aria-label="Shopping Cart">
-              <ShoppingCart size={19} />
-              {mounted && items.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#0A0A0A] text-white text-[9px] font-bold h-4 w-4 rounded-full flex items-center justify-center">
-                  {items.length}
-                </span>
-              )}
-            </Link>
-
             <Link
-              href="/configure"
-              className="hidden sm:inline-flex items-center justify-center rounded-full bg-[#0A0A0A] text-white hover:bg-[#2A2926] px-4 py-2 text-xs font-medium lowercase transition-colors shadow-xs"
+              href="/cart"
+              className="border border-[#0A0A0A] rounded-full px-4 md:px-5 py-1.5 md:py-2 text-xs md:text-sm font-medium text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white transition-all lowercase flex items-center justify-center shrink-0"
+              aria-label="Shopping Cart"
             >
-              start a book
+              cart ({mounted ? items.reduce((sum, item) => sum + (item.quantity || 1), 0) : 0})
             </Link>
           </div>
         </div>

@@ -21,6 +21,7 @@ import {
 import { generateBookProofPdf } from '@/lib/pdfGenerator';
 import { trackEvent } from '@/lib/analytics';
 import { api } from '@/lib/api';
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal';
 
 const BookCanvas = dynamic(() => import('@/features/editor/components/BookCanvas'), { ssr: false });
 const PhotoTray = dynamic(() => import('@/features/editor/components/PhotoTray'), { ssr: false });
@@ -56,6 +57,7 @@ function StudioContent() {
   } = useEditorStore();
 
   const { addItem } = useCartStore();
+  const [unsavedModalOpen, setUnsavedModalOpen] = useState(false);
 
   // Initialize and hydrate project state for this projectId
   useEffect(() => {
@@ -252,9 +254,9 @@ function StudioContent() {
         <div className="flex items-center gap-3 min-w-0">
           <button 
             type="button"
-            onClick={() => router.push(`/upload/${projectId}`)} 
+            onClick={() => setUnsavedModalOpen(true)} 
             className="p-1 -ml-1 text-black hover:bg-gray-100 rounded-full transition-colors shrink-0"
-            title="Back to Upload"
+            title="Back to Projects"
           >
             <ArrowLeft size={20} className="stroke-[2.2]" />
           </button>
@@ -283,9 +285,9 @@ function StudioContent() {
         <div className="flex items-center gap-3 min-w-0">
           <button 
             type="button"
-            onClick={() => router.push(`/upload/${projectId}`)} 
+            onClick={() => setUnsavedModalOpen(true)} 
             className="p-1 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-black transition-colors shrink-0"
-            title="Back to Upload"
+            title="Back to Projects"
           >
             <ArrowLeft size={16} />
           </button>
@@ -423,6 +425,22 @@ function StudioContent() {
           <EditorRightPanel />
         </aside>
       </div>
+
+      {/* Unsaved Changes Confirmation Modal (media_1792048593432.png Modal 2) */}
+      <ConfirmationModal
+        isOpen={unsavedModalOpen}
+        type="unsaved-changes"
+        onCancel={() => setUnsavedModalOpen(false)}
+        onDiscard={() => {
+          setUnsavedModalOpen(false);
+          router.push('/projects');
+        }}
+        onConfirm={() => {
+          saveSnapshot();
+          setUnsavedModalOpen(false);
+          router.push('/projects');
+        }}
+      />
     </div>
   );
 }
