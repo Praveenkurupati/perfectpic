@@ -87,7 +87,7 @@ export class BundleController {
   }
 
   /**
-   * Admin: Reset to default bundle tiers (3 Books: ₹300, 6 Books: ₹1800, 12 Books: ₹4500)
+   * Admin: Reset to default bundle tiers (1 Book: ₹1999, 2 Books: ₹3499, 4 Books: ₹6399, 6 Books: ₹8999)
    */
   public static async resetDefaults(req: Request, res: Response, next: NextFunction) {
     try {

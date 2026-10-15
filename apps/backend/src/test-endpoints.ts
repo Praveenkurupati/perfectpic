@@ -544,7 +544,7 @@ async function runTests() {
         size: '8.25x8.25',
         pageCount: 32,
         coverType: 'Hardcover Vegan Leather', // +500
-        quantity: 3, // 3 books trigger bundle-3 (₹300 savings)
+        quantity: 2, // 2 books trigger bundle-2 Duo tier (₹499 savings)
       },
     ],
     accessories: {
@@ -553,12 +553,12 @@ async function runTests() {
     },
     deliveryOption: 'standard', // Free shipping
   });
-  // (1999 + 500) * 3 = 7497. Accessories = 499 + 199 = 698. Subtotal = 8195. Bundle discount = 300. Final = 7895.
-  const expectedPricingTotal = (1999 + 500) * 3 + (499 + 199) - 300;
+  // (1999 + 500) * 2 = 4998. Accessories = 499 + 199 = 698. Subtotal = 5696. Bundle discount = 499. Final = 5197.
+  const expectedPricingTotal = (1999 + 500) * 2 + (499 + 199) - 499;
   const pricingPassed =
     pricingCalcRes.status === 200 &&
     pricingCalcRes.body?.pricing?.finalTotal === expectedPricingTotal &&
-    pricingCalcRes.body?.pricing?.bundleDiscount === 300;
+    pricingCalcRes.body?.pricing?.bundleDiscount === 499;
 
   results.push({
     endpoint: '/api/v1/pricing/calculate',

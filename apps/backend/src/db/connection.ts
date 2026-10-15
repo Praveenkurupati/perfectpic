@@ -139,6 +139,10 @@ async function seedDefaultData() {
     const { PromoCodeRepository } = await import('../repositories/PromoCodeRepository');
     await PromoCodeRepository.seedDefaultsIfEmpty();
 
+    // Seed/migrate authoritative 4-tier photobook bundles into MongoDB
+    const { BundleRepository } = await import('../repositories/BundleRepository');
+    await BundleRepository.seedDefaultsIfEmpty();
+
     // Seed production page options if collection empty
     const { PageOption } = await import('./models/PageOption');
     const { pageCountOptions } = await import('../data/templates');

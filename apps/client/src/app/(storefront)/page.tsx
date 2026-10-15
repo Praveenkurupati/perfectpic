@@ -180,9 +180,10 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [bundles, setBundles] = useState<any[]>([
-    { id: 'b-2', minQuantity: 2, name: '2 books', discountAmount: 300, badge: 'duo pack', price: 3699, perBook: 1849, description: 'perfect for sharing with parents or keeping a duplicate volume.' },
-    { id: 'b-6', minQuantity: 6, name: '6 books', discountAmount: 1800, badge: 'popular', price: 5199, perBook: 866, description: 'ideal for weddings, family series, and annual compilations.' },
-    { id: 'b-12', minQuantity: 12, name: '12 books', discountAmount: 4500, badge: "collector's choice", price: 7999, perBook: 666, description: 'our best value for complete travel chronicles and milestone archives.' },
+    { bundleId: 'bundle-1', minQuantity: 1, name: '1 book', discountAmount: 0, badge: 'single', price: 1999, perBookPrice: 1999, description: 'our handcrafted archival single photobook, 8.25" × 8.25", 32 pages.' },
+    { bundleId: 'bundle-2', minQuantity: 2, name: '2 books', discountAmount: 499, badge: 'duo pack', price: 3499, perBookPrice: 1750, description: 'perfect for sharing with parents or keeping a duplicate volume.' },
+    { bundleId: 'bundle-4', minQuantity: 4, name: '4 books', discountAmount: 1597, badge: 'popular', price: 6399, perBookPrice: 1600, description: 'ideal for family vacations, milestone gifts, and multi-home keepsakes.' },
+    { bundleId: 'bundle-6', minQuantity: 6, name: '6 books', discountAmount: 2995, badge: 'collector', price: 8999, perBookPrice: 1500, description: 'our finest volume collection for large family gatherings, weddings, and annual archives.' },
   ]);
 
   useEffect(() => {
@@ -204,7 +205,7 @@ export default function Home() {
       .then((res) => {
         if (res && res.bundles && res.bundles.length > 0) {
           const active = res.bundles
-            .filter((b: any) => b.active !== false)
+            .filter((b: any) => b.isActive !== false && b.active !== false)
             .sort((a: any, b: any) => a.minQuantity - b.minQuantity);
           if (active.length > 0) {
             setBundles(active);
@@ -538,117 +539,165 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Card 1: Featured Single Book (Black Card) */}
-            <div className="bg-[#0A0A0A] text-white rounded-2xl p-7 flex flex-col justify-between shadow-xl">
-              <div>
-                <span className="text-[11px] uppercase tracking-wider text-[#9E9B95] font-semibold">
-                  single photobook
-                </span>
-                <div className="text-4xl font-bold mt-2 mb-1">₹1,999</div>
-                <p className="text-xs text-[#D9D6CF] mb-6">
-                  8.25&quot; × 8.25&quot; • 32 pages
-                </p>
-                <div className="space-y-2.5 text-xs text-[#D9D6CF] border-t border-white/10 pt-4 mb-6">
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-white" />
-                    <span>archival lay-flat binding</span>
+            {/* Card 1: 1 Book (Single) */}
+            {(() => {
+              const single = bundles.find((b: any) => b.minQuantity === 1) || {
+                price: 1999,
+                discountAmount: 0,
+                perBookPrice: 1999,
+                description: 'our handcrafted archival single photobook, 8.25" × 8.25", 32 pages.',
+              };
+              return (
+                <div className="bg-[#0A0A0A] text-white rounded-2xl p-7 flex flex-col justify-between shadow-xl">
+                  <div>
+                    <span className="text-[11px] uppercase tracking-wider text-[#9E9B95] font-semibold">
+                      1 book (single)
+                    </span>
+                    <div className="text-4xl font-bold mt-2 mb-1">
+                      ₹{single.price?.toLocaleString('en-IN') || '1,999'}
+                    </div>
+                    <p className="text-xs text-[#D9D6CF] mb-6 lowercase">
+                      ₹{single.perBookPrice?.toLocaleString('en-IN') || '1,999'} / book
+                    </p>
+                    <div className="space-y-2.5 text-xs text-[#D9D6CF] border-t border-white/10 pt-4 mb-6">
+                      <div className="flex items-center gap-2">
+                        <Check size={14} className="text-white" />
+                        <span>archival lay-flat binding</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check size={14} className="text-white" />
+                        <span>100% non-tearable paper</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check size={14} className="text-white" />
+                        <span>up to 120 photos included</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Check size={14} className="text-white" />
+                        <span>free pan-india delivery</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-white" />
-                    <span>100% non-tearable paper</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-white" />
-                    <span>up to 120 photos included</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Check size={14} className="text-white" />
-                    <span>free pan-india delivery</span>
-                  </div>
+                  <Link
+                    href="/configure"
+                    className="w-full inline-flex items-center justify-center rounded-full bg-white text-[#0A0A0A] hover:bg-[#F4F2ED] py-3 text-xs font-medium lowercase transition-colors text-center"
+                  >
+                    start my design
+                  </Link>
                 </div>
-              </div>
-              <Link
-                href="/configure"
-                className="w-full inline-flex items-center justify-center rounded-full bg-white text-[#0A0A0A] hover:bg-[#F4F2ED] py-3 text-xs font-medium lowercase transition-colors text-center"
-              >
-                start my design
-              </Link>
-            </div>
+              );
+            })()}
 
-            {/* Card 2: 2 Books (Duo Pack) */}
-            <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-[#0A0A0A] lowercase">2 books</span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    save ₹300
-                  </span>
+            {/* Card 2: 2 Books (Duo) */}
+            {(() => {
+              const duo = bundles.find((b: any) => b.minQuantity === 2) || {
+                price: 3499,
+                discountAmount: 499,
+                perBookPrice: 1750,
+                description: 'perfect for sharing with parents or keeping a duplicate volume.',
+              };
+              return (
+                <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-[#0A0A0A] lowercase">2 books (duo)</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        save ₹{duo.discountAmount?.toLocaleString('en-IN') || '499'}
+                      </span>
+                    </div>
+                    <div className="text-3xl font-bold text-[#0A0A0A] mb-1">
+                      ₹{duo.price?.toLocaleString('en-IN') || '3,499'}
+                    </div>
+                    <p className="text-xs text-[#5C5A55] mb-6 lowercase">
+                      ₹{(duo.perBookPrice || Math.round(duo.price / 2)).toLocaleString('en-IN')} / book
+                    </p>
+                    <p className="text-xs text-[#5C5A55] leading-relaxed border-t border-[#D9D6CF] pt-4 mb-6 lowercase">
+                      {duo.description || 'perfect for sharing with parents or keeping a duplicate volume.'}
+                    </p>
+                  </div>
+                  <Link
+                    href="/configure"
+                    className="w-full inline-flex items-center justify-center rounded-full bg-white border border-[#D9D6CF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A] py-3 text-xs font-medium lowercase transition-colors text-center"
+                  >
+                    choose duo pack
+                  </Link>
                 </div>
-                <div className="text-3xl font-bold text-[#0A0A0A] mb-1">₹3,699</div>
-                <p className="text-xs text-[#5C5A55] mb-6 lowercase">
-                  ₹1,849 / book
-                </p>
-                <p className="text-xs text-[#5C5A55] leading-relaxed border-t border-[#D9D6CF] pt-4 mb-6 lowercase">
-                  perfect for sharing with parents or keeping a duplicate volume.
-                </p>
-              </div>
-              <Link
-                href="/configure"
-                className="w-full inline-flex items-center justify-center rounded-full bg-white border border-[#D9D6CF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A] py-3 text-xs font-medium lowercase transition-colors text-center"
-              >
-                choose duo pack
-              </Link>
-            </div>
+              );
+            })()}
 
-            {/* Card 3: 6 Books (Family Pack) */}
-            <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-[#0A0A0A] lowercase">6 books</span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    save ₹1,800
-                  </span>
+            {/* Card 3: 4 Books (Quartet) */}
+            {(() => {
+              const quartet = bundles.find((b: any) => b.minQuantity === 4) || {
+                price: 6399,
+                discountAmount: 1597,
+                perBookPrice: 1600,
+                description: 'ideal for family vacations, milestone gifts, and multi-home keepsakes.',
+              };
+              return (
+                <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-[#0A0A0A] lowercase">4 books (quartet)</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        save ₹{quartet.discountAmount?.toLocaleString('en-IN') || '1,597'}
+                      </span>
+                    </div>
+                    <div className="text-3xl font-bold text-[#0A0A0A] mb-1">
+                      ₹{quartet.price?.toLocaleString('en-IN') || '6,399'}
+                    </div>
+                    <p className="text-xs text-[#5C5A55] mb-6 lowercase">
+                      ₹{(quartet.perBookPrice || Math.round(quartet.price / 4)).toLocaleString('en-IN')} / book
+                    </p>
+                    <p className="text-xs text-[#5C5A55] leading-relaxed border-t border-[#D9D6CF] pt-4 mb-6 lowercase">
+                      {quartet.description || 'ideal for family vacations, milestone gifts, and multi-home keepsakes.'}
+                    </p>
+                  </div>
+                  <Link
+                    href="/configure"
+                    className="w-full inline-flex items-center justify-center rounded-full bg-white border border-[#D9D6CF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A] py-3 text-xs font-medium lowercase transition-colors text-center"
+                  >
+                    choose quartet
+                  </Link>
                 </div>
-                <div className="text-3xl font-bold text-[#0A0A0A] mb-1">₹5,199</div>
-                <p className="text-xs text-[#5C5A55] mb-6 lowercase">
-                  ideal for weddings & big trips
-                </p>
-                <p className="text-xs text-[#5C5A55] leading-relaxed border-t border-[#D9D6CF] pt-4 mb-6 lowercase">
-                  ideal for family series, weddings, and annual compilations.
-                </p>
-              </div>
-              <Link
-                href="/configure"
-                className="w-full inline-flex items-center justify-center rounded-full bg-white border border-[#D9D6CF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A] py-3 text-xs font-medium lowercase transition-colors text-center"
-              >
-                choose bundle
-              </Link>
-            </div>
+              );
+            })()}
 
-            {/* Card 4: 12 Books (Collector Set) */}
-            <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-bold text-[#0A0A0A] lowercase">12 books</span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                    save ₹4,500
-                  </span>
+            {/* Card 4: 6 Books (Collector) */}
+            {(() => {
+              const collector = bundles.find((b: any) => b.minQuantity === 6) || {
+                price: 8999,
+                discountAmount: 2995,
+                perBookPrice: 1500,
+                description: 'our finest volume collection for large family gatherings, weddings, and annual archives.',
+              };
+              return (
+                <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-[#0A0A0A] lowercase">6 books (collector)</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        save ₹{collector.discountAmount?.toLocaleString('en-IN') || '2,995'}
+                      </span>
+                    </div>
+                    <div className="text-3xl font-bold text-[#0A0A0A] mb-1">
+                      ₹{collector.price?.toLocaleString('en-IN') || '8,999'}
+                    </div>
+                    <p className="text-xs text-[#5C5A55] mb-6 lowercase">
+                      ₹{(collector.perBookPrice || Math.round(collector.price / 6)).toLocaleString('en-IN')} / book
+                    </p>
+                    <p className="text-xs text-[#5C5A55] leading-relaxed border-t border-[#D9D6CF] pt-4 mb-6 lowercase">
+                      {collector.description || 'our finest volume collection for large family gatherings, weddings, and annual archives.'}
+                    </p>
+                  </div>
+                  <Link
+                    href="/configure"
+                    className="w-full inline-flex items-center justify-center rounded-full bg-white border border-[#D9D6CF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A] py-3 text-xs font-medium lowercase transition-colors text-center"
+                  >
+                    choose collector
+                  </Link>
                 </div>
-                <div className="text-3xl font-bold text-[#0A0A0A] mb-1">₹7,999</div>
-                <p className="text-xs text-[#5C5A55] mb-6 lowercase">
-                  collector volume series
-                </p>
-                <p className="text-xs text-[#5C5A55] leading-relaxed border-t border-[#D9D6CF] pt-4 mb-6 lowercase">
-                  our best value for complete travel chronicles and milestone archives.
-                </p>
-              </div>
-              <Link
-                href="/configure"
-                className="w-full inline-flex items-center justify-center rounded-full bg-white border border-[#D9D6CF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-white hover:border-[#0A0A0A] py-3 text-xs font-medium lowercase transition-colors text-center"
-              >
-                choose bundle
-              </Link>
-            </div>
+              );
+            })()}
           </div>
         </div>
       </section>

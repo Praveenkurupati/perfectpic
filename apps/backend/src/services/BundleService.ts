@@ -26,8 +26,8 @@ export class BundleService {
    * Create new bundle tier
    */
   public static async createBundle(data: Partial<BundleTierItem>): Promise<any> {
-    if (!data.minQuantity || data.minQuantity < 2) {
-      throw ApiError.badRequest('Minimum book quantity must be at least 2');
+    if (!data.minQuantity || data.minQuantity < 1) {
+      throw ApiError.badRequest('Minimum book quantity must be at least 1');
     }
     if (data.discountAmount === undefined || data.discountAmount < 0) {
       throw ApiError.badRequest('Discount amount cannot be negative');
@@ -45,8 +45,8 @@ export class BundleService {
    * Update bundle tier
    */
   public static async updateBundle(id: string, updates: Partial<BundleTierItem>): Promise<any> {
-    if (updates.minQuantity !== undefined && updates.minQuantity < 2) {
-      throw ApiError.badRequest('Minimum book quantity must be at least 2');
+    if (updates.minQuantity !== undefined && updates.minQuantity < 1) {
+      throw ApiError.badRequest('Minimum book quantity must be at least 1');
     }
     if (updates.discountAmount !== undefined && updates.discountAmount < 0) {
       throw ApiError.badRequest('Discount amount cannot be negative');
@@ -71,7 +71,7 @@ export class BundleService {
   }
 
   /**
-   * Reset to default tiers (3 Books: ₹300, 6 Books: ₹1800, 12 Books: ₹4500)
+   * Reset to default tiers (1 Book: ₹1999, 2 Books: ₹3499, 4 Books: ₹6399, 6 Books: ₹8999)
    */
   public static async resetDefaults(): Promise<any[]> {
     return BundleRepository.resetDefaults();
@@ -85,7 +85,7 @@ export class BundleService {
     discountAmount: number;
     freeShipping: boolean;
   }> {
-    if (!totalBooks || totalBooks < 3) {
+    if (!totalBooks || totalBooks < 1) {
       return { qualifyingTier: null, discountAmount: 0, freeShipping: false };
     }
 
@@ -97,7 +97,7 @@ export class BundleService {
     if (matched) {
       return {
         qualifyingTier: matched,
-        discountAmount: matched.discountAmount,
+        discountAmount: matched.discountAmount || 0,
         freeShipping: matched.freeShipping !== false,
       };
     }

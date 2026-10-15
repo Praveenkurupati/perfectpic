@@ -15,9 +15,11 @@ import {
   EyeOff,
   CheckCircle2,
   Truck,
-  Gift,
-  TrendingDown,
-  Layers
+  TrendingUp,
+  Percent,
+  Layers,
+  IndianRupee,
+  Calculator
 } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -27,7 +29,15 @@ interface BundleTierItem {
   bundleId: string;
   minQuantity: number;
   name: string;
+  price: number;
+  perBookPrice?: number;
   discountAmount: number;
+  netPrice?: number;
+  printCost?: number;
+  shippingCost?: number;
+  grossProfit?: number;
+  marginPerBook?: number;
+  marginPercentage?: number;
   freeShipping: boolean;
   badge?: string;
   description: string;
@@ -35,8 +45,87 @@ interface BundleTierItem {
   displayOrder: number;
 }
 
+const AUTHORITATIVE_FALLBACK_TIERS: BundleTierItem[] = [
+  {
+    bundleId: 'bundle-1',
+    minQuantity: 1,
+    name: '1 Book (Single)',
+    price: 1999,
+    perBookPrice: 1999,
+    discountAmount: 0,
+    netPrice: 1738,
+    printCost: 515,
+    shippingCost: 110,
+    grossProfit: 1113,
+    marginPerBook: 1113,
+    marginPercentage: 55.7,
+    freeShipping: true,
+    badge: 'Single',
+    description: 'Our handcrafted archival single photobook, 8.25" × 8.25", 32 pages with archival lay-flat binding.',
+    isActive: true,
+    displayOrder: 1,
+  },
+  {
+    bundleId: 'bundle-2',
+    minQuantity: 2,
+    name: '2 Books (Duo)',
+    price: 3499,
+    perBookPrice: 1750,
+    discountAmount: 499,
+    netPrice: 3042,
+    printCost: 1030,
+    shippingCost: 150,
+    grossProfit: 1862,
+    marginPerBook: 931,
+    marginPercentage: 53.2,
+    freeShipping: true,
+    badge: 'Duo',
+    description: 'Save ₹499 off + Free All-India Shipping. Perfect for gifting parents and in-laws or keeping a duplicate volume.',
+    isActive: true,
+    displayOrder: 2,
+  },
+  {
+    bundleId: 'bundle-4',
+    minQuantity: 4,
+    name: '4 Books (Quartet)',
+    price: 6399,
+    perBookPrice: 1600,
+    discountAmount: 1597,
+    netPrice: 5563,
+    printCost: 2060,
+    shippingCost: 240,
+    grossProfit: 3263,
+    marginPerBook: 816,
+    marginPercentage: 51.0,
+    freeShipping: true,
+    badge: 'Popular',
+    description: 'Save ₹1,597 off + Free All-India Shipping. Ideal for family vacations, milestone gifts, and multi-home keepsakes.',
+    isActive: true,
+    displayOrder: 3,
+  },
+  {
+    bundleId: 'bundle-6',
+    minQuantity: 6,
+    name: '6 Books (Collector)',
+    price: 8999,
+    perBookPrice: 1500,
+    discountAmount: 2995,
+    netPrice: 7823,
+    printCost: 3090,
+    shippingCost: 330,
+    grossProfit: 4403,
+    marginPerBook: 734,
+    marginPercentage: 48.9,
+    freeShipping: true,
+    badge: 'Collector',
+    description: 'Save ₹2,995 off + Free All-India Shipping. Our finest volume collection for large family gatherings, weddings, and annual archives.',
+    isActive: true,
+    displayOrder: 4,
+  },
+];
+
 export default function BundlesManagementPage() {
-  const [bundles, setBundles] = useState<BundleTierItem[]>([]);
+  const [bundles, setBundles] = useState<BundleTierItem[]>(AUTHORITATIVE_FALLBACK_TIERS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -49,61 +138,32 @@ export default function BundlesManagementPage() {
 
   // Form State
   const [formData, setFormData] = useState({
-    minQuantity: 3,
-    name: "3 Books Pack",
-    discountAmount: 300,
+    minQuantity: 2,
+    name: "2 Books (Duo)",
+    price: 3499,
+    discountAmount: 499,
+    netPrice: 3042,
+    printCost: 1030,
+    shippingCost: 150,
     freeShipping: true,
-    badge: "Popular",
-    description: "Save ₹300 off + Free All-India Shipping. Perfect for gifting parents and in-laws.",
+    badge: "Duo",
+    description: "Save ₹499 off + Free All-India Shipping. Perfect for gifting parents and in-laws.",
     isActive: true,
-    displayOrder: 1,
+    displayOrder: 2,
   });
 
   const loadData = async () => {
     setLoading(true);
     try {
       const res = await adminApi.getAllBundles();
-      if (res && res.bundles) {
+      if (res && res.bundles && res.bundles.length > 0) {
         setBundles(res.bundles);
+      } else {
+        setBundles(AUTHORITATIVE_FALLBACK_TIERS);
       }
     } catch (err: any) {
       console.error("Failed to load bundle tiers:", err);
-      // Fallback
-      setBundles([
-        {
-          bundleId: 'bundle-3',
-          minQuantity: 3,
-          name: '3 Books Pack',
-          discountAmount: 300,
-          freeShipping: true,
-          badge: 'Popular',
-          description: 'Save ₹300 off + Free All-India Shipping. Perfect for gifting parents and in-laws.',
-          isActive: true,
-          displayOrder: 1,
-        },
-        {
-          bundleId: 'bundle-6',
-          minQuantity: 6,
-          name: '6 Books Pack',
-          discountAmount: 1800,
-          freeShipping: true,
-          badge: 'Extended Family',
-          description: 'Save ₹1,800 off + Free All-India Shipping. Ideal for vacations, trips, and family reunions.',
-          isActive: true,
-          displayOrder: 2,
-        },
-        {
-          bundleId: 'bundle-12',
-          minQuantity: 12,
-          name: '12 Books Master Pack',
-          discountAmount: 4500,
-          freeShipping: true,
-          badge: "Collector's Master",
-          description: 'Save ₹4,500 off + Free All-India Shipping. Comprehensive heirloom edition for milestone weddings and annual chronicles.',
-          isActive: true,
-          displayOrder: 3,
-        },
-      ]);
+      setBundles(AUTHORITATIVE_FALLBACK_TIERS);
     } finally {
       setLoading(false);
     }
@@ -122,12 +182,16 @@ export default function BundlesManagementPage() {
     setEditingItem(null);
     const nextOrder = bundles.length + 1;
     setFormData({
-      minQuantity: 3,
-      name: "3 Books Pack",
-      discountAmount: 300,
+      minQuantity: 4,
+      name: "4 Books (Quartet)",
+      price: 6399,
+      discountAmount: 1597,
+      netPrice: 5563,
+      printCost: 2060,
+      shippingCost: 240,
       freeShipping: true,
       badge: "Popular",
-      description: "Save ₹300 off + Free All-India Shipping.",
+      description: "Save ₹1,597 off + Free All-India Shipping. Ideal for family vacations, milestone gifts, and multi-home keepsakes.",
       isActive: true,
       displayOrder: nextOrder,
     });
@@ -139,7 +203,11 @@ export default function BundlesManagementPage() {
     setFormData({
       minQuantity: item.minQuantity,
       name: item.name,
-      discountAmount: item.discountAmount,
+      price: item.price ?? 1999,
+      discountAmount: item.discountAmount ?? 0,
+      netPrice: item.netPrice ?? Math.round((item.price ?? 1999) * 0.8694),
+      printCost: item.printCost ?? (item.minQuantity * 515),
+      shippingCost: item.shippingCost ?? (item.minQuantity === 1 ? 110 : item.minQuantity === 2 ? 150 : item.minQuantity === 4 ? 240 : 330),
       freeShipping: item.freeShipping !== false,
       badge: item.badge || "",
       description: item.description || "",
@@ -151,8 +219,12 @@ export default function BundlesManagementPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.minQuantity < 2) {
-      showNotification('error', 'Minimum book quantity must be at least 2');
+    if (formData.minQuantity < 1) {
+      showNotification('error', 'Minimum book quantity must be at least 1');
+      return;
+    }
+    if (formData.price < 0) {
+      showNotification('error', 'Selling price cannot be negative');
       return;
     }
     if (formData.discountAmount < 0) {
@@ -162,13 +234,27 @@ export default function BundlesManagementPage() {
 
     setSaving(true);
     try {
+      // Auto-compute financial unit economics
+      const grossProfit = (formData.netPrice || 0) - (formData.printCost || 0) - (formData.shippingCost || 0);
+      const marginPerBook = Math.round(grossProfit / formData.minQuantity);
+      const marginPercentage = formData.price > 0 ? Math.round((grossProfit / formData.price) * 1000) / 10 : 0;
+      const perBookPrice = Math.round(formData.price / formData.minQuantity);
+
+      const payload = {
+        ...formData,
+        perBookPrice,
+        grossProfit,
+        marginPerBook,
+        marginPercentage,
+      };
+
       if (editingItem) {
         const idToUpdate = editingItem.id || editingItem.bundleId;
-        await adminApi.updateBundle(idToUpdate, formData);
+        await adminApi.updateBundle(idToUpdate, payload);
         showNotification('success', `Updated ${formData.name} successfully.`);
       } else {
         await adminApi.createBundle({
-          ...formData,
+          ...payload,
           bundleId: `bundle-${formData.minQuantity}`,
         });
         showNotification('success', `Created ${formData.name} successfully.`);
@@ -209,7 +295,7 @@ export default function BundlesManagementPage() {
     setSaving(true);
     try {
       await adminApi.resetBundles();
-      showNotification('success', 'Reset all bundle tiers to factory defaults (3, 6, 12 books).');
+      showNotification('success', 'Reset all bundle tiers to authoritative 4 options (1, 2, 4, 6 books).');
       setResetConfirmOpen(false);
       loadData();
     } catch (err: any) {
@@ -221,7 +307,18 @@ export default function BundlesManagementPage() {
 
   const activeCount = bundles.filter(b => b.isActive !== false).length;
   const maxSavings = bundles.reduce((max, b) => (b.discountAmount > max ? b.discountAmount : max), 0);
-  const minThreshold = bundles.reduce((min, b) => (b.minQuantity < min ? b.minQuantity : min), 999);
+  const maxProfitTier = bundles.reduce((max, b) => ((b.grossProfit || 0) > (max.grossProfit || 0) ? b : max), bundles[0] || {} as BundleTierItem);
+  const avgMargin = bundles.length > 0 
+    ? (bundles.reduce((sum, b) => sum + (b.marginPercentage || 0), 0) / bundles.length).toFixed(1)
+    : '52.2';
+
+  // Modal computed live preview
+  const modalGrossProfit = (formData.netPrice || 0) - (formData.printCost || 0) - (formData.shippingCost || 0);
+  const modalMarginPerBook = formData.minQuantity > 0 ? Math.round(modalGrossProfit / formData.minQuantity) : 0;
+  const modalMarginPercent = formData.price > 0 ? ((modalGrossProfit / formData.price) * 100).toFixed(1) : '0';
+  const modalPerBookPrice = formData.minQuantity > 0 ? Math.round(formData.price / formData.minQuantity) : 0;
+  const modalStandardTotal = formData.minQuantity * 1999;
+  const modalSavings = Math.max(0, modalStandardTotal - formData.price);
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8">
@@ -249,13 +346,13 @@ export default function BundlesManagementPage() {
         <div>
           <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-cream-200 text-noir-800 rounded text-xs font-mono font-medium uppercase tracking-wider mb-2">
             <Boxes size={14} className="text-foil-gold" />
-            <span>Multi-Book Pricing & Promotions</span>
+            <span>Authoritative Photobook Bundle Pricing</span>
           </div>
           <h1 className="font-serif text-3xl md:text-4xl text-noir-950 font-bold">
-            Bundles & Volume Discounts
+            Bundle Pricing & Unit Economics
           </h1>
-          <p className="text-sm text-noir-600 mt-1 max-w-2xl">
-            Configure automated multi-copy photobook bundles (e.g. <strong>3 Books Save ₹300</strong>, <strong>6 Books Save ₹1,800</strong>, <strong>12 Books Save ₹4,500</strong>). These discounts automatically trigger in customer carts and checkout.
+          <p className="text-sm text-noir-600 mt-1 max-w-3xl">
+            Manage the 4 dynamic multi-copy photobook bundles (<strong>1 Book Single</strong>, <strong>2 Books Duo</strong>, <strong>4 Books Quartet</strong>, <strong>6 Books Collector</strong>). Selling prices, print costs, shipping fees, and gross margins are stored in MongoDB Atlas and updated dynamically across Storefront, Cart, and Checkout.
           </p>
         </div>
 
@@ -264,10 +361,10 @@ export default function BundlesManagementPage() {
             type="button"
             onClick={() => setResetConfirmOpen(true)}
             className="px-4 py-2.5 border border-cream-300 hover:border-noir-900 bg-white hover:bg-cream-50 text-noir-700 text-xs font-mono uppercase tracking-wider rounded-sm transition-all flex items-center gap-2"
-            title="Reset to 3, 6, and 12 books default discounts"
+            title="Reset to authoritative 4 tiers"
           >
             <RotateCcw size={14} />
-            <span>Reset Defaults</span>
+            <span>Reset 4 Tiers</span>
           </button>
 
           <button
@@ -292,46 +389,46 @@ export default function BundlesManagementPage() {
             {activeCount} <span className="text-xs font-mono text-noir-400 font-normal">/ {bundles.length} Total</span>
           </div>
           <span className="text-[11px] text-emerald-700 font-medium mt-1 block">
-            Live on Storefront & Cart
+            Stored in MongoDB & Cached in Redis
           </span>
         </div>
 
         <div className="bg-white border border-cream-300 p-5 rounded-sm shadow-xs">
           <div className="flex justify-between items-center text-noir-500 mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider">Max Savings Tier</span>
-            <TrendingDown size={16} className="text-emerald-600" />
+            <span className="text-xs font-mono uppercase tracking-wider">Top Profit Tier</span>
+            <TrendingUp size={16} className="text-emerald-600" />
+          </div>
+          <div className="font-serif text-3xl font-bold text-emerald-700">
+            ₹{(maxProfitTier.grossProfit || 4403).toLocaleString('en-IN')} <span className="text-xs font-mono text-noir-500 font-normal">Profit</span>
+          </div>
+          <span className="text-[11px] text-noir-500 font-medium mt-1 block">
+            {maxProfitTier.name || '6 Books (Collector)'}
+          </span>
+        </div>
+
+        <div className="bg-white border border-cream-300 p-5 rounded-sm shadow-xs">
+          <div className="flex justify-between items-center text-noir-500 mb-2">
+            <span className="text-xs font-mono uppercase tracking-wider">Average Margin</span>
+            <Percent size={16} className="text-blue-600" />
+          </div>
+          <div className="font-serif text-3xl font-bold text-noir-950">
+            {avgMargin}% <span className="text-xs font-mono text-noir-500 font-normal">Gross</span>
+          </div>
+          <span className="text-[11px] text-noir-500 font-medium mt-1 block">
+            Across 4 Authoritative Tiers
+          </span>
+        </div>
+
+        <div className="bg-white border border-cream-300 p-5 rounded-sm shadow-xs">
+          <div className="flex justify-between items-center text-noir-500 mb-2">
+            <span className="text-xs font-mono uppercase tracking-wider">Max Customer Savings</span>
+            <IndianRupee size={16} className="text-emerald-600" />
           </div>
           <div className="font-serif text-3xl font-bold text-emerald-700">
             ₹{maxSavings.toLocaleString('en-IN')} <span className="text-xs font-mono text-noir-500 font-normal">OFF</span>
           </div>
           <span className="text-[11px] text-noir-500 font-medium mt-1 block">
-            For 12 Books Master Pack
-          </span>
-        </div>
-
-        <div className="bg-white border border-cream-300 p-5 rounded-sm shadow-xs">
-          <div className="flex justify-between items-center text-noir-500 mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider">Entry Threshold</span>
-            <Layers size={16} className="text-blue-600" />
-          </div>
-          <div className="font-serif text-3xl font-bold text-noir-950">
-            {minThreshold === 999 ? 3 : minThreshold} <span className="text-xs font-mono text-noir-500 font-normal">Books</span>
-          </div>
-          <span className="text-[11px] text-noir-500 font-medium mt-1 block">
-            First volume savings barrier
-          </span>
-        </div>
-
-        <div className="bg-white border border-cream-300 p-5 rounded-sm shadow-xs">
-          <div className="flex justify-between items-center text-noir-500 mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider">Shipping Benefit</span>
-            <Truck size={16} className="text-emerald-600" />
-          </div>
-          <div className="font-serif text-3xl font-bold text-emerald-700">
-            FREE
-          </div>
-          <span className="text-[11px] text-noir-500 font-medium mt-1 block">
-            All-India Express Delivery
+            Collector Pack Bundle Discount
           </span>
         </div>
       </div>
@@ -346,66 +443,97 @@ export default function BundlesManagementPage() {
             </span>
           </div>
           <span className="text-[11px] text-noir-500 font-mono">
-            Directly reflected on Homepage, Cart & Checkout
+            Automatically reflects updates in MongoDB to Homepage & Cart
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {bundles.filter(b => b.isActive !== false).map((bundle) => (
-            <div
-              key={bundle.bundleId}
-              className="bg-white border border-cream-300 p-6 rounded-sm relative shadow-xs flex flex-col justify-between"
-            >
-              <div>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="font-serif text-2xl font-bold text-noir-950">
-                    {bundle.minQuantity} Books
-                  </span>
-                  {bundle.badge && (
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full font-mono bg-amber-100 text-amber-950 border border-amber-300">
-                      {bundle.badge}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {bundles.filter(b => b.isActive !== false).map((bundle) => {
+            const perBook = bundle.perBookPrice || Math.round(bundle.price / bundle.minQuantity);
+            return (
+              <div
+                key={bundle.bundleId}
+                className={cn(
+                  "border p-6 rounded-sm relative shadow-xs flex flex-col justify-between transition-all",
+                  bundle.minQuantity === 1 ? "bg-noir-950 text-white border-noir-800" : "bg-white border-cream-300 text-noir-950"
+                )}
+              >
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className={cn("font-serif text-xl font-bold", bundle.minQuantity === 1 ? "text-white" : "text-noir-950")}>
+                      {bundle.name}
                     </span>
-                  )}
+                    {bundle.badge && (
+                      <span className={cn(
+                        "text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full font-mono",
+                        bundle.minQuantity === 1 
+                          ? "bg-noir-800 text-cream-200 border border-noir-700"
+                          : "bg-amber-100 text-amber-950 border border-amber-300"
+                      )}>
+                        {bundle.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="font-serif text-3xl font-bold">
+                      ₹{bundle.price?.toLocaleString('en-IN')}
+                    </span>
+                    {bundle.discountAmount > 0 && (
+                      <span className="text-xs font-mono text-emerald-500 font-semibold">
+                        Save ₹{bundle.discountAmount.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className={cn("text-xs font-mono mb-3", bundle.minQuantity === 1 ? "text-cream-300" : "text-noir-600")}>
+                    ₹{perBook.toLocaleString('en-IN')} / book
+                  </div>
+
+                  <p className={cn("text-xs leading-relaxed line-clamp-2 mb-4", bundle.minQuantity === 1 ? "text-cream-200/80" : "text-noir-600")}>
+                    {bundle.description}
+                  </p>
                 </div>
 
-                <div className="text-foil-gold font-semibold text-base mb-2">
-                  Save ₹{bundle.discountAmount.toLocaleString('en-IN')} off
+                <div className={cn(
+                  "pt-3 border-t text-xs font-medium space-y-1.5",
+                  bundle.minQuantity === 1 ? "border-noir-800" : "border-cream-200"
+                )}>
+                  <div className="flex justify-between items-center text-[11px] font-mono">
+                    <span className={bundle.minQuantity === 1 ? "text-cream-400" : "text-noir-500"}>Gross Margin:</span>
+                    <span className="font-bold text-emerald-500">{bundle.marginPercentage}% (₹{(bundle.grossProfit || 0).toLocaleString('en-IN')})</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-emerald-600 text-[11px]">
+                    <Check size={12} className="stroke-[3]" />
+                    <span>Free All-India Express Shipping</span>
+                  </div>
                 </div>
-
-                <p className="text-xs text-noir-600 mb-4 leading-relaxed line-clamp-2">
-                  {bundle.description}
-                </p>
               </div>
-
-              <div className="pt-3 border-t border-cream-200 flex items-center justify-between text-xs text-emerald-700 font-medium">
-                <span className="flex items-center gap-1">
-                  <Check size={14} className="text-emerald-600 stroke-[3]" />
-                  <span>Free Shipping Included</span>
-                </span>
-                <span className="font-mono text-noir-400 text-[11px]">
-                  ~₹{Math.round(bundle.discountAmount / bundle.minQuantity)}/book
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* Management Table */}
+      {/* Unit Economics Master Table */}
       <div className="bg-white border border-cream-300 rounded-sm shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-cream-200 flex justify-between items-center">
-          <h2 className="font-serif text-xl font-bold text-noir-950">
-            Active Bundle Configurations
-          </h2>
-          <span className="text-xs font-mono text-noir-500">
-            Sorted by minimum book volume
+        <div className="p-5 border-b border-cream-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-xl font-bold text-noir-950">
+              Bundle Pricing & Unit Economics Master Table
+            </h2>
+            <p className="text-xs text-noir-500 mt-0.5">
+              Strictly 4 Authoritative Tiers: 1 Book (Single), 2 Books (Duo), 4 Books (Quartet), 6 Books (Collector).
+            </p>
+          </div>
+          <span className="text-xs font-mono px-3 py-1 bg-cream-100 rounded text-noir-600">
+            Click edit (✎) to update pricing or costs
           </span>
         </div>
 
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center">
             <div className="w-8 h-8 border-2 border-noir-950 border-t-transparent rounded-full animate-spin mb-3"></div>
-            <p className="text-xs font-mono uppercase tracking-wider text-noir-600">Loading bundle tiers...</p>
+            <p className="text-xs font-mono uppercase tracking-wider text-noir-600">Loading bundle unit economics...</p>
           </div>
         ) : bundles.length === 0 ? (
           <div className="py-16 text-center">
@@ -415,7 +543,7 @@ export default function BundlesManagementPage() {
               onClick={handleResetDefaults}
               className="mt-3 px-4 py-2 bg-noir-950 text-cream-50 text-xs font-mono uppercase rounded-sm"
             >
-              Restore Standard Tiers
+              Restore 4 Authoritative Tiers
             </button>
           </div>
         ) : (
@@ -423,46 +551,76 @@ export default function BundlesManagementPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-cream-100/70 border-b border-cream-200 text-[11px] font-mono uppercase tracking-wider text-noir-600">
-                  <th className="py-3 px-5">Books Required</th>
-                  <th className="py-3 px-5">Tier Title</th>
-                  <th className="py-3 px-5">Discount Savings</th>
-                  <th className="py-3 px-5">Per-Book Benefit</th>
-                  <th className="py-3 px-5">Badge Label</th>
-                  <th className="py-3 px-5">Free Shipping</th>
-                  <th className="py-3 px-5">Status</th>
-                  <th className="py-3 px-5 text-right">Actions</th>
+                  <th className="py-3 px-4">Tier / Books</th>
+                  <th className="py-3 px-4">Customer Price</th>
+                  <th className="py-3 px-4">Per Book</th>
+                  <th className="py-3 px-4">Discount</th>
+                  <th className="py-3 px-4">Net Price</th>
+                  <th className="py-3 px-4">Print Cost</th>
+                  <th className="py-3 px-4">Shipping</th>
+                  <th className="py-3 px-4">Profit</th>
+                  <th className="py-3 px-4">Margin/Book</th>
+                  <th className="py-3 px-4">Margin %</th>
+                  <th className="py-3 px-4">Badge</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-cream-200 text-sm">
                 {bundles.map((bundle) => {
-                  const perBook = Math.round(bundle.discountAmount / bundle.minQuantity);
+                  const perBook = bundle.perBookPrice || Math.round(bundle.price / bundle.minQuantity);
                   return (
                     <tr key={bundle.bundleId} className="hover:bg-cream-50/50 transition-colors">
-                      <td className="py-4 px-5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-serif text-2xl font-bold text-noir-950">
-                            {bundle.minQuantity}
+                      <td className="py-4 px-4">
+                        <div className="font-semibold text-noir-900">{bundle.name}</div>
+                        <div className="text-xs text-noir-400 font-mono">{bundle.bundleId} • {bundle.minQuantity} {bundle.minQuantity === 1 ? 'copy' : 'copies'}</div>
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-bold text-noir-950 text-base">
+                        ₹{bundle.price?.toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono text-xs text-noir-700">
+                        ₹{perBook.toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="py-4 px-4">
+                        {bundle.discountAmount > 0 ? (
+                          <span className="font-mono font-semibold text-emerald-700 text-xs">
+                            -₹{bundle.discountAmount.toLocaleString('en-IN')}
                           </span>
-                          <span className="text-xs uppercase text-noir-500 font-mono">books</span>
-                        </div>
+                        ) : (
+                          <span className="text-xs text-noir-400 font-mono">₹0 (Base)</span>
+                        )}
                       </td>
 
-                      <td className="py-4 px-5">
-                        <span className="font-semibold text-noir-900 block">{bundle.name}</span>
-                        <span className="text-xs text-noir-500 font-mono">{bundle.bundleId}</span>
+                      <td className="py-4 px-4 font-mono text-xs text-noir-700">
+                        ₹{(bundle.netPrice || 0).toLocaleString('en-IN')}
                       </td>
 
-                      <td className="py-4 px-5">
-                        <span className="font-mono font-bold text-emerald-700 text-base">
-                          Save ₹{bundle.discountAmount.toLocaleString('en-IN')}
+                      <td className="py-4 px-4 font-mono text-xs text-red-700">
+                        ₹{(bundle.printCost || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono text-xs text-amber-700">
+                        ₹{(bundle.shippingCost || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-bold text-emerald-800 text-sm">
+                        ₹{(bundle.grossProfit || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono text-xs text-emerald-700 font-semibold">
+                        ₹{(bundle.marginPerBook || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      <td className="py-4 px-4 font-mono font-bold text-noir-900 text-sm">
+                        <span className="inline-block px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 text-xs font-semibold">
+                          {bundle.marginPercentage}%
                         </span>
                       </td>
 
-                      <td className="py-4 px-5 font-mono text-xs text-noir-600">
-                        ₹{perBook.toLocaleString('en-IN')} off / copy
-                      </td>
-
-                      <td className="py-4 px-5">
+                      <td className="py-4 px-4">
                         {bundle.badge ? (
                           <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full font-mono bg-amber-100 text-amber-950 border border-amber-300">
                             {bundle.badge}
@@ -472,18 +630,7 @@ export default function BundlesManagementPage() {
                         )}
                       </td>
 
-                      <td className="py-4 px-5">
-                        {bundle.freeShipping !== false ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-700 font-semibold font-mono">
-                            <Check size={14} className="stroke-[3]" />
-                            <span>FREE</span>
-                          </span>
-                        ) : (
-                          <span className="text-xs text-noir-400 font-mono">Standard</span>
-                        )}
-                      </td>
-
-                      <td className="py-4 px-5">
+                      <td className="py-4 px-4">
                         <button
                           type="button"
                           onClick={() => handleToggleActive(bundle)}
@@ -509,7 +656,7 @@ export default function BundlesManagementPage() {
                         </button>
                       </td>
 
-                      <td className="py-4 px-5 text-right">
+                      <td className="py-4 px-4 text-right">
                         <div className="inline-flex items-center gap-1">
                           <button
                             type="button"
@@ -538,15 +685,15 @@ export default function BundlesManagementPage() {
         )}
       </div>
 
-      {/* Add / Edit Modal */}
+      {/* Add / Edit Modal with Real-Time Unit Economics Calculation */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-sm border border-cream-300 w-full max-w-lg shadow-2xl overflow-hidden animate-scale-up">
+          <div className="bg-white rounded-sm border border-cream-300 w-full max-w-2xl shadow-2xl overflow-hidden animate-scale-up max-h-[90vh] flex flex-col">
             <div className="p-6 border-b border-cream-200 flex justify-between items-center bg-cream-50">
               <div className="flex items-center gap-2">
                 <Boxes size={18} className="text-foil-gold" />
                 <h3 className="font-serif text-xl font-bold text-noir-950">
-                  {editingItem ? "Edit Bundle Tier" : "Create New Bundle Tier"}
+                  {editingItem ? `Edit ${editingItem.name}` : "Create New Bundle Tier"}
                 </h3>
               </div>
               <button
@@ -558,66 +705,179 @@ export default function BundlesManagementPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form onSubmit={handleSave} className="p-6 space-y-5 overflow-y-auto">
+              {/* Unit Economics Live Calculator Strip */}
+              <div className="bg-cream-100 border border-cream-300 rounded p-4">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-noir-800 uppercase tracking-wider mb-2">
+                  <Calculator size={14} className="text-foil-gold" />
+                  <span>Real-Time Unit Economics Preview</span>
+                </div>
+                <div className="grid grid-cols-4 gap-3 text-center">
+                  <div className="bg-white p-2.5 rounded border border-cream-200">
+                    <span className="text-[10px] uppercase font-mono text-noir-500 block">Per Book Price</span>
+                    <span className="font-serif text-base font-bold text-noir-950">₹{modalPerBookPrice.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border border-cream-200">
+                    <span className="text-[10px] uppercase font-mono text-noir-500 block">Gross Profit</span>
+                    <span className="font-serif text-base font-bold text-emerald-700">₹{modalGrossProfit.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border border-cream-200">
+                    <span className="text-[10px] uppercase font-mono text-noir-500 block">Margin / Book</span>
+                    <span className="font-serif text-base font-bold text-emerald-700">₹{modalMarginPerBook.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="bg-white p-2.5 rounded border border-cream-200">
+                    <span className="text-[10px] uppercase font-mono text-noir-500 block">Margin %</span>
+                    <span className="font-serif text-base font-bold text-noir-950">{modalMarginPercent}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Basic Fields */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
-                    Minimum Quantity (Books)*
+                    Book Quantity (Copies)*
                   </label>
                   <input
                     type="number"
-                    min="2"
+                    min="1"
                     max="100"
                     required
                     value={formData.minQuantity}
                     onChange={(e) => {
-                      const val = parseInt(e.target.value, 10) || 2;
+                      const val = parseInt(e.target.value, 10) || 1;
                       setFormData(prev => ({
                         ...prev,
                         minQuantity: val,
-                        name: prev.name.includes("Books") ? `${val} Books Pack` : prev.name,
+                        printCost: val * 515,
+                        shippingCost: val === 1 ? 110 : val === 2 ? 150 : val === 4 ? 240 : 330,
                       }));
                     }}
                     className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900"
                   />
                   <span className="text-[10px] text-noir-400 font-mono mt-1 block">
-                    e.g. 3, 6, 12 copies
+                    e.g. 1, 2, 4, 6 copies
                   </span>
                 </div>
 
                 <div>
                   <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
-                    Discount Amount (₹)*
+                    Selling Price (₹)*
                   </label>
                   <input
                     type="number"
                     min="0"
-                    step="50"
+                    step="1"
                     required
-                    value={formData.discountAmount}
-                    onChange={(e) => setFormData({ ...formData, discountAmount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900 font-bold text-emerald-700"
+                    value={formData.price}
+                    onChange={(e) => {
+                      const p = parseFloat(e.target.value) || 0;
+                      const standard = formData.minQuantity * 1999;
+                      const autoDiscount = Math.max(0, standard - p);
+                      setFormData(prev => ({
+                        ...prev,
+                        price: p,
+                        discountAmount: autoDiscount,
+                        netPrice: Math.round(p * 0.8694),
+                      }));
+                    }}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900 font-bold text-noir-950"
                   />
                   <span className="text-[10px] text-noir-400 font-mono mt-1 block">
-                    e.g. ₹300, ₹1,800, ₹4,500
+                    Customer total: ₹{formData.price?.toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
-                  Tier Title / Pack Name*
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-cream-300 rounded-sm text-sm focus:outline-none focus:border-noir-900"
-                  placeholder="e.g. 3 Books Pack"
-                />
+              {/* Financial Cost Fields */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
+                    Net Revenue (₹)*
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formData.netPrice}
+                    onChange={(e) => setFormData({ ...formData, netPrice: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900"
+                  />
+                  <span className="text-[10px] text-noir-400 font-mono mt-1 block">
+                    After GST & gateway fees
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
+                    Print Cost (₹)*
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formData.printCost}
+                    onChange={(e) => setFormData({ ...formData, printCost: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900 text-red-700"
+                  />
+                  <span className="text-[10px] text-noir-400 font-mono mt-1 block">
+                    Production print expense
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
+                    Shipping Cost (₹)*
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formData.shippingCost}
+                    onChange={(e) => setFormData({ ...formData, shippingCost: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900 text-amber-700"
+                  />
+                  <span className="text-[10px] text-noir-400 font-mono mt-1 block">
+                    Logistics freight cost
+                  </span>
+                </div>
               </div>
 
+              {/* Discount Amount & Name */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
+                    Discount Savings (₹)*
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={formData.discountAmount}
+                    onChange={(e) => setFormData({ ...formData, discountAmount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm font-mono text-sm focus:outline-none focus:border-noir-900 text-emerald-700 font-bold"
+                  />
+                  <span className="text-[10px] text-noir-400 font-mono mt-1 block">
+                    Standard is {formData.minQuantity} × ₹1,999 = ₹{modalStandardTotal.toLocaleString('en-IN')} (Saved: ₹{modalSavings.toLocaleString('en-IN')})
+                  </span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
+                    Tier Name*
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-cream-300 rounded-sm text-sm focus:outline-none focus:border-noir-900"
+                    placeholder="e.g. 2 Books (Duo)"
+                  />
+                </div>
+              </div>
+
+              {/* Badge & Display Order */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-mono font-semibold text-noir-700 uppercase tracking-wider block mb-1.5">
@@ -628,7 +888,7 @@ export default function BundlesManagementPage() {
                     value={formData.badge}
                     onChange={(e) => setFormData({ ...formData, badge: e.target.value })}
                     className="w-full px-3 py-2 border border-cream-300 rounded-sm text-sm focus:outline-none focus:border-noir-900"
-                    placeholder="e.g. Popular, Best Value"
+                    placeholder="e.g. Duo, Popular, Collector"
                   />
                 </div>
 
@@ -668,7 +928,7 @@ export default function BundlesManagementPage() {
                     className="w-4 h-4 rounded text-noir-950 focus:ring-0"
                   />
                   <span className="text-xs font-medium text-noir-900">
-                    Include 100% Free Shipping for this bundle
+                    Include 100% Free All-India Express Shipping for this bundle
                   </span>
                 </label>
 
@@ -680,7 +940,7 @@ export default function BundlesManagementPage() {
                     className="w-4 h-4 rounded text-noir-950 focus:ring-0"
                   />
                   <span className="text-xs font-medium text-noir-900">
-                    Publish immediately (Show on Storefront & Cart)
+                    Publish immediately (Show on Storefront, Cart & Checkout)
                   </span>
                 </label>
               </div>
@@ -699,7 +959,7 @@ export default function BundlesManagementPage() {
                   className="px-5 py-2 bg-noir-950 text-cream-50 text-xs font-mono uppercase rounded-sm hover:bg-black transition-colors font-semibold flex items-center gap-2"
                 >
                   {saving && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                  <span>{editingItem ? "Update Bundle" : "Create Bundle"}</span>
+                  <span>{editingItem ? "Update Bundle Tier" : "Create Bundle Tier"}</span>
                 </button>
               </div>
             </form>
@@ -744,15 +1004,17 @@ export default function BundlesManagementPage() {
           <div className="bg-white rounded-sm border border-cream-300 w-full max-w-md p-6 shadow-2xl animate-scale-up">
             <div className="flex items-center gap-3 text-amber-600 mb-3">
               <RotateCcw size={22} />
-              <h3 className="font-serif text-lg font-bold text-noir-950">Restore Factory Tiers?</h3>
+              <h3 className="font-serif text-lg font-bold text-noir-950">Restore 4 Authoritative Tiers?</h3>
             </div>
-            <p className="text-xs text-noir-600 leading-relaxed mb-6">
-              This will reset the volume bundles back to the verified standard configuration:
-              <br /><br />
-              • <strong>3 Books</strong>: Save ₹300 off + Free Shipping<br />
-              • <strong>6 Books</strong>: Save ₹1,800 off + Free Shipping<br />
-              • <strong>12 Books</strong>: Save ₹4,500 off + Free Shipping
-            </p>
+            <div className="text-xs text-noir-600 leading-relaxed mb-6 space-y-2">
+              <p>This will restore the 4 authoritative photobook bundle tiers into MongoDB Atlas:</p>
+              <div className="bg-cream-50 p-3 rounded border border-cream-200 font-mono text-[11px] space-y-1">
+                <div>• <strong>1 Book (Single)</strong>: ₹1,999 | 55.7% Margin</div>
+                <div>• <strong>2 Books (Duo)</strong>: ₹3,499 | Save ₹499 | 53.2% Margin</div>
+                <div>• <strong>4 Books (Quartet)</strong>: ₹6,399 | Save ₹1,597 | 51.0% Margin</div>
+                <div>• <strong>6 Books (Collector)</strong>: ₹8,999 | Save ₹2,995 | 48.9% Margin</div>
+              </div>
+            </div>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
@@ -766,7 +1028,7 @@ export default function BundlesManagementPage() {
                 onClick={handleResetDefaults}
                 className="px-4 py-2 bg-noir-950 hover:bg-black text-cream-50 text-xs font-mono uppercase rounded-sm font-semibold"
               >
-                Reset to Defaults
+                Restore 4 Tiers
               </button>
             </div>
           </div>

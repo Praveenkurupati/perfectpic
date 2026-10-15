@@ -35,7 +35,15 @@ export interface BundleTier {
   bundleId: string;
   minQuantity: number;
   name: string;
+  price?: number;
+  perBookPrice?: number;
   discountAmount: number;
+  netPrice?: number;
+  printCost?: number;
+  shippingCost?: number;
+  grossProfit?: number;
+  marginPerBook?: number;
+  marginPercentage?: number;
   freeShipping: boolean;
   badge?: string;
   description?: string;
@@ -43,31 +51,48 @@ export interface BundleTier {
 
 export const DEFAULT_BUNDLE_TIERS: BundleTier[] = [
   {
-    bundleId: 'bundle-3',
-    minQuantity: 3,
-    name: '3 Books Pack',
-    discountAmount: 300,
+    bundleId: 'bundle-1',
+    minQuantity: 1,
+    name: '1 Book (Single)',
+    price: 1999,
+    perBookPrice: 1999,
+    discountAmount: 0,
+    freeShipping: true,
+    badge: 'Single',
+    description: 'Single handcrafted archival photobook',
+  },
+  {
+    bundleId: 'bundle-2',
+    minQuantity: 2,
+    name: '2 Books (Duo)',
+    price: 3499,
+    perBookPrice: 1750,
+    discountAmount: 499,
+    freeShipping: true,
+    badge: 'Duo',
+    description: 'Save ₹499 off + Free All-India Shipping',
+  },
+  {
+    bundleId: 'bundle-4',
+    minQuantity: 4,
+    name: '4 Books (Quartet)',
+    price: 6399,
+    perBookPrice: 1600,
+    discountAmount: 1597,
     freeShipping: true,
     badge: 'Popular',
-    description: 'Save ₹300 off + Free All-India Shipping',
+    description: 'Save ₹1,597 off + Free All-India Shipping',
   },
   {
     bundleId: 'bundle-6',
     minQuantity: 6,
-    name: '6 Books Pack',
-    discountAmount: 1800,
+    name: '6 Books (Collector)',
+    price: 8999,
+    perBookPrice: 1500,
+    discountAmount: 2995,
     freeShipping: true,
-    badge: 'Extended Family',
-    description: 'Save ₹1,800 off + Free All-India Shipping',
-  },
-  {
-    bundleId: 'bundle-12',
-    minQuantity: 12,
-    name: '12 Books Master Pack',
-    discountAmount: 4500,
-    freeShipping: true,
-    badge: "Collector's Master",
-    description: 'Save ₹4,500 off + Free All-India Shipping',
+    badge: 'Collector',
+    description: 'Save ₹2,995 off + Free All-India Shipping',
   },
 ];
 
