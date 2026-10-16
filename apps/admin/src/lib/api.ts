@@ -379,6 +379,59 @@ export const adminApi = {
       headers: authHeaders(),
     }),
 
+  // Reviews & Customer Ratings Management
+  getReviews: (params?: {
+    status?: string;
+    category?: string;
+    rating?: number;
+    search?: string;
+    page?: number;
+    limit?: number;
+    sort?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.category && params.category !== 'all') qs.set('category', params.category);
+    if (params?.rating) qs.set('rating', String(params.rating));
+    if (params?.search) qs.set('search', params.search);
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.sort) qs.set('sort', params.sort);
+    const queryString = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{
+      reviews: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      summary: any;
+    }>(`/reviews/admin${queryString}`, { headers: authHeaders() });
+  },
+  getRatingSummary: (params?: { category?: string; productSlug?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.category) qs.set('category', params.category);
+    if (params?.productSlug) qs.set('productSlug', params.productSlug);
+    const queryString = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<any>(`/reviews/summary${queryString}`, { headers: authHeaders() });
+  },
+  updateReviewStatus: (id: string, status: string, adminNotes?: string) =>
+    fetcher<{ message: string; review: any }>(`/reviews/admin/${id}/status`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ status, adminNotes }),
+    }),
+  deleteReview: (id: string) =>
+    fetcher<{ message: string }>(`/reviews/admin/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  seedReviews: (force = true) =>
+    fetcher<{ message: string; count: number }>(`/reviews/admin/seed`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ force }),
+    }),
+
   // Health
   health: () => fetcher<{ status: string }>('/health'),
 };

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star } from 'lucide-react';
+import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star, CheckCircle, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeImageUrl } from '@/lib/urls';
 import { LazyImage } from '@/components/ui/LazyImage';
@@ -180,6 +180,41 @@ function TrackOrderContent() {
   const [lookupNumber, setLookupNumber] = useState('');
   const [lookupError, setLookupError] = useState<string | null>(null);
 
+  // Order Review & Rating State
+  const [orderReview, setOrderReview] = useState<any>(null);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewHoverRating, setReviewHoverRating] = useState<number>(0);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  // Sync / fetch existing review whenever selectedOrder changes
+  useEffect(() => {
+    if (!selectedOrder?.orderNumber) {
+      setOrderReview(null);
+      return;
+    }
+
+    if ((selectedOrder as any).review) {
+      setOrderReview((selectedOrder as any).review);
+      return;
+    }
+
+    api
+      .getOrderReview(selectedOrder.orderNumber)
+      .then((res) => {
+        if (res?.review) {
+          setOrderReview(res.review);
+        } else {
+          setOrderReview(null);
+        }
+      })
+      .catch(() => {
+        setOrderReview(null);
+      });
+  }, [selectedOrder?.orderNumber]);
+
   // Fetch orders dynamically from API
   useEffect(() => {
     const fetchOrders = async () => {
@@ -349,6 +384,42 @@ function TrackOrderContent() {
 
   const paymentText = `${order.paymentMethod || 'upi'} · ${order.paymentStatus || 'paid'}`.toLowerCase();
 
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!order) return;
+    if (!reviewComment.trim()) {
+      setReviewError('Please share a few words about your photobook.');
+      return;
+    }
+
+    setReviewSubmitting(true);
+    setReviewError(null);
+    try {
+      const res = await api.submitReview({
+        orderNumber: order.orderNumber,
+        customerName: addressName || order.customerName || 'Verified Collector',
+        customerEmail: order.customerEmail,
+        customerLocation: cityStatePincode || 'India',
+        rating: reviewRating,
+        title: reviewTitle.trim() || undefined,
+        comment: reviewComment.trim(),
+        productSlug: (order as any).productSlug || 'custom-photobook',
+        bookTitle: productTitle,
+        category: seriesText || 'Travel',
+      });
+
+      if (res?.review) {
+        setOrderReview(res.review);
+      }
+      setReviewComment('');
+      setReviewTitle('');
+    } catch (err: any) {
+      setReviewError(err?.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Page Heading */}
@@ -511,6 +582,133 @@ function TrackOrderContent() {
               <Download size={13} />
               <span>download invoice</span>
             </button>
+          </div>
+
+          {/* Rate & Review Your Photobook Section */}
+          <div className="pt-8 mt-6 border-t border-[#D9D6CF]/60">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#5C5A55] bg-[#F4F2ED] border border-[#D9D6CF] px-2.5 py-0.5 rounded-full">
+                collector review & rating
+              </span>
+            </div>
+
+            {orderReview ? (
+              <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex text-[#0A0A0A] gap-0.5">
+                    {[...Array(orderReview.rating || 5)].map((_, i) => (
+                      <Star key={i} size={15} fill="currentColor" />
+                    ))}
+                  </div>
+                  <span className="text-[11px] text-emerald-800 font-medium flex items-center gap-1">
+                    <CheckCircle size={12} className="fill-emerald-100 text-emerald-700" />
+                    <span>verified review saved</span>
+                  </span>
+                </div>
+
+                {orderReview.title && (
+                  <h4 className="text-sm font-bold text-[#0A0A0A] lowercase mb-1">
+                    &ldquo;{orderReview.title}&rdquo;
+                  </h4>
+                )}
+                <p className="text-xs text-[#2A2926] leading-relaxed lowercase">
+                  {orderReview.comment}
+                </p>
+                <div className="mt-4 pt-3 border-t border-[#D9D6CF]/70 flex items-center justify-between text-[11px] text-[#706E69] lowercase">
+                  <span>rated by you ({addressName})</span>
+                  <span>thank you for supporting our artisans</span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-6">
+                <h3 className="text-base font-bold text-[#0A0A0A] lowercase mb-1">
+                  how is your photobook?
+                </h3>
+                <p className="text-xs text-[#706E69] lowercase mb-4">
+                  share your rating on lay-flat binding, paper texture, and print color vibrancy.
+                </p>
+
+                <form onSubmit={handleSubmitReview} className="space-y-4">
+                  {/* Star Rating Selector */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#706E69] lowercase mb-1.5">
+                      your overall rating
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const active = (reviewHoverRating || reviewRating) >= star;
+                        return (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewRating(star)}
+                            onMouseEnter={() => setReviewHoverRating(star)}
+                            onMouseLeave={() => setReviewHoverRating(0)}
+                            className="p-1 text-[#0A0A0A] hover:scale-110 transition-transform focus:outline-none"
+                          >
+                            <Star
+                              size={22}
+                              fill={active ? 'currentColor' : 'none'}
+                              className={active ? 'text-[#0A0A0A]' : 'text-[#D9D6CF]'}
+                            />
+                          </button>
+                        );
+                      })}
+                      <span className="text-xs font-semibold text-[#0A0A0A] ml-2 font-mono">
+                        {reviewRating} of 5 stars
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Review Title */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#706E69] lowercase mb-1">
+                      headline (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={reviewTitle}
+                      onChange={(e) => setReviewTitle(e.target.value)}
+                      placeholder="e.g. Unbelievable print vibrancy & layflat spread"
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#D9D6CF] bg-white text-xs text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-black placeholder:text-[#706E69]/60 lowercase"
+                    />
+                  </div>
+
+                  {/* Review Comment */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-[#706E69] lowercase mb-1">
+                      your review *
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={reviewComment}
+                      onChange={(e) => setReviewComment(e.target.value)}
+                      placeholder="describe the print vibrancy, paper thickness, slipcase packaging, and delivery experience..."
+                      className="w-full px-3.5 py-2 rounded-xl border border-[#D9D6CF] bg-white text-xs text-[#0A0A0A] focus:outline-none focus:ring-1 focus:ring-black placeholder:text-[#706E69]/60 lowercase leading-relaxed"
+                    />
+                  </div>
+
+                  {reviewError && (
+                    <p className="text-xs text-red-600 lowercase">{reviewError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={reviewSubmitting}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-[#0A0A0A] text-white rounded-full text-xs font-medium hover:bg-black transition-colors lowercase flex items-center justify-center gap-2"
+                  >
+                    {reviewSubmitting ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>submitting review...</span>
+                      </>
+                    ) : (
+                      <span>submit order review</span>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
 

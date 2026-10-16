@@ -32,7 +32,8 @@ import {
   AlertCircle,
   X,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -67,6 +68,7 @@ const navSections: NavSection[] = [
       { name: "Shipping & Logistics", href: "/shipping", icon: Truck },
       { name: "Customers & LTV", href: "/customers", icon: Users },
       { name: "Support & Tickets", href: "/tickets", icon: Ticket },
+      { name: "Reviews & Ratings", href: "/reviews", icon: Star, badge: "4.9★", badgeColor: "bg-amber-500/20 text-amber-400" },
     ],
   },
   {

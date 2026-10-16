@@ -12,6 +12,7 @@ import {
 import { api } from "@/lib/api";
 import BookCard, { BookItem } from "@/features/catalog/components/BookCard";
 import ExploreCard from "@/features/catalog/components/ExploreCard";
+import TestimonialsMarquee from "@/features/landing/components/TestimonialsMarquee";
 
 // Top Indian photobooks prioritized for India launch
 const fallbackTemplates: BookItem[] = [
@@ -734,72 +735,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 9. Reviews / Testimonials Section: White background, 3 reviews */}
-      <section className="bg-white py-24 md:py-32">
-        <div className="container mx-auto px-4 md:px-8 max-w-6xl">
-          <div className="mb-16">
-            <p className="text-xs font-semibold tracking-widest text-[#5C5A55] uppercase mb-2">
-              reviews
-            </p>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-[#0A0A0A] lowercase">
-              loved by families across india.
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
-              <div>
-                <div className="flex gap-1 text-[#0A0A0A] mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={15} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="text-sm text-[#2A2926] leading-relaxed lowercase mb-6">
-                  &ldquo;the lay-flat binding is unbelievable. we printed our netravati trek photos and looking at them spread across two pages without gutter loss brings the memory right back.&rdquo;
-                </p>
-              </div>
-              <div className="border-t border-[#D9D6CF]/70 pt-4">
-                <p className="text-xs font-bold text-[#0A0A0A] lowercase">rohit & priya sharma</p>
-                <p className="text-[11px] text-[#5C5A55] lowercase">bengaluru</p>
-              </div>
-            </div>
-
-            <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
-              <div>
-                <div className="flex gap-1 text-[#0A0A0A] mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={15} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="text-sm text-[#2A2926] leading-relaxed lowercase mb-6">
-                  &ldquo;the paper quality is truly non-tearable. my 2-year-old flipped through our family album dozens of times and not a single wrinkle or tear. worth every rupee.&rdquo;
-                </p>
-              </div>
-              <div className="border-t border-[#D9D6CF]/70 pt-4">
-                <p className="text-xs font-bold text-[#0A0A0A] lowercase">ananya deshmukh</p>
-                <p className="text-[11px] text-[#5C5A55] lowercase">mumbai</p>
-              </div>
-            </div>
-
-            <div className="bg-[#F4F2ED] border border-[#D9D6CF] rounded-2xl p-7 flex flex-col justify-between">
-              <div>
-                <div className="flex gap-1 text-[#0A0A0A] mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={15} fill="currentColor" />
-                  ))}
-                </div>
-                <p className="text-sm text-[#2A2926] leading-relaxed lowercase mb-6">
-                  &ldquo;received the book within 5 days in gorgeous packaging. the foil stamping on the spine makes it look like an art piece on our coffee table.&rdquo;
-                </p>
-              </div>
-              <div className="border-t border-[#D9D6CF]/70 pt-4">
-                <p className="text-xs font-bold text-[#0A0A0A] lowercase">vikramaditya varma</p>
-                <p className="text-[11px] text-[#5C5A55] lowercase">hyderabad</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 9. Reviews / Testimonials Section: Infinite opposite-scrolling two-line marquee */}
+      <TestimonialsMarquee />
 
       {/* 10. FAQ Section: Off-white background, 2-column layout with accordions */}
       <section className="bg-[#F4F2ED] py-24 md:py-32">

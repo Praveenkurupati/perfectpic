@@ -197,13 +197,13 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     }),
-  submitReview: (orderId: string, data: any) =>
+  submitOrderReview: (orderId: string, data: any) =>
     fetcher<{ message: string; review: any }>(`/orders/${orderId}/review`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify(data),
     }),
-  getOrderReview: (orderId: string) =>
+  getOrderReviewById: (orderId: string) =>
     fetcher<{ review: any }>(`/orders/${orderId}/review`, {
       headers: authHeaders(),
     }),
@@ -526,6 +526,51 @@ export const api = {
         expiresAt?: string | null;
       }>;
     }>('/promos/active'),
+
+  // Reviews & Ratings
+  getReviews: (params?: { category?: string; productSlug?: string; rating?: number; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.category && params.category !== 'all') qs.set('category', params.category);
+    if (params?.productSlug && params.productSlug !== 'all') qs.set('productSlug', params.productSlug);
+    if (params?.rating) qs.set('rating', String(params.rating));
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const queryString = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{
+      reviews: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+      summary: any;
+    }>(`/reviews${queryString}`);
+  },
+  getRatingSummary: (params?: { category?: string; productSlug?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.category) qs.set('category', params.category);
+    if (params?.productSlug) qs.set('productSlug', params.productSlug);
+    const queryString = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<any>(`/reviews/summary${queryString}`);
+  },
+  submitReview: (data: {
+    orderNumber?: string;
+    customerName: string;
+    customerEmail?: string;
+    customerLocation?: string;
+    rating: number;
+    title?: string;
+    comment: string;
+    productSlug?: string;
+    bookTitle?: string;
+    category?: string;
+  }) =>
+    fetcher<{ message: string; review: any }>('/reviews', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  getOrderReview: (orderNumber: string) =>
+    fetcher<{ review: any }>(`/reviews/order/${encodeURIComponent(orderNumber)}`),
 
   // Health
   health: () => fetcher<{ status: string; database?: string; cache?: string }>('/health'),

@@ -18,6 +18,7 @@ import bundleRoutes from './bundles.routes';
 import pricingRoutes from './pricing.routes';
 import backupsRoutes from './backups.routes';
 import privacyRoutes from './privacy.routes';
+import reviewRoutes from './reviews.routes';
 
 const v1Router = Router();
 
@@ -39,6 +40,7 @@ v1Router.use('/page-options', pageOptionRoutes);
 v1Router.use('/bundles', bundleRoutes);
 v1Router.use('/pricing', pricingRoutes);
 v1Router.use('/privacy', privacyRoutes);
+v1Router.use('/reviews', reviewRoutes);
 v1Router.use('/admin/backups', backupsRoutes);
 
 export default v1Router;

@@ -143,6 +143,10 @@ async function seedDefaultData() {
     const { BundleRepository } = await import('../repositories/BundleRepository');
     await BundleRepository.seedDefaultsIfEmpty();
 
+    // Seed 100+ authoritative customer reviews & ratings into MongoDB if empty
+    const { ReviewRepository } = await import('../repositories/ReviewRepository');
+    await ReviewRepository.seedReviewsIfEmpty();
+
     // Seed production page options if collection empty
     const { PageOption } = await import('./models/PageOption');
     const { pageCountOptions } = await import('../data/templates');
