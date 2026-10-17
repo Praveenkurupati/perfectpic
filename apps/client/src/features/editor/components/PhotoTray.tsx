@@ -5,6 +5,7 @@ import { useEditorStore, Photo } from '@/stores/useEditorStore';
 import { UploadCloud, Check, Plus, Image as ImageIcon, Loader2 } from 'lucide-react';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
+import { analyzeImageQuality } from '@/lib/imageQualityAnalyzer';
 import { api } from '@/lib/api';
 import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 
@@ -37,7 +38,10 @@ export default function PhotoTray() {
       const file = fileArray[idx]!;
       setTrayProgress(`${idx + 1}/${fileArray.length}`);
       try {
-        const compressed = await compressImage(file, { maxDimension: 2400, quality: 0.85 });
+        const [compressed, qualityReport] = await Promise.all([
+          compressImage(file, { maxDimension: 2400, quality: 0.85 }),
+          analyzeImageQuality(file),
+        ]);
         let photoUrl = '';
         try {
           const res = await api.uploadPhoto(compressed);
@@ -50,7 +54,15 @@ export default function PhotoTray() {
           url: photoUrl,
           usedCount: 0,
           flagged: false,
-          name: file.name
+          name: file.name,
+          width: qualityReport.naturalWidth,
+          height: qualityReport.naturalHeight,
+          blurScore: qualityReport.blurScore,
+          isBlurry: qualityReport.isBlurry,
+          isLowRes: qualityReport.isLowResForSinglePage,
+          qualityGrade: qualityReport.qualityGrade,
+          summary: qualityReport.summary,
+          recommendedLayout: qualityReport.recommendedLayout,
         });
       } catch (err) {
         console.error('Tray upload error:', err);
@@ -61,9 +73,11 @@ export default function PhotoTray() {
     e.target.value = '';
   };
 
+  const reviewCount = photos.filter(p => p.isBlurry || p.isLowRes).length;
+
   const filteredPhotos = photos.filter(p => {
     if (photoFilter === 'unused') return (p.usedCount || 0) === 0;
-    if (photoFilter === 'flagged') return p.flagged;
+    if (photoFilter === 'flagged') return p.flagged || p.isBlurry || p.isLowRes;
     return true;
   });
 
@@ -132,6 +146,20 @@ export default function PhotoTray() {
           >
             unused ({photos.length - placedCount})
           </button>
+          {reviewCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setPhotoFilter('flagged')}
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
+                photoFilter === 'flagged'
+                  ? 'bg-rose-950 text-rose-200 shadow-xs'
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+              }`}
+            >
+              <span>⚠️ review</span>
+              <span className="font-mono text-[10px]">({reviewCount})</span>
+            </button>
+          )}
         </div>
       </div>
       
@@ -170,6 +198,35 @@ export default function PhotoTray() {
                   onError={handleImageError}
                 />
                 
+                {/* Quality pill indicator */}
+                <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+                  {photo.isBlurry ? (
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-rose-950/90 text-rose-300 border border-rose-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs"
+                      title="Motion blur detected: may look soft in physical print"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span>blurry</span>
+                    </span>
+                  ) : photo.qualityGrade === 'A+' ? (
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs"
+                      title="Gallery Ultra HD: 300+ DPI ready"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>300+</span>
+                    </span>
+                  ) : photo.isLowRes ? (
+                    <span
+                      className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs"
+                      title="Low resolution: recommend using in 2-4 photo grid layouts"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                      <span>grid</span>
+                    </span>
+                  ) : null}
+                </div>
+
                 {/* Placed badge (Mockup circular checkmark in corner) */}
                 {isPlaced && (
                   <div className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full bg-black text-white flex items-center justify-center shadow-xs z-10 pointer-events-none">

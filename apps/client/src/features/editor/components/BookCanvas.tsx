@@ -20,6 +20,7 @@ import {
 import PortionCutModal from './PortionCutModal';
 import { getSpineMetrics } from '@/lib/spineCalculator';
 import { normalizeImageUrl, getImageProxyUrl } from '@/lib/urls';
+import { calculateEffectiveSlotDpi } from '@/lib/imageQualityAnalyzer';
 import { cn } from '@/lib/utils';
 
 interface SlotProps {
@@ -53,22 +54,33 @@ const PhotoSlot = React.memo(function PhotoSlot({
   const zoom = crop?.zoom ?? 1;
 
   // Track image natural dimensions for printed DPI calculation
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(() => {
+    if (photo?.width && photo?.height) {
+      return { width: photo.width, height: photo.height };
+    }
+    return null;
+  });
   const [imgSrc, setImgSrc] = useState<string>(() => normalizeImageUrl(photo?.url));
   const [hasRetriedProxy, setHasRetriedProxy] = useState(false);
 
   useEffect(() => {
     setImgSrc(normalizeImageUrl(photo?.url));
     setHasRetriedProxy(false);
-  }, [photo?.url]);
+    if (photo?.width && photo?.height) {
+      setNaturalSize({ width: photo.width, height: photo.height });
+    }
+  }, [photo?.url, photo?.width, photo?.height]);
 
-  const isLargeBook = (bookSize || '').includes('10');
-  const baseInches = isLargeBook ? 10 : 8.25;
-  const physicalWidthInches = Math.max(1.8, baseInches * slotWidthFraction);
-  const dpi = naturalSize ? Math.round(naturalSize.width / physicalWidthInches) : null;
-  const isUltraHD = dpi !== null && dpi >= 300;
-  const isGoodQuality = dpi !== null && dpi >= 180 && dpi < 300;
-  const isLowRes = dpi !== null && dpi < 180;
+  const dpiReport = naturalSize
+    ? calculateEffectiveSlotDpi(
+        naturalSize.width,
+        naturalSize.height,
+        bookSize || '8.25" × 8.25"',
+        slotWidthFraction,
+        zoom,
+        !!photo?.isBlurry
+      )
+    : null;
 
   return (
     <div
@@ -126,36 +138,28 @@ const PhotoSlot = React.memo(function PhotoSlot({
             className="w-full h-full transition-transform duration-300"
           />
 
-          {/* Live DPI Resolution Quality Badge */}
-          {dpi !== null && (
+          {/* Live DPI & Sharpness Resolution Quality Badge */}
+          {dpiReport && (
             <div className="absolute top-1.5 left-1.5 z-20 pointer-events-auto">
-              {isUltraHD && (
-                <span
-                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-xs flex items-center gap-1 backdrop-blur-xs"
-                  title={`Crisp Print Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpi} DPI (exceeds 300 DPI press standard)`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  <span>300+ DPI</span>
-                </span>
-              )}
-              {isGoodQuality && (
-                <span
-                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/50 shadow-xs flex items-center gap-1 backdrop-blur-xs"
-                  title={`Good Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpi} DPI (recommended range: 180-300 DPI)`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  <span>{dpi} DPI</span>
-                </span>
-              )}
-              {isLowRes && (
-                <span
-                  className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-rose-950/95 text-rose-200 border border-rose-500/80 shadow-xs flex items-center gap-1 backdrop-blur-xs animate-pulse"
-                  title={`Low Resolution Alert: ${naturalSize?.width}×${naturalSize?.height}px produces only ${dpi} DPI. Recommended: 1500px+ width.`}
-                >
+              <span
+                className={`px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold ${dpiReport.badgeBg} ${dpiReport.badgeText} border ${dpiReport.badgeBorder} shadow-xs flex items-center gap-1 backdrop-blur-xs ${
+                  dpiReport.isLowRes ? 'animate-pulse' : ''
+                }`}
+                title={
+                  dpiReport.suggestion
+                    ? `${dpiReport.label} (${naturalSize?.width}×${naturalSize?.height}px) — ${dpiReport.warningReason || ''} ${dpiReport.suggestion}`
+                    : `Crisp Print Quality: ${naturalSize?.width}×${naturalSize?.height}px produces ${dpiReport.effectiveDpi} DPI at this scale.`
+                }
+              >
+                {dpiReport.isLowRes ? (
                   <AlertTriangle className="w-2.5 h-2.5 text-rose-400" />
-                  <span>⚠️ {dpi} DPI</span>
-                </span>
-              )}
+                ) : dpiReport.isUltraHD ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                )}
+                <span>{dpiReport.label}</span>
+              </span>
             </div>
           )}
 

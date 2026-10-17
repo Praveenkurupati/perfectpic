@@ -16,6 +16,7 @@ import {
 import { api } from '@/lib/api';
 import { useEditorStore, Photo } from '@/stores/useEditorStore';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
+import { analyzeImageQuality } from '@/lib/imageQualityAnalyzer';
 import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 import { trackEvent } from '@/lib/analytics';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -123,8 +124,11 @@ function UploadContent() {
       try {
         localBlobUrl = URL.createObjectURL(file);
 
-        // 1. Fast parallel client compression (max 2400px, 0.85 quality)
-        const compressed = await compressImage(file, { maxDimension: 2400, quality: 0.85 });
+        // 1. Fast parallel client compression + quality & DPI analysis
+        const [compressed, qualityReport] = await Promise.all([
+          compressImage(file, { maxDimension: 2400, quality: 0.85 }),
+          analyzeImageQuality(file),
+        ]);
 
         // Update progress in queue
         setUploadingQueue((prev) =>
@@ -141,13 +145,21 @@ function UploadContent() {
           finalUrl = await fileToDataUrl(compressed);
         }
 
-        // 3. Add to editor store
+        // 3. Add to editor store with quality triage metadata
         addPhoto({
           id: uploadId,
           url: finalUrl,
           usedCount: 0,
           flagged: false,
           name: file.name,
+          width: qualityReport.naturalWidth,
+          height: qualityReport.naturalHeight,
+          blurScore: qualityReport.blurScore,
+          isBlurry: qualityReport.isBlurry,
+          isLowRes: qualityReport.isLowResForSinglePage,
+          qualityGrade: qualityReport.qualityGrade,
+          summary: qualityReport.summary,
+          recommendedLayout: qualityReport.recommendedLayout,
         });
 
         // Remove from failed uploads if it was previously failing
@@ -466,6 +478,26 @@ function UploadContent() {
                       <Eye size={18} className="drop-shadow-sm" />
                     </div>
 
+                    {/* Quality triage chip */}
+                    <div className="absolute bottom-1.5 left-1.5 z-10 pointer-events-none">
+                      {photo.isBlurry ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-rose-950/90 text-rose-300 border border-rose-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                          <span>blurry</span>
+                        </span>
+                      ) : photo.qualityGrade === 'A+' ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-950/90 text-emerald-300 border border-emerald-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                          <span>300+ dpi</span>
+                        </span>
+                      ) : photo.isLowRes ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-950/90 text-amber-300 border border-amber-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                          <span>low-res</span>
+                        </span>
+                      ) : null}
+                    </div>
+
                     {/* Delete button on hover */}
                     <button
                       type="button"
@@ -682,6 +714,36 @@ function UploadContent() {
               </button>
             )}
           </div>
+
+          {/* Lightbox Quality Triage Bar */}
+          {photos[previewPhotoIndex] && (
+            <div className="max-w-xl mx-auto w-full bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/15 text-white flex flex-col sm:flex-row items-center justify-between gap-2 z-10 text-xs mb-2">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] text-white/80">
+                  {photos[previewPhotoIndex].width && photos[previewPhotoIndex].height
+                    ? `${photos[previewPhotoIndex].width} × ${photos[previewPhotoIndex].height}px`
+                    : 'Resolution Analyzed'}
+                </span>
+                <span className="text-white/30">·</span>
+                {photos[previewPhotoIndex].isBlurry ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-900/90 text-rose-200 border border-rose-500/80">
+                    ⚠️ Motion Blur Detected
+                  </span>
+                ) : photos[previewPhotoIndex].qualityGrade === 'A+' ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-900/90 text-emerald-200 border border-emerald-500/80">
+                    ✨ 300+ DPI Ultra HD
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-teal-900/90 text-teal-200 border border-teal-500/80">
+                    Standard Press Quality
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-white/70 italic text-center sm:text-right">
+                {photos[previewPhotoIndex].recommendedLayout || 'Suitable for Standard Pages'}
+              </span>
+            </div>
+          )}
 
           {/* Lightbox Bottom Bar */}
           <div className="text-center text-xs text-white/60 lowercase pb-2">

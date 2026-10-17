@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { indexedDbStorage } from '@/lib/storage/indexedDbStorage';
+import { calculateEffectiveSlotDpi } from '@/lib/imageQualityAnalyzer';
 
 export interface Page {
   id: string;
@@ -14,6 +15,35 @@ export interface Photo {
   usedCount: number;
   flagged: boolean;
   name?: string;
+  width?: number;
+  height?: number;
+  blurScore?: number;
+  isBlurry?: boolean;
+  isLowRes?: boolean;
+  qualityGrade?: 'A+' | 'A' | 'B' | 'C' | 'D';
+  summary?: string;
+  recommendedLayout?: string;
+}
+
+export interface FlaggedSlotIssue {
+  slotId: string;
+  pageNum: number;
+  photo: Photo;
+  effectiveDpi: number;
+  isBlurry: boolean;
+  reason: string;
+  suggestion: string;
+}
+
+export interface PreflightAuditReport {
+  pass: boolean;
+  totalPlaced: number;
+  ultraHdCount: number;
+  goodCount: number;
+  fairCount: number;
+  lowResCount: number;
+  blurryCount: number;
+  flaggedIssues: FlaggedSlotIssue[];
 }
 
 export type PageLayout = 
@@ -129,6 +159,8 @@ interface EditorState {
   setPhotoFilter: (filter: 'all' | 'unused' | 'flagged') => void;
   setTemplate: (template: any) => void;
   setBookConfig: (config: Partial<EditorState['bookConfig']>) => void;
+  updatePhotoQuality: (photoId: string, quality: Partial<Photo>) => void;
+  getPreflightAudit: () => PreflightAuditReport;
 }
 
 /**
@@ -486,6 +518,190 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setBookConfig: (config) => set((state) => ({
     bookConfig: { ...state.bookConfig, ...config }
   })),
+
+  updatePhotoQuality: (photoId, quality) => set((state) => ({
+    photos: state.photos.map((p) => (p.id === photoId ? { ...p, ...quality } : p)),
+    slotPhotos: Object.fromEntries(
+      Object.entries(state.slotPhotos).map(([k, p]) => [
+        k,
+        p && p.id === photoId ? { ...p, ...quality } : p,
+      ])
+    ),
+    pagePhotos: Object.fromEntries(
+      Object.entries(state.pagePhotos).map(([k, p]) => [
+        k,
+        p && p.id === photoId ? { ...p, ...quality } : p,
+      ])
+    ),
+  })),
+
+  getPreflightAudit: () => {
+    const state = get();
+    const flaggedIssues: FlaggedSlotIssue[] = [];
+    let ultraHdCount = 0;
+    let goodCount = 0;
+    let fairCount = 0;
+    let lowResCount = 0;
+    let blurryCount = 0;
+
+    const totalPages = state.pageCount || 32;
+    const evaluatedSlots = new Set<string>();
+
+    // 1. Check Front Cover Slot '0'
+    const coverPhoto = state.slotPhotos['0'] || state.pagePhotos[0];
+    if (coverPhoto) {
+      evaluatedSlots.add('0');
+      const crop = state.slotCrops['0'] || { position: 'center', x: 50, y: 50, zoom: 1 };
+      const report = calculateEffectiveSlotDpi(
+        coverPhoto.width || 2000,
+        coverPhoto.height || 2000,
+        state.bookConfig.size,
+        1,
+        crop.zoom,
+        !!coverPhoto.isBlurry
+      );
+
+      if (report.isUltraHD) ultraHdCount++;
+      else if (report.isGood) goodCount++;
+      else if (report.isFair) fairCount++;
+      else lowResCount++;
+
+      if (coverPhoto.isBlurry) blurryCount++;
+
+      if (report.hasQualityWarning) {
+        flaggedIssues.push({
+          slotId: '0',
+          pageNum: 0,
+          photo: coverPhoto,
+          effectiveDpi: report.effectiveDpi,
+          isBlurry: !!coverPhoto.isBlurry,
+          reason: report.warningReason || 'Front Cover Quality Warning',
+          suggestion: report.suggestion || 'Use a higher resolution photo for the front cover.',
+        });
+      }
+    }
+
+    // 2. Check All Pages 1 to totalPages
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      const layout = state.pageLayouts[pageNum] || '1-photo';
+
+      // Panoramic spread
+      if (layout === '2-page-panoramic') {
+        const spreadIdx = Math.ceil(pageNum / 2);
+        const slotId = `spread_${spreadIdx}`;
+        if (!evaluatedSlots.has(slotId)) {
+          evaluatedSlots.add(slotId);
+          const p = state.slotPhotos[slotId] || state.slotPhotos[`${pageNum}_0`] || state.pagePhotos[pageNum];
+          if (p) {
+            const crop = state.slotCrops[slotId] || state.slotCrops[`${pageNum}_0`] || { position: 'center', x: 50, y: 50, zoom: 1 };
+            const report = calculateEffectiveSlotDpi(
+              p.width || 2000,
+              p.height || 2000,
+              state.bookConfig.size,
+              2,
+              crop.zoom,
+              !!p.isBlurry
+            );
+
+            if (report.isUltraHD) ultraHdCount++;
+            else if (report.isGood) goodCount++;
+            else if (report.isFair) fairCount++;
+            else lowResCount++;
+
+            if (p.isBlurry) blurryCount++;
+
+            if (report.hasQualityWarning) {
+              flaggedIssues.push({
+                slotId,
+                pageNum,
+                photo: p,
+                effectiveDpi: report.effectiveDpi,
+                isBlurry: !!p.isBlurry,
+                reason: report.warningReason || 'Panoramic Spread Quality Warning',
+                suggestion: report.suggestion || 'Panoramic spreads require high resolution for crisp 300 DPI.',
+              });
+            }
+          }
+        }
+        continue;
+      }
+
+      // Other standard layouts
+      let slotKeys: { slotId: string; fraction: number }[] = [];
+      if (layout === '1-photo-full' || layout === '1-photo') {
+        slotKeys = [{ slotId: `${pageNum}`, fraction: 1 }];
+      } else if (layout === '2-photo-v') {
+        slotKeys = [
+          { slotId: `${pageNum}_0`, fraction: 1 },
+          { slotId: `${pageNum}_1`, fraction: 1 },
+        ];
+      } else if (layout === '2-photo-h') {
+        slotKeys = [
+          { slotId: `${pageNum}_0`, fraction: 0.5 },
+          { slotId: `${pageNum}_1`, fraction: 0.5 },
+        ];
+      } else if (layout === '3-photo' || layout === '3-photo-h') {
+        slotKeys = [
+          { slotId: `${pageNum}_0`, fraction: layout === '3-photo-h' ? 1 : 0.5 },
+          { slotId: `${pageNum}_1`, fraction: 0.5 },
+          { slotId: `${pageNum}_2`, fraction: 0.5 },
+        ];
+      } else if (layout === '4-photo') {
+        slotKeys = [0, 1, 2, 3].map((i) => ({ slotId: `${pageNum}_${i}`, fraction: 0.5 }));
+      } else if (layout === '6-photo-grid') {
+        slotKeys = [0, 1, 2, 3, 4, 5].map((i) => ({ slotId: `${pageNum}_${i}`, fraction: 0.33 }));
+      }
+
+      for (const { slotId, fraction } of slotKeys) {
+        evaluatedSlots.add(slotId);
+        const p = state.slotPhotos[slotId] || (slotId === `${pageNum}` ? state.pagePhotos[pageNum] : null);
+        if (p) {
+          const crop = state.slotCrops[slotId] || { position: 'center', x: 50, y: 50, zoom: 1 };
+          const report = calculateEffectiveSlotDpi(
+            p.width || 2000,
+            p.height || 2000,
+            state.bookConfig.size,
+            fraction,
+            crop.zoom,
+            !!p.isBlurry
+          );
+
+          if (report.isUltraHD) ultraHdCount++;
+          else if (report.isGood) goodCount++;
+          else if (report.isFair) fairCount++;
+          else lowResCount++;
+
+          if (p.isBlurry) blurryCount++;
+
+          if (report.hasQualityWarning) {
+            flaggedIssues.push({
+              slotId,
+              pageNum,
+              photo: p,
+              effectiveDpi: report.effectiveDpi,
+              isBlurry: !!p.isBlurry,
+              reason: report.warningReason || 'Slot Quality Warning',
+              suggestion: report.suggestion || 'Consider placing in a smaller grid or replacing with a higher-res photo.',
+            });
+          }
+        }
+      }
+    }
+
+    const totalPlaced = ultraHdCount + goodCount + fairCount + lowResCount;
+    const pass = lowResCount === 0 && blurryCount === 0;
+
+    return {
+      pass,
+      totalPlaced,
+      ultraHdCount,
+      goodCount,
+      fairCount,
+      lowResCount,
+      blurryCount,
+      flaggedIssues,
+    };
+  },
 
   initProject: (projectId: string, initialConfig?: any) => {
     const currentId = get().currentProjectId;

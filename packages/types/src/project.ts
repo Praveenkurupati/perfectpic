@@ -15,8 +15,10 @@ export const PhotoSchema = z.object({
   height: z.number().int().positive(),
   fileSize: z.number().int().positive(),
   dpi: z.number().optional(),
+  blurScore: z.number().optional(),
   isBlurry: z.boolean().default(false),
   isLowRes: z.boolean().default(false),
+  qualityGrade: z.enum(["A+", "A", "B", "C", "D"]).optional(),
   isDuplicate: z.boolean().default(false),
   exifData: z.object({
     capturedAt: z.string().datetime().optional(),

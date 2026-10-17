@@ -24,13 +24,15 @@ import {
   Loader2,
   Download,
   FileText,
+  ArrowRight,
   X
 } from 'lucide-react';
-import { useEditorStore } from '@/stores/useEditorStore';
+import { useEditorStore, PreflightAuditReport } from '@/stores/useEditorStore';
 import { useCartStore } from '@/stores/useCartStore';
 import { api } from '@/lib/api';
 import { fallbackCatalog } from '@/features/catalog/data/catalogFallback';
 import BookFlipPreview from '@/features/preview/components/BookFlipPreview';
+import PreflightQualityModal from '@/features/preview/components/PreflightQualityModal';
 import { generateBookProofPdf } from '@/lib/pdfGenerator';
 
 function PreviewContent() {
@@ -54,6 +56,7 @@ function PreviewContent() {
     bookConfig: storeBookConfig,
     setCurrentSpreadIndex,
     initProject,
+    getPreflightAudit,
   } = useEditorStore();
 
   // Hydrate project state if needed
@@ -102,6 +105,9 @@ function PreviewContent() {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [preflightModalOpen, setPreflightModalOpen] = useState(false);
+  const [preflightReport, setPreflightReport] = useState<PreflightAuditReport | null>(null);
+  const [hasAcknowledgedWarnings, setHasAcknowledgedWarnings] = useState(false);
 
   // Synchronize initial spread from editor store if available
   useEffect(() => {
@@ -153,9 +159,8 @@ function PreviewContent() {
     return activeTemplate.fromPrice || 1999;
   }, [storeBookConfig.price, activeTemplate, dimensions]);
 
-  // Handle Approve and Add to Cart
-  const handleApproveAndAddToCart = async () => {
-    if (!approved) return;
+  // Execute Add to Cart after quality checks or explicit customer acknowledgment
+  const executeAddToCart = async () => {
     setIsAddingToCart(true);
 
     const slotPhotoUrls = Object.values(slotPhotos || {})
@@ -240,6 +245,35 @@ function PreviewContent() {
     }
   };
 
+  // Pre-flight check gate: intercept if low-DPI or blurry slots exist
+  const handleApproveAndAddToCart = async () => {
+    if (!approved) return;
+
+    if (!hasAcknowledgedWarnings) {
+      const audit = getPreflightAudit();
+      if (audit.flaggedIssues.length > 0) {
+        setPreflightReport(audit);
+        setPreflightModalOpen(true);
+        return;
+      }
+    }
+
+    await executeAddToCart();
+  };
+
+  const handleProceedAnyway = async () => {
+    setHasAcknowledgedWarnings(true);
+    setPreflightModalOpen(false);
+    await executeAddToCart();
+  };
+
+  const handleGoToPage = (pageNum: number) => {
+    setPreflightModalOpen(false);
+    const spreadIndex = pageNum === 0 ? 0 : Math.ceil(pageNum / 2);
+    setCurrentSpreadIndex(spreadIndex);
+    router.push(`/studio/${projectId}`);
+  };
+
   const handleDownloadPdf = async () => {
     try {
       setIsGeneratingPdf(true);
@@ -284,9 +318,48 @@ function PreviewContent() {
     }
   };
 
-  const renderPreflightContent = () => (
+  const renderPreflightContent = () => {
+    const currentAudit = getPreflightAudit();
+
+    return (
     <>
       <div className="p-4 sm:p-6 flex-1 overflow-y-auto space-y-5 sm:space-y-6">
+        {/* Dynamic Quality Triage Status Card */}
+        <div className={`p-4 rounded-xl border text-xs ${
+          currentAudit.flaggedIssues.length === 0
+            ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
+            : 'bg-amber-950/40 border-amber-500/40 text-amber-200'
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-mono uppercase tracking-wider text-[10px] font-bold">
+              {currentAudit.flaggedIssues.length === 0 ? '✨ 100% Press Ready' : '⚠️ Quality Attention Required'}
+            </span>
+            <span className="font-mono text-[11px] opacity-80">
+              {currentAudit.ultraHdCount + currentAudit.goodCount}/{currentAudit.totalPlaced} HD Slots
+            </span>
+          </div>
+
+          <p className="text-[11.5px] leading-relaxed opacity-90 mb-3">
+            {currentAudit.flaggedIssues.length === 0
+              ? 'All placed photos across your book meet or exceed the 300 DPI commercial press standard.'
+              : `${currentAudit.flaggedIssues.length} photo(s) may appear soft or low-resolution in physical print.`}
+          </p>
+
+          {currentAudit.flaggedIssues.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setPreflightReport(currentAudit);
+                setPreflightModalOpen(true);
+              }}
+              className="w-full py-2 bg-amber-400 hover:bg-amber-300 text-black font-bold rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+            >
+              <span>Inspect & Fix Quality Alerts ({currentAudit.flaggedIssues.length})</span>
+              <ArrowRight size={12} />
+            </button>
+          )}
+        </div>
+
         {/* Book Spec Summary Card */}
         <div className="p-3.5 sm:p-4 bg-noir-950 border border-noir-800 rounded-sm space-y-2.5">
           <div className="flex justify-between items-center text-xs">
@@ -428,7 +501,8 @@ function PreviewContent() {
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   return (
     <div className="h-screen flex flex-col bg-noir-950 text-cream-50 font-sans select-none overflow-hidden">
@@ -718,6 +792,17 @@ function PreviewContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pre-Flight Quality Gate Modal */}
+      {preflightReport && (
+        <PreflightQualityModal
+          isOpen={preflightModalOpen}
+          onClose={() => setPreflightModalOpen(false)}
+          onProceedAnyway={handleProceedAnyway}
+          onGoToPage={handleGoToPage}
+          auditReport={preflightReport}
+        />
       )}
     </div>
   );
