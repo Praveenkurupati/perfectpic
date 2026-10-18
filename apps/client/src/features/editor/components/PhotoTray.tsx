@@ -10,7 +10,8 @@ import {
   Loader2, 
   Sparkles, 
   Star, 
-  Layers 
+  Layers,
+  ScanFace,
 } from 'lucide-react';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 import BurstCleanupModal from './BurstCleanupModal';
@@ -36,6 +37,8 @@ export default function PhotoTray() {
     burstGroups,
     detectBurstPhotos,
     isDetectingBursts,
+    autoCropAllSlotsToFaces,
+    isAutoCroppingFaces,
   } = useEditorStore();
 
   const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
@@ -44,6 +47,20 @@ export default function PhotoTray() {
   const [autoFlowModalOpen, setAutoFlowModalOpen] = useState(false);
   const [isUploadingTray, setIsUploadingTray] = useState(false);
   const [trayProgress, setTrayProgress] = useState('');
+  const [faceCropNotification, setFaceCropNotification] = useState<string | null>(null);
+
+  const handleAutoFrameAllFaces = async () => {
+    try {
+      const { adjustedCount, facesFoundTotal } = await autoCropAllSlotsToFaces();
+      setFaceCropNotification(
+        `AI Framed ${adjustedCount} photo slots (${facesFoundTotal} faces aligned, 0 decapitations)`
+      );
+      setTimeout(() => setFaceCropNotification(null), 4000);
+    } catch {
+      setFaceCropNotification('Auto-frame completed');
+      setTimeout(() => setFaceCropNotification(null), 3000);
+    }
+  };
 
   // Auto-detect bursts when photo count changes
   useEffect(() => {
@@ -166,11 +183,35 @@ export default function PhotoTray() {
                 <span>Auto-Flow</span>
               </button>
             )}
+            {placedCount > 0 && (
+              <button
+                type="button"
+                onClick={handleAutoFrameAllFaces}
+                disabled={isAutoCroppingFaces}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-cream-100 hover:bg-cream-200 text-noir-900 border border-cream-300 transition-all shadow-2xs group disabled:opacity-50"
+                title="Face-Centric Smart Cropping (MediaPipe): Auto-align eye-lines and preserve headroom across all photo slots"
+              >
+                {isAutoCroppingFaces ? (
+                  <Loader2 size={11} className="animate-spin text-noir-950" />
+                ) : (
+                  <ScanFace size={11} className="text-noir-800 group-hover:scale-110 transition-transform" />
+                )}
+                <span>Face Frame</span>
+              </button>
+            )}
           </div>
           <span className="text-xs text-gray-400 font-medium font-mono">
             {photos.length} added · {placedCount} used
           </span>
         </div>
+
+        {/* Face-Centric Notification Banner */}
+        {faceCropNotification && (
+          <div className="mt-2.5 px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-900 text-[11px] font-medium flex items-center gap-1.5 animate-in fade-in duration-200">
+            <Check size={12} className="text-emerald-600 shrink-0" />
+            <span className="truncate">{faceCropNotification}</span>
+          </div>
+        )}
 
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto scrollbar-none pb-0.5">

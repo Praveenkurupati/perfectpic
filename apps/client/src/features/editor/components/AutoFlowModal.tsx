@@ -16,7 +16,8 @@ import {
   Maximize2,
   ChevronRight,
   Sliders,
-  Flame
+  Flame,
+  ScanFace,
 } from 'lucide-react';
 import { 
   useEditorStore, 
@@ -44,6 +45,7 @@ export default function AutoFlowModal({ isOpen, onClose, onSuccess }: AutoFlowMo
   const [enablePanoramics, setEnablePanoramics] = useState(true);
   const [prioritizeBestPicks, setPrioritizeBestPicks] = useState(true);
   const [generateDateHeaders, setGenerateDateHeaders] = useState(true);
+  const [smartFaceCrop, setSmartFaceCrop] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
 
   // Compute live preview metrics based on user selections
@@ -54,6 +56,7 @@ export default function AutoFlowModal({ isOpen, onClose, onSuccess }: AutoFlowMo
       enablePanoramics,
       prioritizeBestPicks,
       generateDateHeaders,
+      smartFaceCrop,
     });
   }, [
     getAutoFlowPreview,
@@ -62,6 +65,7 @@ export default function AutoFlowModal({ isOpen, onClose, onSuccess }: AutoFlowMo
     enablePanoramics,
     prioritizeBestPicks,
     generateDateHeaders,
+    smartFaceCrop,
   ]);
 
   if (!isOpen) return null;
@@ -75,6 +79,7 @@ export default function AutoFlowModal({ isOpen, onClose, onSuccess }: AutoFlowMo
         enablePanoramics,
         prioritizeBestPicks,
         generateDateHeaders,
+        smartFaceCrop,
       });
       setIsApplying(false);
       onClose();
@@ -353,6 +358,27 @@ export default function AutoFlowModal({ isOpen, onClose, onSuccess }: AutoFlowMo
                   type="checkbox"
                   checked={generateDateHeaders}
                   onChange={(e) => setGenerateDateHeaders(e.target.checked)}
+                  className="w-4 h-4 rounded text-noir-950 accent-noir-950 cursor-pointer"
+                />
+              </label>
+
+              {/* Toggle 4: Face-Centric Smart Cropping */}
+              <label className="p-3 bg-white border border-cream-200 rounded-sm flex items-center justify-between cursor-pointer hover:bg-cream-50/40 transition-colors">
+                <div className="flex items-center gap-2.5 pr-2">
+                  <ScanFace className="w-4 h-4 text-foil-gold shrink-0" />
+                  <div>
+                    <span className="font-semibold text-noir-900 block">
+                      Face-Centric Smart Cropping (MediaPipe)
+                    </span>
+                    <span className="text-[11px] text-noir-500 block leading-tight">
+                      Automatically aligns eye-lines and guarantees generous headroom to eliminate edge decapitations.
+                    </span>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={smartFaceCrop}
+                  onChange={(e) => setSmartFaceCrop(e.target.checked)}
                   className="w-4 h-4 rounded text-noir-950 accent-noir-950 cursor-pointer"
                 />
               </label>

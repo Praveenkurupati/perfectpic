@@ -47,6 +47,7 @@ export interface AutoFlowOptions {
   enablePanoramics?: boolean;
   prioritizeBestPicks?: boolean;
   generateDateHeaders?: boolean;
+  smartFaceCrop?: boolean;
 }
 
 export interface AutoFlowMetrics {

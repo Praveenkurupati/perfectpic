@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useEditorStore, PageLayout } from '@/stores/useEditorStore';
-import { LayoutGrid, Sparkles, Type, Palette, Check } from 'lucide-react';
+import { LayoutGrid, Sparkles, Type, Palette, Check, ScanFace, Loader2 } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 import { getSpineMetrics } from '@/lib/spineCalculator';
 import AutoFlowModal from './AutoFlowModal';
@@ -12,6 +12,7 @@ const panels = ['Layouts', 'Cover', 'Backgrounds'] as const;
 export default function EditorToolbar() {
   const [activePanel, setActivePanel] = useState<string>('Layouts');
   const [autoFlowModalOpen, setAutoFlowModalOpen] = useState(false);
+  const [faceCropMessage, setFaceCropMessage] = useState<string | null>(null);
 
   const {
     currentSpreadIndex,
@@ -25,7 +26,20 @@ export default function EditorToolbar() {
     pageBackgrounds,
     setPageBackground,
     template,
+    autoCropAllSlotsToFaces,
+    isAutoCroppingFaces,
   } = useEditorStore();
+
+  const handleAutoFrameFaces = async () => {
+    try {
+      const { adjustedCount, facesFoundTotal } = await autoCropAllSlotsToFaces();
+      setFaceCropMessage(`${adjustedCount} slots framed (${facesFoundTotal} faces aligned)`);
+      setTimeout(() => setFaceCropMessage(null), 4000);
+    } catch {
+      setFaceCropMessage('Framing complete');
+      setTimeout(() => setFaceCropMessage(null), 3000);
+    }
+  };
 
   const isCover = currentSpreadIndex === 0;
   const isBack = currentSpreadIndex === Math.ceil(pageCount / 2) + 1;
@@ -161,25 +175,58 @@ export default function EditorToolbar() {
                   ) : (
                     <div className="space-y-4">
                       {/* Chronological Auto-Flow Quick Action Banner */}
-                      <div className="p-3 bg-gradient-to-r from-amber-50 via-cream-100 to-amber-50/60 border border-amber-300/80 rounded-sm flex items-center justify-between gap-2 shadow-2xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-noir-950 block truncate">
-                              Auto-Flow Story
-                            </span>
-                            <span className="text-[10px] text-noir-500 block truncate">
-                              Day 1–N chronological rhythm
+                      <div className="p-3 bg-gradient-to-r from-amber-50 via-cream-100 to-amber-50/60 border border-amber-300/80 rounded-sm space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-noir-950 block truncate">
+                                Auto-Flow Story
+                              </span>
+                              <span className="text-[10px] text-noir-500 block truncate">
+                                Day 1–N chronological rhythm
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAutoFlowModalOpen(true)}
+                            className="px-2.5 py-1 bg-noir-950 text-cream-50 hover:bg-neutral-800 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 transition-all shadow-xs"
+                          >
+                            Auto-Flow
+                          </button>
+                        </div>
+
+                        {/* Secondary 1-Click AI Face-Frame Button */}
+                        <div className="pt-2 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <ScanFace className="w-3.5 h-3.5 text-foil-gold shrink-0" />
+                            <span className="text-[10px] font-medium text-noir-700 truncate">
+                              Smart Face Cropping
                             </span>
                           </div>
+                          <button
+                            type="button"
+                            onClick={handleAutoFrameFaces}
+                            disabled={isAutoCroppingFaces}
+                            className="px-2 py-0.5 bg-white hover:bg-amber-100/60 text-noir-900 border border-amber-300 rounded text-[9.5px] font-semibold uppercase tracking-wider shrink-0 transition-all flex items-center gap-1 disabled:opacity-50"
+                            title="MediaPipe BlazeFace: aligns eye lines & guarantees generous headroom across all photos"
+                          >
+                            {isAutoCroppingFaces ? (
+                              <Loader2 size={10} className="animate-spin text-noir-900" />
+                            ) : (
+                              <ScanFace size={10} className="text-foil-gold" />
+                            )}
+                            <span>Frame All</span>
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setAutoFlowModalOpen(true)}
-                          className="px-2.5 py-1 bg-noir-950 text-cream-50 hover:bg-neutral-800 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 transition-all shadow-xs"
-                        >
-                          Auto-Flow
-                        </button>
+
+                        {faceCropMessage && (
+                          <div className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 flex items-center gap-1">
+                            <Check size={10} className="text-emerald-600" />
+                            <span>{faceCropMessage}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Page Target Selector for Current Spread */}

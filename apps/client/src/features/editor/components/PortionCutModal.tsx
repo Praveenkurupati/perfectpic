@@ -11,9 +11,19 @@ import {
   Move,
   Layers,
   Sparkles,
+  UserCheck,
+  Scan,
+  Loader2,
+  Users,
 } from 'lucide-react';
 import { Photo, SlotCropConfig, PhotoCropPosition } from '@/stores/useEditorStore';
 import { normalizeImageUrl, handleImageError } from '@/lib/urls';
+import {
+  detectFacesInPhoto,
+  computeFaceCentricCrop,
+  DetectedFace,
+  SmartCropResult,
+} from '@/lib/smartFaceCropper';
 
 interface PortionCutModalProps {
   isOpen: boolean;
@@ -38,6 +48,11 @@ export default function PortionCutModal({
   const [focalY, setFocalY] = useState<number>(50);
   const [zoom, setZoom] = useState<number>(1.0);
   const [activePreset, setActivePreset] = useState<PhotoCropPosition>('center');
+  const [detectedFaces, setDetectedFaces] = useState<DetectedFace[]>([]);
+  const [isDetectingFaces, setIsDetectingFaces] = useState<boolean>(false);
+  const [hasRunFaceDetection, setHasRunFaceDetection] = useState<boolean>(false);
+  const [smartDetectionMessage, setSmartDetectionMessage] = useState<string | null>(null);
+  const [detectionMethod, setDetectionMethod] = useState<string | null>(null);
 
   // Synchronize initial state when modal opens
   useEffect(() => {
@@ -46,8 +61,34 @@ export default function PortionCutModal({
       setFocalY(currentCrop?.y ?? 50);
       setZoom(currentCrop?.zoom ?? 1.0);
       setActivePreset(currentCrop?.position ?? 'center');
+      setSmartDetectionMessage(null);
     }
   }, [isOpen, currentCrop]);
+
+  // On-device face detection run when modal opens
+  useEffect(() => {
+    if (isOpen && photo?.url) {
+      let isMounted = true;
+      setIsDetectingFaces(true);
+      detectFacesInPhoto(photo.url, photo.id)
+        .then(({ faces, method }) => {
+          if (!isMounted) return;
+          setDetectedFaces(faces);
+          setDetectionMethod(method);
+          setIsDetectingFaces(false);
+          setHasRunFaceDetection(true);
+        })
+        .catch(() => {
+          if (!isMounted) return;
+          setIsDetectingFaces(false);
+          setHasRunFaceDetection(true);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isOpen, photo?.url, photo?.id]);
 
   if (!isOpen) return null;
 
@@ -66,8 +107,6 @@ export default function PortionCutModal({
     setActivePreset('custom');
   };
 
-  const [smartDetectionMessage, setSmartDetectionMessage] = useState<string | null>(null);
-
   const handleReset = () => {
     setFocalX(50);
     setFocalY(50);
@@ -77,34 +116,15 @@ export default function PortionCutModal({
   };
 
   const handleSmartAutoFrame = () => {
-    // Intelligent rule-of-thirds face & subject detection heuristic (ENG-02 / AI-01)
-    // Examines image geometry to prevent decapitation in portrait orientation and balance horizons in landscape
-    const img = document.querySelector(`img[alt="${photo?.name || 'Crop Target'}"]`) as HTMLImageElement | null;
-    const naturalWidth = img?.naturalWidth || 1000;
-    const naturalHeight = img?.naturalHeight || 1000;
-    const aspectRatio = naturalWidth / naturalHeight;
-
-    if (aspectRatio < 0.9) {
-      // Tall portrait: faces and heads reside in the upper quadrant (20%-25% from top)
-      setFocalX(50);
-      setFocalY(22);
-      setActivePreset('top');
-      setSmartDetectionMessage('Auto-framed for portrait: Upper third face retention');
-    } else if (aspectRatio > 1.6) {
-      // Wide panoramic/landscape: align with primary horizontal golden ratio
-      setFocalX(50);
-      setFocalY(38);
-      setActivePreset('center');
-      setSmartDetectionMessage('Auto-framed for landscape: Golden-ratio horizon balance');
-    } else {
-      // Balanced square/3:2 photo: rule-of-thirds portrait focal point
-      setFocalX(50);
-      setFocalY(30);
-      setActivePreset('center');
-      setSmartDetectionMessage('Auto-framed: Upper focal subject centering');
-    }
-
-    setTimeout(() => setSmartDetectionMessage(null), 4000);
+    const naturalWidth = photo?.width || 1000;
+    const naturalHeight = photo?.height || 1000;
+    const result = computeFaceCentricCrop(detectedFaces, naturalWidth, naturalHeight, 1.0);
+    setFocalX(result.focalX);
+    setFocalY(result.focalY);
+    setZoom(result.zoom);
+    setActivePreset('custom');
+    setSmartDetectionMessage(result.framingMessage);
+    setTimeout(() => setSmartDetectionMessage(null), 5000);
   };
 
   const handleApply = () => {
@@ -205,6 +225,35 @@ export default function PortionCutModal({
                 <div className="" />
               </div>
 
+              {/* Detected Faces Bounding Boxes Overlay */}
+              {detectedFaces.map((face, index) => (
+                <div
+                  key={`face-${index}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const faceCenterX = Math.round((face.x + face.width / 2) * 100);
+                    const faceFocusY = Math.round(Math.max(12, (face.y + face.height * 0.35) * 100));
+                    setFocalX(faceCenterX);
+                    setFocalY(faceFocusY);
+                    setActivePreset('custom');
+                    setSmartDetectionMessage(`Focused on Person ${index + 1}: Eye-line balanced`);
+                  }}
+                  className="absolute border-2 border-amber-400 bg-amber-400/15 rounded-sm hover:border-amber-300 hover:bg-amber-400/30 transition-all cursor-pointer pointer-events-auto group/face shadow-[0_0_10px_rgba(251,191,36,0.7)]"
+                  style={{
+                    left: `${face.x * 100}%`,
+                    top: `${face.y * 100}%`,
+                    width: `${face.width * 100}%`,
+                    height: `${face.height * 100}%`,
+                  }}
+                  title={`Person ${index + 1} (${Math.round(face.confidence * 100)}% confidence) — Click to center here`}
+                >
+                  <div className="absolute -top-4 left-0 px-1 py-0.2 bg-amber-400 text-black font-mono text-[8.5px] font-bold rounded-xs flex items-center gap-0.5 shadow-xs whitespace-nowrap pointer-events-none">
+                    <UserCheck size={9} />
+                    <span>Person {index + 1}</span>
+                  </div>
+                </div>
+              ))}
+
               {/* Glowing Target Reticle on Selected Focal Point */}
               <div
                 className="absolute w-8 h-8 -ml-4 -mt-4 border-2 border-foil-gold rounded-full pointer-events-none transition-all duration-200 shadow-[0_0_12px_rgba(212,175,55,0.8)] flex items-center justify-center bg-foil-gold/20"
@@ -241,17 +290,58 @@ export default function PortionCutModal({
                 <button
                   type="button"
                   onClick={handleSmartAutoFrame}
-                  className="flex items-center gap-1 px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-noir-950 border border-foil-gold/50 rounded-xs text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95"
-                  title="Auto-detect subject: preserves heads and faces in portraits"
+                  disabled={isDetectingFaces}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-noir-950 border border-foil-gold/60 rounded-sm text-[11px] font-semibold transition-all shadow-xs cursor-pointer active:scale-95 disabled:opacity-50"
+                  title="MediaPipe AI & Shape Detection: preserves head room & eliminates decapitations"
                 >
-                  <Sparkles size={12} className="text-foil-gold" />
-                  <span>Smart Auto-Frame</span>
+                  {isDetectingFaces ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin text-foil-gold" />
+                      <span>Detecting...</span>
+                    </>
+                  ) : detectedFaces.length > 0 ? (
+                    <>
+                      <Sparkles size={12} className="text-foil-gold" />
+                      <span>AI Face Frame ({detectedFaces.length} {detectedFaces.length === 1 ? 'Face' : 'Faces'})</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={12} className="text-foil-gold" />
+                      <span>AI Smart Frame</span>
+                    </>
+                  )}
                 </button>
               </div>
 
+              {/* Live Detection Status & Summary Banner */}
+              {isDetectingFaces ? (
+                <div className="mb-2.5 p-2 bg-amber-50/70 border border-amber-200 text-amber-900 text-[10.5px] rounded-xs font-mono flex items-center gap-1.5 animate-pulse">
+                  <Loader2 size={12} className="animate-spin text-amber-700" />
+                  <span>Analyzing facial landmarks via MediaPipe BlazeFace & Vision engine...</span>
+                </div>
+              ) : detectedFaces.length > 0 ? (
+                <div className="mb-2.5 p-2 bg-amber-50 border border-amber-200 text-amber-950 text-[10.5px] rounded-xs flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <UserCheck size={13} className="text-amber-700" />
+                    <span className="font-semibold">
+                      {detectedFaces.length === 1
+                        ? '1 Solo Face Detected · Anti-Decapitation Active'
+                        : `${detectedFaces.length} Faces Detected · Group Center Balance Active`}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono uppercase bg-amber-200/60 px-1.5 py-0.5 rounded text-amber-900">
+                    {detectionMethod || 'MediaPipe'}
+                  </span>
+                </div>
+              ) : hasRunFaceDetection ? (
+                <div className="mb-2.5 p-2 bg-gray-50 border border-gray-200 text-gray-700 text-[10.5px] rounded-xs flex items-center justify-between font-mono">
+                  <span>Zero faces detected · Using horizon & golden ratio framing</span>
+                </div>
+              ) : null}
+
               {smartDetectionMessage && (
-                <div className="mb-2 p-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] rounded-xs font-medium flex items-center gap-1">
-                  <Check size={11} className="text-emerald-600" />
+                <div className="mb-2.5 p-2 bg-emerald-50 border border-emerald-200 text-emerald-900 text-[10.5px] rounded-xs font-medium flex items-center gap-1.5 animate-in fade-in duration-200">
+                  <Check size={12} className="text-emerald-600 shrink-0" />
                   <span>{smartDetectionMessage}</span>
                 </div>
               )}

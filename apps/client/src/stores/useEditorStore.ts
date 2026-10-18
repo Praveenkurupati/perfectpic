@@ -10,8 +10,23 @@ import {
   AutoFlowResult,
   generateChronologicalAutoFlowLayout,
 } from '@/lib/chronologicalAutoFlow';
+import {
+  detectFacesInPhoto,
+  computeFaceCentricCrop,
+  getSlotAspectRatio,
+  SmartCropResult,
+  DetectedFace,
+} from '@/lib/smartFaceCropper';
 
-export type { AutoFlowStyle, AutoFlowOrder, AutoFlowOptions, AutoFlowMetrics, AutoFlowResult };
+export type {
+  AutoFlowStyle,
+  AutoFlowOrder,
+  AutoFlowOptions,
+  AutoFlowMetrics,
+  AutoFlowResult,
+  SmartCropResult,
+  DetectedFace,
+};
 
 export interface Page {
   id: string;
@@ -129,6 +144,7 @@ interface EditorState {
   photoFilter: 'all' | 'unique' | 'bursts' | 'unused' | 'flagged';
   burstGroups: BurstCluster[];
   isDetectingBursts: boolean;
+  isAutoCroppingFaces: boolean;
   template: any | null;
   bookConfig: {
     size: string;
@@ -192,6 +208,8 @@ interface EditorState {
   lastAutoFlowMetrics: AutoFlowMetrics | null;
   applyAutoFlow: (options?: Partial<AutoFlowOptions>) => AutoFlowMetrics;
   getAutoFlowPreview: (options?: Partial<AutoFlowOptions>) => AutoFlowMetrics;
+  autoCropSlotToFaces: (slotId: string) => Promise<SmartCropResult | null>;
+  autoCropAllSlotsToFaces: () => Promise<{ adjustedCount: number; facesFoundTotal: number }>;
 }
 
 /**
@@ -261,6 +279,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   photoFilter: 'all',
   burstGroups: [],
   isDetectingBursts: false,
+  isAutoCroppingFaces: false,
   template: null,
   bookConfig: {
     size: '8.25x8.25',
@@ -532,6 +551,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       autoSaveStatus: 'saved',
     });
 
+    if (options?.smartFaceCrop !== false) {
+      setTimeout(() => {
+        get().autoCropAllSlotsToFaces().catch((err) => console.warn('Background auto-crop error:', err));
+      }, 50);
+    }
+
     return result.metrics;
   },
 
@@ -547,6 +572,130 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       generateDateHeaders: options?.generateDateHeaders !== false,
     });
     return result.metrics;
+  },
+
+  autoCropSlotToFaces: async (slotId: string) => {
+    const state = get();
+    let photo: Photo | null = state.slotPhotos[slotId] || null;
+    if (!photo && !slotId.includes('_')) {
+      const pageNum = parseInt(slotId, 10);
+      if (!isNaN(pageNum)) {
+        photo = state.pagePhotos[pageNum] || null;
+      }
+    }
+    if (!photo || !photo.url) return null;
+
+    let pageNum = 1;
+    if (slotId.startsWith('spread_')) {
+      const spreadIdx = parseInt(slotId.replace('spread_', ''), 10);
+      pageNum = (spreadIdx - 1) * 2 + 1;
+    } else {
+      const p = parseInt(slotId.split('_')[0] || '', 10);
+      if (!isNaN(p)) pageNum = p;
+    }
+    const layout = state.pageLayouts[pageNum] || '1-photo';
+    const slotAspect = getSlotAspectRatio(layout, slotId);
+
+    try {
+      const { faces, method } = await detectFacesInPhoto(photo.url, photo.id);
+      const result = computeFaceCentricCrop(
+        faces,
+        photo.width || 2000,
+        photo.height || 2000,
+        slotAspect
+      );
+      result.method = method;
+
+      state.setSlotCrop(slotId, {
+        position: 'custom',
+        x: result.focalX,
+        y: result.focalY,
+        zoom: result.zoom,
+      });
+
+      return result;
+    } catch (err) {
+      console.warn('Face auto-crop failed for slot:', slotId, err);
+      return null;
+    }
+  },
+
+  autoCropAllSlotsToFaces: async () => {
+    const state = get();
+    set({ isAutoCroppingFaces: true });
+
+    try {
+      const occupiedSlots = new Map<string, Photo>();
+
+      Object.entries(state.slotPhotos).forEach(([slotId, photo]) => {
+        if (photo && photo.url) {
+          occupiedSlots.set(slotId, photo);
+        }
+      });
+
+      Object.entries(state.pagePhotos).forEach(([pageNumStr, photo]) => {
+        if (photo && photo.url && !occupiedSlots.has(pageNumStr)) {
+          occupiedSlots.set(pageNumStr, photo);
+        }
+      });
+
+      if (occupiedSlots.size === 0) {
+        set({ isAutoCroppingFaces: false });
+        return { adjustedCount: 0, facesFoundTotal: 0 };
+      }
+
+      let adjustedCount = 0;
+      let facesFoundTotal = 0;
+      const updatedCrops = { ...state.slotCrops };
+
+      const entries = Array.from(occupiedSlots.entries());
+      await Promise.all(
+        entries.map(async ([slotId, photo]) => {
+          let pageNum = 1;
+          if (slotId.startsWith('spread_')) {
+            const spreadIdx = parseInt(slotId.replace('spread_', ''), 10);
+            pageNum = (spreadIdx - 1) * 2 + 1;
+          } else {
+            const p = parseInt(slotId.split('_')[0] || '', 10);
+            if (!isNaN(p)) pageNum = p;
+          }
+          const layout = state.pageLayouts[pageNum] || '1-photo';
+          const slotAspect = getSlotAspectRatio(layout, slotId);
+
+          const { faces } = await detectFacesInPhoto(photo.url, photo.id);
+          const result = computeFaceCentricCrop(
+            faces,
+            photo.width || 2000,
+            photo.height || 2000,
+            slotAspect
+          );
+
+          if (faces.length > 0) {
+            facesFoundTotal += faces.length;
+          }
+          adjustedCount++;
+
+          updatedCrops[slotId] = {
+            position: 'custom',
+            x: result.focalX,
+            y: result.focalY,
+            zoom: result.zoom,
+          };
+        })
+      );
+
+      set({
+        slotCrops: updatedCrops,
+        isAutoCroppingFaces: false,
+        autoSaveStatus: 'saved',
+      });
+
+      return { adjustedCount, facesFoundTotal };
+    } catch (err) {
+      console.error('Error during autoCropAllSlotsToFaces:', err);
+      set({ isAutoCroppingFaces: false });
+      return { adjustedCount: 0, facesFoundTotal: 0 };
+    }
   },
 
   autoPopulatePages: () => {
