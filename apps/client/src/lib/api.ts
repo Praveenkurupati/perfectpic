@@ -295,6 +295,10 @@ export const api = {
     promoCode?: string | null;
     deliveryOption?: string;
     isRushProduction?: boolean;
+    giftCardCode?: string | null;
+    giftCardPin?: string | null;
+    useStoreCredit?: boolean;
+    storeCreditAmount?: number;
   }) =>
     fetcher<{ success: boolean; pricing: any }>('/pricing/calculate', {
       method: 'POST',
@@ -310,6 +314,9 @@ export const api = {
     promoCode?: string | null;
     deliveryOption?: string;
     isRushProduction?: boolean;
+    giftCardCode?: string | null;
+    useStoreCredit?: boolean;
+    storeCreditAmount?: number;
     currency?: string;
     receipt?: string;
   }) =>
@@ -596,6 +603,82 @@ export const api = {
     }),
   getOrderReview: (orderNumber: string) =>
     fetcher<{ review: any }>(`/reviews/order/${encodeURIComponent(orderNumber)}`),
+
+  // Gift Cards & Store Credit
+  purchaseGiftCard: (data: {
+    amount: number;
+    theme?: string;
+    recipient: { name: string; email: string; phone?: string };
+    sender: { name: string; email: string; phone?: string };
+    message?: string;
+    deliveryMethod?: 'email' | 'whatsapp' | 'scheduled';
+    scheduledDeliveryDate?: string | null;
+  }) =>
+    fetcher<{ success: boolean; order: any; cardDetails: any }>('/gift-cards/purchase', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  verifyGiftCardPurchase: (data: {
+    razorpay_order_id?: string;
+    razorpay_payment_id?: string;
+    razorpay_signature?: string;
+    cardDetails: any;
+  }) =>
+    fetcher<{ success: boolean; message: string; card: any }>('/gift-cards/verify-purchase', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  verifyGiftCard: (code: string, pin?: string) =>
+    fetcher<{
+      valid: boolean;
+      code: string;
+      balance: number;
+      initialAmount: number;
+      status: string;
+      theme: string;
+      recipientName: string;
+      senderName: string;
+      message?: string;
+      expiresAt?: string | null;
+    }>(`/gift-cards/verify/${encodeURIComponent(code)}${pin ? `?pin=${encodeURIComponent(pin)}` : ''}`),
+  claimGiftCard: (code: string, pin?: string) =>
+    fetcher<{
+      success: boolean;
+      message: string;
+      claimedAmount: number;
+      newBalance: number;
+      code: string;
+    }>('/gift-cards/claim', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ code, pin }),
+    }),
+  getWalletBalance: () =>
+    fetcher<{
+      success: boolean;
+      balance: number;
+      transactions: Array<{
+        id: string;
+        type: string;
+        amount: number;
+        balanceBefore: number;
+        balanceAfter: number;
+        referenceId?: string;
+        description: string;
+        createdAt: string;
+      }>;
+    }>('/wallet/balance', {
+      headers: authHeaders(),
+    }),
+  getWalletTransactions: () =>
+    fetcher<{
+      success: boolean;
+      transactions: any[];
+    }>('/wallet/transactions', {
+      headers: authHeaders(),
+    }),
 
   // Health
   health: () => fetcher<{ status: string; database?: string; cache?: string }>('/health'),

@@ -2,6 +2,8 @@
 import { ProductRepository } from '../repositories/ProductRepository';
 import { BundleService } from './BundleService';
 import { PromoCodeService } from './PromoCodeService';
+import { GiftCardRepository } from '../repositories/GiftCardRepository';
+import { StoreCreditService } from './StoreCreditService';
 import { pageCountOptions, coverTypes, packagingOptions } from '../data/templates';
 import { ApiError } from '../utils/apiError';
 import { logger } from '../utils/logger';
@@ -47,6 +49,10 @@ export interface PricingCalculationInput {
   promoCode?: string | null;
   deliveryOption?: 'standard' | 'express' | 'rush' | string;
   isRushProduction?: boolean;
+  giftCardCode?: string | null;
+  giftCardPin?: string | null;
+  useStoreCredit?: boolean;
+  storeCreditAmount?: number;
   customerEmail?: string;
   customerPhone?: string;
   userId?: string;
@@ -100,6 +106,12 @@ export interface AuthoritativePricingResult {
   isRushProduction: boolean;
   rushFee: number;
   shippingFee: number;
+  payableBeforeCredit: number;
+  giftCardDeduction: number;
+  giftCardCode: string | null;
+  giftCardRemainingBalance: number;
+  storeCreditDeduction: number;
+  storeCreditRemainingBalance: number;
   finalTotal: number;
   amount: number; // In paise for payment gateway
   currency: 'INR';
@@ -405,8 +417,51 @@ export class PricingService {
       isFreeShipping = true;
     }
 
-    // 6. Final Authoritative Total
-    const finalTotal = Math.max(0, Math.round(subtotal - totalDiscount + shippingFee));
+    // 6. Gross Payable Before Credit & Gift Cards
+    const payableBeforeCredit = Math.max(0, Math.round(subtotal - totalDiscount + shippingFee));
+
+    // 7. Gift Card Deduction
+    let giftCardDeduction = 0;
+    let giftCardRemainingBalance = 0;
+    const rawGiftCardCode = (input.giftCardCode || '').trim();
+
+    if (rawGiftCardCode && payableBeforeCredit > 0) {
+      try {
+        const gc = await GiftCardRepository.findByCode(rawGiftCardCode);
+        if (gc && (gc.status === 'active' || gc.status === 'partially_redeemed')) {
+          if (!gc.expiresAt || new Date(gc.expiresAt) >= new Date()) {
+            giftCardDeduction = Math.min(payableBeforeCredit, Math.max(0, gc.currentBalance));
+            giftCardRemainingBalance = gc.currentBalance - giftCardDeduction;
+          }
+        }
+      } catch (gcErr: any) {
+        logger.warn(`[PricingService] Gift card evaluation warning for '${rawGiftCardCode}':`, gcErr.message);
+      }
+    }
+
+    const payableAfterGiftCard = Math.max(0, payableBeforeCredit - giftCardDeduction);
+
+    // 8. Store Credit / Digital Wallet Deduction
+    let storeCreditDeduction = 0;
+    let storeCreditRemainingBalance = 0;
+
+    if (input.userId && (input.useStoreCredit || (input.storeCreditAmount && input.storeCreditAmount > 0)) && payableAfterGiftCard > 0) {
+      try {
+        const availableCredit = await StoreCreditService.getUserBalance(input.userId);
+        if (availableCredit > 0) {
+          const desiredAmount = input.storeCreditAmount !== undefined && input.storeCreditAmount > 0
+            ? Math.min(availableCredit, Number(input.storeCreditAmount))
+            : availableCredit;
+          storeCreditDeduction = Math.min(payableAfterGiftCard, desiredAmount);
+          storeCreditRemainingBalance = availableCredit - storeCreditDeduction;
+        }
+      } catch (scErr: any) {
+        logger.warn(`[PricingService] Store credit evaluation warning for user '${input.userId}':`, scErr.message);
+      }
+    }
+
+    // 9. Final Authoritative Payable Total (amount sent to Razorpay / UPI gateway)
+    const finalTotal = Math.max(0, Math.round(payableAfterGiftCard - storeCreditDeduction));
     const amountInPaise = Math.round(finalTotal * 100);
 
     const result: AuthoritativePricingResult = {
@@ -427,6 +482,12 @@ export class PricingService {
       isRushProduction,
       rushFee,
       shippingFee,
+      payableBeforeCredit,
+      giftCardDeduction,
+      giftCardCode: giftCardDeduction > 0 ? rawGiftCardCode.toUpperCase() : null,
+      giftCardRemainingBalance,
+      storeCreditDeduction,
+      storeCreditRemainingBalance,
       finalTotal,
       amount: amountInPaise,
       currency: 'INR',

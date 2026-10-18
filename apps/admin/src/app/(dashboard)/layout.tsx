@@ -34,7 +34,8 @@ import {
   ArrowRight,
   Sparkles,
   Star,
-  CalendarHeart
+  CalendarHeart,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -79,6 +80,7 @@ const navSections: NavSection[] = [
       { name: "Page Options", href: "/pages", icon: Layers },
       { name: "Volume Bundles", href: "/bundles", icon: Boxes, badge: "4 Tiers", badgeColor: "bg-foil-gold/20 text-foil-gold" },
       { name: "Promo Codes", href: "/promos", icon: Tag },
+      { name: "Gift Cards & Credits", href: "/gift-cards", icon: Gift, badge: "Float", badgeColor: "bg-emerald-500/20 text-emerald-400" },
       { name: "Abandoned Drafts & CRM", href: "/drafts", icon: Sparkles, badge: "Recovery", badgeColor: "bg-foil-gold/20 text-foil-gold" },
       { name: "Anniversaries & Milestones", href: "/anniversaries", icon: CalendarHeart, badge: "Retention", badgeColor: "bg-rose-500/20 text-rose-400" },
       { name: "Influencer Creators", href: "/influencers", icon: Award },

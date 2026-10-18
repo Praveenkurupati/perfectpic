@@ -28,6 +28,7 @@ export interface IUser {
   providerId?: string;
   milestones?: IUserMilestone[];
   notificationPreferences?: INotificationPreferences;
+  storeCredit?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -58,6 +59,7 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
       type: Object,
       default: () => ({ whatsappReminders: true, emailReminders: true, anniversaryReminders: true }),
     },
+    storeCredit: { type: Number, default: 0, min: 0 },
   },
   {
     timestamps: true,

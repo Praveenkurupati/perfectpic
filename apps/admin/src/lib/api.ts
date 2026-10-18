@@ -596,6 +596,64 @@ export const adminApi = {
       body: JSON.stringify({ force }),
     }),
 
+  // Gift Cards & Digital Store Credits
+  getGiftCards: (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.status && params.status !== 'all') qs.set('status', params.status);
+    if (params?.search) qs.set('search', params.search);
+    const queryString = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      cards: any[];
+      total: number;
+      totalPages: number;
+    }>(`/gift-cards${queryString}`, { headers: authHeaders() });
+  },
+  getGiftCardMetrics: () =>
+    fetcher<{
+      success: boolean;
+      metrics: {
+        totalFloat: number;
+        totalIssued: number;
+        totalRedeemed: number;
+        activeCount: number;
+        partiallyRedeemedCount: number;
+      };
+    }>('/gift-cards/metrics', { headers: authHeaders() }),
+  issueGiftCard: (data: {
+    initialAmount: number;
+    theme?: string;
+    recipient?: { name: string; email: string; phone?: string };
+    sender?: { name: string; email: string };
+    message?: string;
+    notes?: string;
+    customCode?: string;
+  }) =>
+    fetcher<{ success: boolean; message: string; card: any }>('/gift-cards/admin/issue', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updateGiftCardStatus: (id: string, status: string, notes?: string) =>
+    fetcher<{ success: boolean; message: string; card: any }>(`/gift-cards/admin/${id}/status`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ status, notes }),
+    }),
+  resendGiftCard: (id: string) =>
+    fetcher<{ success: boolean; message: string }>(`/gift-cards/admin/${id}/resend`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  grantStoreCredit: (data: { userId: string; amount: number; reason?: string }) =>
+    fetcher<{ success: boolean; message: string; newBalance: number; grantedAmount: number }>('/wallet/admin/credit', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+
   // Health
   health: () => fetcher<{ status: string }>('/health'),
 };

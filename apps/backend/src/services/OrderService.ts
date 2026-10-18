@@ -3,6 +3,8 @@ import { isDbConnected } from '../db/connection';
 import { OrderRepository } from '../repositories/OrderRepository';
 import { PromoCodeService } from './PromoCodeService';
 import { PricingService } from './PricingService';
+import { GiftCardRepository } from '../repositories/GiftCardRepository';
+import { StoreCreditService } from './StoreCreditService';
 import { ApiError } from '../utils/apiError';
 import { mailService } from './MailService';
 import { WhatsappService } from './WhatsappService';
@@ -52,6 +54,10 @@ export class OrderService {
           orderData.deliveryOption ||
           (orderData.pricing?.shipping === 499 ? 'rush' : orderData.pricing?.shipping === 299 ? 'express' : 'standard'),
         isRushProduction: Boolean(orderData.isRushProduction || orderData.deliveryOption === 'rush' || orderData.productionPriority === 'RUSH'),
+        giftCardCode: orderData.giftCardCode || orderData.pricing?.giftCardCode,
+        giftCardPin: orderData.giftCardPin,
+        useStoreCredit: Boolean(orderData.useStoreCredit || orderData.storeCreditAmount),
+        storeCreditAmount: orderData.storeCreditAmount,
         customerEmail: orderData.customerEmail || orderData.shippingAddress?.email,
         customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
         userId: orderData.userId,
@@ -75,6 +81,26 @@ export class OrderService {
       orderData.targetDispatchAt = authoritativePricing.isRushProduction
         ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
         : new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString();
+      orderData.payableBeforeCredit = authoritativePricing.payableBeforeCredit;
+      orderData.giftCardDeduction = authoritativePricing.giftCardDeduction;
+      orderData.giftCardCode = authoritativePricing.giftCardCode;
+      orderData.storeCreditDeduction = authoritativePricing.storeCreditDeduction;
+
+      // Zero-Payable Checkout Bypass: If completely covered by credits / gift card
+      if (authoritativePricing.finalTotal === 0 && (authoritativePricing.giftCardDeduction > 0 || authoritativePricing.storeCreditDeduction > 0)) {
+        orderData.status = 'confirmed';
+        orderData.paymentStatus = 'paid';
+        orderData.paymentDetails = {
+          paymentMethod: authoritativePricing.giftCardDeduction > 0 && authoritativePricing.storeCreditDeduction > 0
+            ? 'split_credit_giftcard'
+            : authoritativePricing.giftCardDeduction > 0
+            ? 'gift_card'
+            : 'store_credit',
+          transactionId: `cr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+          status: 'completed',
+        };
+      }
+
       orderData.pricing = {
         subtotal: authoritativePricing.subtotal,
         promoCode: authoritativePricing.promoCode,
@@ -86,8 +112,12 @@ export class OrderService {
         packagingAddon: authoritativePricing.accessoriesSubtotal > 0,
         isRushProduction: authoritativePricing.isRushProduction,
         rushFee: authoritativePricing.rushFee,
+        payableBeforeCredit: authoritativePricing.payableBeforeCredit,
+        giftCardDeduction: authoritativePricing.giftCardDeduction,
+        giftCardCode: authoritativePricing.giftCardCode,
+        storeCreditDeduction: authoritativePricing.storeCreditDeduction,
         total: authoritativePricing.finalTotal,
-        paymentMethod: orderData.pricing?.paymentMethod || 'prepaid',
+        paymentMethod: orderData.pricing?.paymentMethod || orderData.paymentDetails?.paymentMethod || 'prepaid',
         advancePaid: authoritativePricing.finalTotal,
         balanceDue: 0,
       };
@@ -184,6 +214,37 @@ export class OrderService {
           orderTotal: Number(order.total || order.amount || 0),
         });
       }
+    }
+
+    // Atomically deduct applied Gift Card balance
+    if (order && orderData.giftCardDeduction > 0 && orderData.giftCardCode) {
+      await GiftCardRepository.deductBalance(
+        orderData.giftCardCode,
+        orderData.giftCardDeduction,
+        {
+          orderId: order.id || (order as any)._id,
+          orderNumber: order.orderNumber,
+          customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
+          userId: orderData.userId,
+        }
+      ).catch((err: any) => {
+        logger.error(`Failed to deduct gift card balance (${orderData.giftCardCode}):`, err.message);
+      });
+    }
+
+    // Atomically deduct applied Store Credit from user wallet
+    if (order && orderData.storeCreditDeduction > 0 && orderData.userId) {
+      await StoreCreditService.deductCreditForOrder(
+        orderData.userId,
+        orderData.storeCreditDeduction,
+        {
+          orderId: order.id || (order as any)._id,
+          orderNumber: order.orderNumber,
+          customerEmail: orderData.customerEmail || orderData.shippingAddress?.email || 'guest@perfectpic.in',
+        }
+      ).catch((err: any) => {
+        logger.error(`Failed to deduct store credit for user ${orderData.userId}:`, err.message);
+      });
     }
 
     // Send confirmation email asynchronously if customer email exists

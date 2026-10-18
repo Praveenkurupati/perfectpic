@@ -91,6 +91,10 @@ export default function CheckoutPage() {
     promoCode,
     discount,
     discountAmount,
+    appliedGiftCard,
+    useStoreCredit,
+    getGiftCardDeduction,
+    getStoreCreditDeduction,
     clearCart,
     accessories,
     getAccessoriesTotal,
@@ -242,6 +246,10 @@ export default function CheckoutPage() {
         } catch {}
       }
 
+      const giftCardDeduction = getGiftCardDeduction();
+      const storeCreditDeduction = getStoreCreditDeduction();
+      const isZeroPayable = finalTotal === 0 && (giftCardDeduction > 0 || storeCreditDeduction > 0);
+
       // Check environment to enforce real payment gateway in production (Directive 3 / PAY-01)
       const isProduction =
         process.env.NODE_ENV === 'production' ||
@@ -268,11 +276,88 @@ export default function CheckoutPage() {
         (razorpayKey.startsWith('rzp_live_') || razorpayKey.startsWith('rzp_test_'))
       );
 
-      // In production, require configured payment credentials
-      if (isProduction && !hasValidRazorpay) {
+      // In production, require configured payment credentials unless order is 100% covered by credits
+      if (isProduction && !hasValidRazorpay && !isZeroPayable) {
         throw new Error(
           'Production payment gateway is currently undergoing maintenance. Please try again shortly or contact support.'
         );
+      }
+
+      // Zero-Payable Checkout Bypass: If 100% covered by gift card or store credit, skip Razorpay modal completely
+      if (isZeroPayable) {
+        setSubmissionStep('Confirming order with gift card / credits...');
+
+        const zeroPayPayload = {
+          title: primaryItem?.title || 'Heirloom Custom Photobook',
+          items: items.map((it) => ({
+            templateId: (it as any).templateId || it.id,
+            size: it.dimensions,
+            pageCount: it.pageCount,
+            quantity: it.quantity || 1,
+            projectId: it.projectId,
+            projectSnapshot: it.projectSnapshot,
+          })),
+          projectSnapshot: snapshot,
+          projectManifest: snapshot,
+          projectId: primaryItem?.projectId,
+          customerName: shippingForm.fullName,
+          customerEmail: user?.email || 'guest@perfectpic.in',
+          customerPhone: shippingForm.phone,
+          userId: user?.id,
+          shippingAddress: {
+            fullName: shippingForm.fullName,
+            phone: shippingForm.phone,
+            email: user?.email || 'guest@perfectpic.in',
+            addressLine1: shippingForm.addressLine1,
+            landmark: shippingForm.landmark,
+            city,
+            state,
+            postalCode: shippingForm.pincode,
+            pincode: shippingForm.pincode,
+            country: 'India',
+          },
+          deliveryOption,
+          isRushProduction: deliveryOption === 'rush',
+          productionPriority: deliveryOption === 'rush' ? 'RUSH' : 'STANDARD',
+          accessories,
+          isGift: isGift || recipients.length > 0,
+          recipients: recipients.length > 0 ? recipients : undefined,
+          promoCode: promoCode || undefined,
+          giftCardCode: appliedGiftCard?.code || undefined,
+          useStoreCredit: Boolean(useStoreCredit),
+          storeCreditAmount: storeCreditDeduction || undefined,
+          paymentDetails: {
+            paymentMethod: appliedGiftCard && useStoreCredit ? 'split_credit_giftcard' : appliedGiftCard ? 'gift_card' : 'store_credit',
+            transactionId: `cr_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            status: 'completed',
+          },
+        };
+
+        const result = await api.createOrder(zeroPayPayload);
+        const orderId = result.orderNumber || result.id || (result as any).order?.orderNumber;
+        const guestToken = (result as any).guestToken || (result as any).order?.guestToken;
+
+        if (typeof window !== 'undefined' && orderId) {
+          try {
+            if (snapshot) localStorage.setItem(`pp_snapshot_${orderId}`, JSON.stringify(snapshot));
+          } catch {}
+        }
+
+        if (orderId) {
+          triggerBackgroundPdfUpload(snapshot, primaryItem, orderId);
+        }
+
+        trackMetaPurchase({
+          orderId: String(orderId),
+          total: 0,
+          items: items.map((it) => ({ id: it.id, title: it.title, price: it.basePrice })),
+        });
+
+        clearCart();
+
+        const tokenQuery = guestToken ? `?token=${encodeURIComponent(guestToken)}` : '';
+        router.push(`/confirmation/${orderId}${tokenQuery}`);
+        return;
       }
 
       // If Razorpay gateway is active and loaded, open official Razorpay checkout modal
@@ -295,6 +380,9 @@ export default function CheckoutPage() {
           deliveryOption,
           isRushProduction: deliveryOption === 'rush',
           amount: finalTotal,
+          giftCardCode: appliedGiftCard?.code || null,
+          useStoreCredit: Boolean(useStoreCredit),
+          storeCreditAmount: storeCreditDeduction || 0,
         });
 
         if (window.Razorpay && !rzpOrder.isMock) {
@@ -367,6 +455,9 @@ export default function CheckoutPage() {
                     isGift: isGift || recipients.length > 0,
                     recipients: recipients.length > 0 ? recipients : undefined,
                     promoCode: promoCode || undefined,
+                    giftCardCode: appliedGiftCard?.code || undefined,
+                    useStoreCredit: Boolean(useStoreCredit),
+                    storeCreditAmount: storeCreditDeduction || undefined,
                     paymentDetails: {
                       paymentMethod: 'razorpay',
                       razorpayOrderId: response.razorpay_order_id,
@@ -460,6 +551,9 @@ export default function CheckoutPage() {
         isGift: isGift || recipients.length > 0,
         recipients: recipients.length > 0 ? recipients : undefined,
         promoCode: promoCode || undefined,
+        giftCardCode: appliedGiftCard?.code || undefined,
+        useStoreCredit: Boolean(useStoreCredit),
+        storeCreditAmount: storeCreditDeduction || undefined,
         paymentDetails: {
           paymentMethod: isProduction ? 'razorpay' : 'online_upi',
           transactionId: `tx_${Date.now()}`,

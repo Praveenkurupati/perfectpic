@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, Menu, X, ChevronDown, LogOut, Package, FolderOpen, Shield, MapPin, Settings } from "lucide-react";
+import { ShoppingCart, Menu, X, ChevronDown, LogOut, Package, FolderOpen, Shield, MapPin, Settings, Gift, Wallet } from "lucide-react";
 import { m } from "motion/react";
 import { cn } from "@/lib/utils";
 import { getAdminPortalUrl } from "@/lib/urls";
@@ -98,6 +98,9 @@ export function Header() {
             <Link href="/templates" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
               templates
             </Link>
+            <Link href="/gift-cards" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
+              gift cards
+            </Link>
             <Link href="/projects" className="text-xs font-medium text-[#2A2926] hover:text-[#0A0A0A] transition-colors lowercase">
               my projects
             </Link>
@@ -141,12 +144,28 @@ export function Header() {
                       my orders
                     </Link>
                     <Link 
+                      href="/wallet" 
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center px-4 py-2 text-xs font-medium lowercase hover:bg-[#F4F2ED] transition-colors"
+                    >
+                      <Wallet size={14} className="mr-2.5 text-[#5C5A55]" />
+                      store credit &amp; wallet
+                    </Link>
+                    <Link 
                       href="/projects" 
                       onClick={() => setUserDropdownOpen(false)}
                       className="flex items-center px-4 py-2 text-xs font-medium lowercase hover:bg-[#F4F2ED] transition-colors"
                     >
                       <FolderOpen size={14} className="mr-2.5 text-[#5C5A55]" />
                       my projects
+                    </Link>
+                    <Link 
+                      href="/gift-cards" 
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center px-4 py-2 text-xs font-medium lowercase hover:bg-[#F4F2ED] transition-colors"
+                    >
+                      <Gift size={14} className="mr-2.5 text-[#5C5A55]" />
+                      gift cards
                     </Link>
                     <Link 
                       href="/addresses" 
@@ -235,11 +254,13 @@ export function Header() {
             )}
             <Link href="/templates" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">shop</Link>
             <Link href="/templates" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">templates</Link>
+            <Link href="/gift-cards" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">gift cards</Link>
             <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">pricing</Link>
             <Link href="/faq" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">about</Link>
             {isUserAuthenticated ? (
               <>
                 <Link href="/orders" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">my orders</Link>
+                <Link href="/wallet" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">store credit &amp; wallet</Link>
                 <Link href="/projects" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">my projects</Link>
                 <Link href="/addresses" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">saved addresses</Link>
                 <Link href="/settings" onClick={() => setMobileMenuOpen(false)} className="text-xs font-medium text-[#0A0A0A] lowercase">account settings</Link>

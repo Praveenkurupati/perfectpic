@@ -1,7 +1,7 @@
 // apps/client/src/components/checkout/OrderSummarySidebar.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Tag,
   Gift,
@@ -14,6 +14,10 @@ import {
   Lock,
   BookOpen,
   Zap,
+  Wallet,
+  CreditCard,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import {
   useCartStore,
@@ -41,11 +45,33 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
     getPhotobookCount,
     applyPromoCode,
     removePromoCode,
+    appliedGiftCard,
+    applyGiftCard,
+    removeGiftCard,
+    useStoreCredit,
+    setUseStoreCredit,
+    walletBalance,
+    fetchWalletBalance,
+    getPayableBeforeCredits,
+    getGiftCardDeduction,
+    getStoreCreditDeduction,
   } = useCartStore();
 
   const [inputCode, setInputCode] = useState('');
   const [promoError, setPromoError] = useState('');
   const [isApplying, setIsApplying] = useState(false);
+
+  // Gift card state
+  const [giftCardInput, setGiftCardInput] = useState('');
+  const [giftCardPin, setGiftCardPin] = useState('');
+  const [giftCardError, setGiftCardError] = useState('');
+  const [giftCardSuccess, setGiftCardSuccess] = useState('');
+  const [isApplyingGiftCard, setIsApplyingGiftCard] = useState(false);
+  const [showGiftCardForm, setShowGiftCardForm] = useState(false);
+
+  useEffect(() => {
+    fetchWalletBalance();
+  }, [fetchWalletBalance]);
 
   const bundleInfo = getBundleDiscount();
   const bundleDiscount = bundleInfo.discountAmount;
@@ -53,6 +79,9 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
   const accessoriesTotal = getAccessoriesTotal();
   const subtotal = getSubtotal();
   const shippingFee = deliveryOption === 'rush' ? 499 : deliveryOption === 'express' ? 299 : 0;
+  const giftCardDeduction = getGiftCardDeduction();
+  const storeCreditDeduction = getStoreCreditDeduction();
+  const payableBeforeCredits = getPayableBeforeCredits();
 
   const handleApplyPromo = async () => {
     if (!inputCode.trim()) return;
@@ -69,6 +98,27 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
       setPromoError(err.message || 'Failed to apply promotional code.');
     } finally {
       setIsApplying(false);
+    }
+  };
+
+  const handleApplyGiftCard = async () => {
+    if (!giftCardInput.trim()) return;
+    setIsApplyingGiftCard(true);
+    setGiftCardError('');
+    setGiftCardSuccess('');
+    try {
+      const res = await applyGiftCard(giftCardInput.trim(), giftCardPin.trim() || undefined);
+      if (res.success) {
+        setGiftCardSuccess(res.message);
+        setGiftCardInput('');
+        setGiftCardPin('');
+      } else {
+        setGiftCardError(res.message || 'Invalid gift card or PIN.');
+      }
+    } catch (err: any) {
+      setGiftCardError(err.message || 'Failed to verify gift card.');
+    } finally {
+      setIsApplyingGiftCard(false);
     }
   };
 
@@ -163,6 +213,143 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
               <span>2x Mini-Books ("Grandparents Pack")</span>
             </span>
             <span className="font-mono font-semibold">+₹{ACCESSORY_PRICES.miniBookDuo}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Digital Store Credit Option (if customer has balance in wallet) */}
+      {walletBalance > 0 && (
+        <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-sm">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-emerald-900 select-none">
+              <input
+                type="checkbox"
+                checked={useStoreCredit}
+                onChange={(e) => setUseStoreCredit(e.target.checked)}
+                className="accent-emerald-700 w-4 h-4 rounded cursor-pointer"
+              />
+              <span className="flex items-center gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Apply Store Credit</span>
+              </span>
+            </label>
+            <span className="text-[11px] font-mono text-emerald-800">
+              ₹{walletBalance.toLocaleString('en-IN')} available
+            </span>
+          </div>
+          {useStoreCredit && storeCreditDeduction > 0 && (
+            <div className="mt-2 pt-2 border-t border-emerald-200/60 flex items-center justify-between text-xs text-emerald-800 font-medium">
+              <span>Credit Applied to Order:</span>
+              <span className="font-mono font-bold">-₹{storeCreditDeduction.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Gift Card Section */}
+      <div className="space-y-2">
+        {appliedGiftCard ? (
+          <div className="flex items-center justify-between p-3 bg-noir-950 text-cream-50 rounded-sm text-xs border border-foil-gold/40 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-full bg-foil-gold/20 border border-foil-gold/50 flex items-center justify-center shrink-0">
+                <Gift className="w-3.5 h-3.5 text-foil-gold" />
+              </div>
+              <div>
+                <span className="font-mono font-bold tracking-wider text-foil-gold block">
+                  {appliedGiftCard.code}
+                </span>
+                <span className="text-[10px] text-cream-300 block">
+                  Available: ₹{appliedGiftCard.balance.toLocaleString('en-IN')} • Deducted: ₹{giftCardDeduction.toLocaleString('en-IN')}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={removeGiftCard}
+              className="text-cream-400 hover:text-white transition-colors p-1"
+              title="Remove gift card"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <div>
+            {!showGiftCardForm ? (
+              <button
+                type="button"
+                onClick={() => setShowGiftCardForm(true)}
+                className="w-full py-2 px-3 text-xs text-noir-700 bg-cream-50 hover:bg-cream-100 border border-cream-300 rounded-sm flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <span className="flex items-center gap-2 font-medium">
+                  <Gift className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Have a Gift Card?</span>
+                </span>
+                <span className="text-[11px] text-foil-gold font-medium uppercase tracking-wider">
+                  + Redeem
+                </span>
+              </button>
+            ) : (
+              <div className="p-3 bg-cream-50/80 border border-cream-300 rounded-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-noir-900 flex items-center gap-1.5">
+                    <Gift className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Redeem Gift Card</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGiftCardForm(false);
+                      setGiftCardError('');
+                      setGiftCardSuccess('');
+                    }}
+                    className="text-noir-500 hover:text-noir-900 text-[10px] uppercase tracking-wider font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <input
+                    type="text"
+                    value={giftCardInput}
+                    onChange={(e) => setGiftCardInput(e.target.value.toUpperCase())}
+                    placeholder="PPGC-XXXX-XXXX-XXXX"
+                    className="w-full border border-cream-300 px-3 py-1.5 rounded-sm text-xs uppercase tracking-wider font-mono focus:outline-none focus:border-noir-950 bg-white"
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      maxLength={4}
+                      value={giftCardPin}
+                      onChange={(e) => setGiftCardPin(e.target.value.replace(/\D/g, ''))}
+                      placeholder="PIN (4 Digits)"
+                      className="w-32 border border-cream-300 px-3 py-1.5 rounded-sm text-xs font-mono focus:outline-none focus:border-noir-950 bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleApplyGiftCard}
+                      disabled={isApplyingGiftCard || !giftCardInput.trim()}
+                      className="flex-1 px-3 py-1.5 bg-noir-950 text-cream-50 text-xs font-semibold uppercase tracking-wider rounded-sm hover:bg-noir-900 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      {isApplyingGiftCard ? 'Verifying...' : 'Apply Card'}
+                    </button>
+                  </div>
+                </div>
+
+                {giftCardError && (
+                  <p className="text-[11px] text-rose-600 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{giftCardError}</span>
+                  </p>
+                )}
+                {giftCardSuccess && (
+                  <p className="text-[11px] text-emerald-700 flex items-center gap-1 font-medium">
+                    <Check className="w-3 h-3 shrink-0" />
+                    <span>{giftCardSuccess}</span>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -281,21 +468,50 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
             </div>
           </div>
         )}
+
+        {/* Deductions from Gift Card & Store Credit */}
+        {giftCardDeduction > 0 && (
+          <div className="flex justify-between text-emerald-700 font-semibold pt-1 border-t border-cream-100">
+            <span className="flex items-center gap-1">
+              <Gift size={12} className="text-amber-600" />
+              <span>Gift Card ({appliedGiftCard?.code})</span>
+            </span>
+            <span className="font-mono">-₹{giftCardDeduction.toLocaleString('en-IN')}</span>
+          </div>
+        )}
+
+        {storeCreditDeduction > 0 && (
+          <div className="flex justify-between text-emerald-700 font-semibold pt-1 border-t border-cream-100">
+            <span className="flex items-center gap-1">
+              <Wallet size={12} className="text-emerald-700" />
+              <span>Store Credit Applied</span>
+            </span>
+            <span className="font-mono">-₹{storeCreditDeduction.toLocaleString('en-IN')}</span>
+          </div>
+        )}
       </div>
 
       {/* Total Due */}
-      <div className="flex items-baseline justify-between pt-1">
-        <div>
-          <span className="font-serif text-lg font-bold text-noir-950 block">
-            Total Payable
-          </span>
-          <span className="text-[10px] text-noir-500 uppercase tracking-wider">
-            All Taxes & GST Included
+      <div className="space-y-2 pt-1">
+        <div className="flex items-baseline justify-between">
+          <div>
+            <span className="font-serif text-lg font-bold text-noir-950 block">
+              Total Payable
+            </span>
+            <span className="text-[10px] text-noir-500 uppercase tracking-wider">
+              All Taxes & GST Included
+            </span>
+          </div>
+          <span className="font-serif text-3xl font-bold text-noir-950 font-mono">
+            ₹{finalTotal.toLocaleString('en-IN')}
           </span>
         </div>
-        <span className="font-serif text-3xl font-bold text-noir-950 font-mono">
-          ₹{finalTotal.toLocaleString('en-IN')}
-        </span>
+
+        {finalTotal === 0 && (giftCardDeduction > 0 || storeCreditDeduction > 0) && (
+          <div className="p-2 bg-emerald-50 border border-emerald-300 rounded text-center text-emerald-800 text-[11px] font-semibold tracking-wide uppercase">
+            ✓ 100% Covered by Gift Card / Credit (Zero Payable)
+          </div>
+        )}
       </div>
 
       {/* Archival Quality Trust Seals */}

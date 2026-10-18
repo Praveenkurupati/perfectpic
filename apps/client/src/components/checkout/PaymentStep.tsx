@@ -31,48 +31,64 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
       </div>
 
       <div className="space-y-4 mb-8">
-        {/* Razorpay Unified Option */}
-        <div className="p-5 rounded-sm border border-noir-950 bg-cream-50/70 ring-1 ring-noir-950">
-          <div className="flex items-start justify-between gap-4 mb-3">
-            <div className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="paymentMethod"
-                defaultChecked
-                className="accent-noir-950"
-              />
+        {finalTotal === 0 ? (
+          <div className="p-5 rounded-sm border border-emerald-500/80 bg-emerald-50/80 ring-1 ring-emerald-500/50">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold text-sm text-noir-900 block">
-                  Razorpay Secure Gateway
+                <span className="font-semibold text-sm text-emerald-950 block">
+                  100% Covered by Gift Card / Store Credit
                 </span>
-                <span className="text-xs text-noir-500">
-                  Instant UPI (GPay, PhonePe, Paytm), Credit/Debit Cards, EMI & NetBanking
+                <span className="text-xs text-emerald-800 leading-relaxed block mt-0.5">
+                  Your order total is ₹0 after applying your gift card or store credit balance. No external bank, card, or UPI transaction is required.
                 </span>
               </div>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
-              Zero Surcharge
-            </span>
           </div>
+        ) : (
+          /* Razorpay Unified Option */
+          <div className="p-5 rounded-sm border border-noir-950 bg-cream-50/70 ring-1 ring-noir-950">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  defaultChecked
+                  className="accent-noir-950"
+                />
+                <div>
+                  <span className="font-semibold text-sm text-noir-900 block">
+                    Razorpay Secure Gateway
+                  </span>
+                  <span className="text-xs text-noir-500">
+                    Instant UPI (GPay, PhonePe, Paytm), Credit/Debit Cards, EMI & NetBanking
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 shrink-0">
+                Zero Surcharge
+              </span>
+            </div>
 
-          <div className="flex items-center gap-2 pt-3 border-t border-cream-200 flex-wrap text-[11px] text-noir-600">
-            <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
-              UPI
-            </span>
-            <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
-              Visa
-            </span>
-            <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
-              Mastercard
-            </span>
-            <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
-              RuPay
-            </span>
-            <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
-              NetBanking (50+ Banks)
-            </span>
+            <div className="flex items-center gap-2 pt-3 border-t border-cream-200 flex-wrap text-[11px] text-noir-600">
+              <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
+                UPI
+              </span>
+              <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
+                Visa
+              </span>
+              <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
+                Mastercard
+              </span>
+              <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
+                RuPay
+              </span>
+              <span className="px-2 py-1 bg-white border border-cream-200 rounded text-noir-800 font-mono">
+                NetBanking (50+ Banks)
+              </span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Submit Order Action */}
@@ -90,9 +106,9 @@ export const PaymentStep: React.FC<PaymentStepProps> = ({
             </div>
           ) : (
             <div className="flex items-center justify-between w-full">
-              <span>Pay & Confirm Order</span>
+              <span>{finalTotal === 0 ? 'Confirm Order with Credits' : 'Pay & Confirm Order'}</span>
               <span className="font-mono text-base font-bold text-foil-gold">
-                ₹{finalTotal.toLocaleString('en-IN')}
+                {finalTotal === 0 ? '₹0 (Fully Paid)' : `₹${finalTotal.toLocaleString('en-IN')}`}
               </span>
             </div>
           )}
