@@ -1,7 +1,15 @@
 // apps/backend/src/queues/QueueManager.ts
 import { EventEmitter } from 'events';
 import crypto from 'crypto';
-import { Job, JobOptions, JobProcessor, JobStatus, QueueStats, WorkerOptions } from './types';
+import { 
+  Job, 
+  JobOptions, 
+  JobProcessor, 
+  JobStatus, 
+  QueueStats, 
+  WorkerOptions,
+  GetJobsOptions 
+} from './types';
 import redisClientModule, { isRedisConnected, getRedisClient } from '../cache/redis';
 import { logger } from '../utils/logger';
 
@@ -15,6 +23,7 @@ export class ManagedJob<T = any> implements Job<T> {
   public attempts: number;
   public maxAttempts: number;
   public failedReason?: string;
+  public stackTrace?: string[];
   public returnValue?: any;
   public createdAt: number;
   public processedAt?: number;
@@ -54,6 +63,7 @@ export class ManagedJob<T = any> implements Job<T> {
       attempts: this.attempts,
       maxAttempts: this.maxAttempts,
       failedReason: this.failedReason,
+      stackTrace: this.stackTrace,
       returnValue: this.returnValue,
       createdAt: this.createdAt,
       processedAt: this.processedAt,
@@ -69,6 +79,7 @@ export class ManagedJob<T = any> implements Job<T> {
     job.attempts = obj.attempts || 0;
     job.maxAttempts = obj.maxAttempts || 3;
     job.failedReason = obj.failedReason;
+    job.stackTrace = obj.stackTrace;
     job.returnValue = obj.returnValue;
     job.createdAt = obj.createdAt || Date.now();
     job.processedAt = obj.processedAt;
@@ -81,6 +92,8 @@ export class Queue<T = any> extends EventEmitter {
   private inMemoryJobs: Map<string, ManagedJob<T>> = new Map();
   private inMemoryWaiting: string[] = [];
   private inMemoryActive: string[] = [];
+  private inMemoryCompleted: string[] = [];
+  private inMemoryFailed: string[] = [];
 
   constructor(public readonly name: string) {
     super();
@@ -94,7 +107,9 @@ export class Queue<T = any> extends EventEmitter {
 
     // 1. In-memory state tracking
     this.inMemoryJobs.set(job.id, job);
-    this.inMemoryWaiting.push(job.id);
+    if (!this.inMemoryWaiting.includes(job.id)) {
+      this.inMemoryWaiting.push(job.id);
+    }
 
     // 2. Redis-backed BullMQ persistence
     if (isRedisConnected()) {
@@ -141,10 +156,125 @@ export class Queue<T = any> extends EventEmitter {
     return null;
   }
 
-  public async getJobs(statuses?: JobStatus[]): Promise<Job<T>[]> {
-    const all = Array.from(this.inMemoryJobs.values());
-    if (!statuses || statuses.length === 0) return all;
-    return all.filter((j) => statuses.includes(j.status));
+  /**
+   * Query jobs across statuses with pagination and Redis retrieval
+   */
+  public async getJobs(options?: GetJobsOptions): Promise<Job<T>[]> {
+    const statuses: JobStatus[] = options?.statuses || ['waiting', 'active', 'failed', 'completed'];
+    const limit = options?.limit || 50;
+    const offset = options?.offset || 0;
+
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const idsToFetch: string[] = [];
+          for (const status of statuses) {
+            if (status === 'waiting') {
+              const ids = await redis.lrange(`bullmq:${this.name}:waiting`, 0, limit);
+              idsToFetch.push(...ids);
+            } else if (status === 'active') {
+              const ids = await redis.lrange(`bullmq:${this.name}:active`, 0, limit);
+              idsToFetch.push(...ids);
+            } else if (status === 'failed') {
+              const ids = await redis.lrange(`bullmq:${this.name}:failed`, 0, limit);
+              idsToFetch.push(...ids);
+            } else if (status === 'completed') {
+              const ids = await redis.smembers(`bullmq:${this.name}:completed`);
+              idsToFetch.push(...ids.slice(0, limit));
+            }
+          }
+
+          const uniqueIds = Array.from(new Set(idsToFetch)).slice(offset, offset + limit);
+          const jobs: Job<T>[] = [];
+          for (const id of uniqueIds) {
+            const j = await this.getJob(id);
+            if (j && statuses.includes(j.status)) {
+              jobs.push(j);
+            }
+          }
+          return jobs;
+        } catch (err: any) {
+          logger.warn(`[BullMQ:${this.name}] Redis getJobs fallback:`, err?.message);
+        }
+      }
+    }
+
+    const all = Array.from(this.inMemoryJobs.values()).filter((j) => statuses.includes(j.status));
+    all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return all.slice(offset, offset + limit);
+  }
+
+  /**
+   * Retries a failed or dead-letter queue (DLQ) job
+   */
+  public async retryJob(id: string): Promise<Job<T> | null> {
+    const job = await this.getJob(id);
+    if (!job) return null;
+
+    job.status = 'waiting';
+    job.progress = 0;
+    job.attempts = 0;
+    job.failedReason = undefined;
+    job.stackTrace = undefined;
+    job.processedAt = undefined;
+    job.finishedAt = undefined;
+
+    // In-memory lists update
+    this.inMemoryFailed = this.inMemoryFailed.filter((fid) => fid !== id);
+    if (!this.inMemoryWaiting.includes(id)) {
+      this.inMemoryWaiting.push(id);
+    }
+
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const pipeline = redis.pipeline();
+          pipeline.lrem(`bullmq:${this.name}:failed`, 0, id);
+          pipeline.rpush(`bullmq:${this.name}:waiting`, id);
+          pipeline.hset(`bullmq:${this.name}:jobs:${id}`, 'payload', JSON.stringify((job as ManagedJob<T>).toJSON()));
+          pipeline.del(`bullmq:${this.name}:lock:${id}`);
+          await pipeline.exec();
+        } catch (err: any) {
+          logger.warn(`[BullMQ:${this.name}] Retry job Redis warning for ${id}:`, err?.message);
+        }
+      }
+    }
+
+    this.emit('waiting', job);
+    QueueManager.notifyWorkers(this.name);
+    logger.info(`[BullMQ:${this.name}] Successfully retried job ${id} from DLQ`);
+    return job;
+  }
+
+  /**
+   * Cancels or removes a job from any state (waiting, active, failed, completed)
+   */
+  public async removeJob(id: string): Promise<boolean> {
+    this.inMemoryJobs.delete(id);
+    this.inMemoryWaiting = this.inMemoryWaiting.filter((item) => item !== id);
+    this.inMemoryActive = this.inMemoryActive.filter((item) => item !== id);
+    this.inMemoryCompleted = this.inMemoryCompleted.filter((item) => item !== id);
+    this.inMemoryFailed = this.inMemoryFailed.filter((item) => item !== id);
+
+    if (isRedisConnected()) {
+      const redis = getRedisClient();
+      if (redis) {
+        try {
+          const pipeline = redis.pipeline();
+          pipeline.lrem(`bullmq:${this.name}:waiting`, 0, id);
+          pipeline.lrem(`bullmq:${this.name}:active`, 0, id);
+          pipeline.lrem(`bullmq:${this.name}:failed`, 0, id);
+          pipeline.srem(`bullmq:${this.name}:completed`, id);
+          pipeline.del(`bullmq:${this.name}:jobs:${id}`);
+          pipeline.del(`bullmq:${this.name}:lock:${id}`);
+          await pipeline.exec();
+          return true;
+        } catch {}
+      }
+    }
+    return true;
   }
 
   public async getStats(): Promise<QueueStats> {
@@ -218,7 +348,9 @@ export class Queue<T = any> extends EventEmitter {
       const id = this.inMemoryWaiting.shift()!;
       const job = this.inMemoryJobs.get(id);
       if (job && job.status === 'waiting') {
-        this.inMemoryActive.push(id);
+        if (!this.inMemoryActive.includes(id)) {
+          this.inMemoryActive.push(id);
+        }
         return job;
       }
     }
@@ -234,19 +366,19 @@ export class Queue<T = any> extends EventEmitter {
     job.returnValue = result;
     job.finishedAt = Date.now();
 
-    // Remove from in-memory active list
+    // Update in-memory lists
     this.inMemoryActive = this.inMemoryActive.filter((id) => id !== job.id);
+    if (!this.inMemoryCompleted.includes(job.id)) {
+      this.inMemoryCompleted.push(job.id);
+    }
 
     if (isRedisConnected()) {
       const redis = getRedisClient();
       if (redis) {
         try {
           const pipeline = redis.pipeline();
-          // Remove from active list
           pipeline.lrem(`bullmq:${this.name}:active`, 1, job.id);
-          // Add to completed set
           pipeline.sadd(`bullmq:${this.name}:completed`, job.id);
-          // Update persistent job hash
           pipeline.hset(`bullmq:${this.name}:jobs:${job.id}`, 'payload', JSON.stringify(job.toJSON()));
           pipeline.del(`bullmq:${this.name}:lock:${job.id}`);
           await pipeline.exec();
@@ -263,6 +395,9 @@ export class Queue<T = any> extends EventEmitter {
   public async _nackJob(job: ManagedJob<T>, error: any) {
     job.attempts++;
     job.failedReason = error?.message || String(error);
+    if (error?.stack) {
+      job.stackTrace = error.stack.split('\n').slice(0, 10);
+    }
 
     // Remove from in-memory active list
     this.inMemoryActive = this.inMemoryActive.filter((id) => id !== job.id);
@@ -273,7 +408,9 @@ export class Queue<T = any> extends EventEmitter {
       job.status = 'waiting';
 
       setTimeout(async () => {
-        this.inMemoryWaiting.push(job.id);
+        if (!this.inMemoryWaiting.includes(job.id)) {
+          this.inMemoryWaiting.push(job.id);
+        }
         if (isRedisConnected()) {
           const redis = getRedisClient();
           if (redis) {
@@ -293,6 +430,9 @@ export class Queue<T = any> extends EventEmitter {
       // Dead-letter queue
       job.status = 'failed';
       job.finishedAt = Date.now();
+      if (!this.inMemoryFailed.includes(job.id)) {
+        this.inMemoryFailed.push(job.id);
+      }
 
       if (isRedisConnected()) {
         const redis = getRedisClient();
@@ -435,6 +575,24 @@ export class QueueManager {
       result[name] = await queue.getStats();
     }
     return result;
+  }
+
+  public static async getQueueJobs(queueName: string, options?: GetJobsOptions): Promise<Job<any>[]> {
+    const queue = this.getQueue(queueName);
+    if (!queue) return [];
+    return await queue.getJobs(options);
+  }
+
+  public static async retryJob(queueName: string, id: string): Promise<Job<any> | null> {
+    const queue = this.getQueue(queueName);
+    if (!queue) return null;
+    return await queue.retryJob(id);
+  }
+
+  public static async removeJob(queueName: string, id: string): Promise<boolean> {
+    const queue = this.getQueue(queueName);
+    if (!queue) return false;
+    return await queue.removeJob(id);
   }
 }
 

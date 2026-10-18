@@ -308,13 +308,73 @@ export const adminApi = {
     return fetcher<{ customers: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/customers${qs}`, { headers: authHeaders() });
   },
 
-  // Production Queue
-  getProductionQueue: () => fetcher<{ columns: any[]; queue: any[] }>('/production', { headers: authHeaders() }),
+  // Production Queue & Fulfillment Pipeline
+  getProductionQueue: () => fetcher<{ columns: any[]; queue: any[]; stats?: any; totalOrders?: number }>('/production', { headers: authHeaders() }),
   advanceProduction: (orderId: string, status: string) =>
     fetcher<any>(`/production/${orderId}/status`, {
       method: 'PUT',
       headers: authHeaders(),
       body: JSON.stringify({ status }),
+    }),
+
+  // Headless Print Worker Queue Telemetry & Management
+  getQueueStats: () =>
+    fetcher<{
+      success: boolean;
+      isRedisConnected: boolean;
+      timestamp: string;
+      uptimeSeconds: number;
+      memoryUsageMb: { rss: number; heapTotal: number; heapUsed: number };
+      totals: { waiting: number; active: number; failed: number; completed: number };
+      queues: Record<string, { waiting: number; active: number; completed: number; failed: number; total: number }>;
+    }>('/queues/stats', { headers: authHeaders() }),
+
+  getQueueJobs: (params?: { queue?: string; status?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.queue) qs.set('queue', params.queue);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.offset) qs.set('offset', String(params.offset));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      queue: string;
+      status: string;
+      count: number;
+      jobs: Array<{
+        id: string;
+        name: string;
+        status: string;
+        progress: number;
+        attempts: number;
+        maxAttempts: number;
+        failedReason?: string;
+        stackTrace?: string[];
+        createdAt: number;
+        processedAt?: number;
+        finishedAt?: number;
+        data?: any;
+      }>;
+    }>(`/queues/jobs${query}`, { headers: authHeaders() });
+  },
+
+  retryQueueJob: (jobId: string, queue: string = 'print-render-queue') =>
+    fetcher<{ success: boolean; message: string; job: any }>(`/queues/retry/${jobId}`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ queue }),
+    }),
+
+  triggerOrderPrintRender: (orderId: string) =>
+    fetcher<{ success: boolean; message: string; jobId: string }>(`/queues/render-order/${orderId}`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+
+  removeQueueJob: (jobId: string, queue: string = 'print-render-queue') =>
+    fetcher<{ success: boolean; message: string }>(`/queues/jobs/${jobId}?queue=${encodeURIComponent(queue)}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
     }),
 
   // Support Tickets

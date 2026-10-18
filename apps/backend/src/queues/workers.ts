@@ -20,17 +20,20 @@ export const printRenderWorker = new Worker<{
     const orderId = job.data.orderId;
     let existingOrder = await OrderRepository.findById(orderId);
 
-    // Allow window for client background PDF upload to arrive and register
-    for (let attempt = 0; attempt < 5; attempt++) {
-      if (existingOrder && (existingOrder as any).pdfUrl && String((existingOrder as any).pdfUrl).startsWith('http')) {
-        break;
+    // Allow short window for client background PDF upload to arrive and register (unless forceRender or retry)
+    const isRetryOrForced = job.attempts > 1 || job.data.options?.forceRender === true;
+    if (!isRetryOrForced) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (existingOrder && (existingOrder as any).pdfUrl && String((existingOrder as any).pdfUrl).startsWith('http')) {
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+        existingOrder = await OrderRepository.findById(orderId);
       }
-      await new Promise((r) => setTimeout(r, 5000));
-      existingOrder = await OrderRepository.findById(orderId);
     }
 
     // If order already has a verified S3 print PDF uploaded with full photos from client, preserve it!
-    if (existingOrder && (existingOrder as any).pdfUrl && String((existingOrder as any).pdfUrl).startsWith('http')) {
+    if (!job.data.options?.forceRender && existingOrder && (existingOrder as any).pdfUrl && String((existingOrder as any).pdfUrl).startsWith('http')) {
       logger.info(`[Worker:printRender] [cid: ${cid}] Order ${orderId} already has verified print PDF from client upload: ${(existingOrder as any).pdfUrl}. Preserving it.`);
       await OrderRepository.updateStatus(orderId, 'printing', {
         notes: `300 DPI Press Master verified from client upload and linked to production queue.`,
@@ -52,9 +55,11 @@ export const printRenderWorker = new Worker<{
       };
     }
 
-    // Step 1: Compile 300 DPI Press Master with bleed and layflat spreads
-    const { pdfBuffer, preflight } = await PrintEngineService.compileOrderPressPdf(orderId);
-    await job.updateProgress(65);
+    // Step 1: Compile 300 DPI Press Master with full multi-layout imposition and progress reporting
+    const { pdfBuffer, preflight } = await PrintEngineService.compileOrderPressPdf(orderId, async (pct, stepName) => {
+      const overallPct = Math.min(85, Math.round(15 + (pct * 0.70)));
+      await job.updateProgress(overallPct);
+    });
 
     // Step 2: Store / Update Order Record with generated press PDF metadata
     let generatedPdfUrl = `/api/v1/orders/${orderId}/pdf`;

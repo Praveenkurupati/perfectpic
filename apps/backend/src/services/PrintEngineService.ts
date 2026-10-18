@@ -13,21 +13,6 @@ import {
 import { OrderRepository } from '../repositories/OrderRepository';
 import { logger } from '../utils/logger';
 
-async function fetchBase64Image(url?: string): Promise<string | null> {
-  if (!url || typeof url !== 'string') return null;
-  if (url.startsWith('data:image/')) return url;
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'PerfectPic-PrintEngine/1.0' } });
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    const contentType = res.headers.get('content-type') || 'image/jpeg';
-    const base64 = Buffer.from(buf).toString('base64');
-    return `data:${contentType};base64,${base64}`;
-  } catch {
-    return null;
-  }
-}
-
 export interface PreflightIssue {
   severity: 'error' | 'warning' | 'info';
   code: string;
@@ -57,6 +42,10 @@ export interface PrintEngineCompileOptions {
   photos?: string[];
   slotPhotos?: Record<string, { url: string } | null>;
   pagePhotos?: Record<number, { url: string } | null>;
+  slotCrops?: Record<string, { position?: string; x?: number; y?: number; zoom?: number }>;
+  pageLayouts?: Record<number, string>;
+  pageBackgrounds?: Record<number, string>;
+  captions?: Record<number, string>;
   foilColor?: 'gold' | 'silver' | 'rose-gold' | 'black';
   pages?: Array<{
     pageNumber: number;
@@ -65,6 +54,73 @@ export interface PrintEngineCompileOptions {
     caption?: string;
     backgroundColor?: string;
   }>;
+  onProgress?: (percent: number, stepName: string) => Promise<void> | void;
+}
+
+/**
+ * Converts a hex color string to RGB tuple.
+ */
+function hexToRgb(hex?: string, fallback: [number, number, number] = [250, 248, 245]): [number, number, number] {
+  if (!hex || typeof hex !== 'string') return fallback;
+  let c = hex.replace('#', '').trim();
+  if (c.length === 3) {
+    c = c.split('').map((x) => x + x).join('');
+  }
+  if (c.length !== 6) return fallback;
+  const num = parseInt(c, 16);
+  if (isNaN(num)) return fallback;
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+/**
+ * Downloads a single remote photo and returns a base64 Data URL.
+ */
+async function fetchBase64Image(url?: string): Promise<string | null> {
+  if (!url || typeof url !== 'string') return null;
+  if (url.startsWith('data:image/')) return url;
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'PerfectPic-PrintEngine/2.0' } });
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const base64 = Buffer.from(buf).toString('base64');
+    return `data:${contentType};base64,${base64}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Concurrency-bounded parallel asset pre-fetcher.
+ * Downloads up to 6 high-res assets concurrently with in-memory caching.
+ */
+async function prefetchPhotosBatch(
+  urls: string[],
+  concurrency = 6,
+  onBatchProgress?: (completed: number, total: number) => void
+): Promise<Map<string, string>> {
+  const cache = new Map<string, string>();
+  const uniqueUrls = Array.from(new Set(urls.filter((u) => u && typeof u === 'string' && u.startsWith('http'))));
+  let completed = 0;
+
+  const queue = [...uniqueUrls];
+  const workers = Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+    while (queue.length > 0) {
+      const url = queue.shift();
+      if (!url) break;
+      try {
+        const b64 = await fetchBase64Image(url);
+        if (b64) {
+          cache.set(url, b64);
+        }
+      } catch {}
+      completed++;
+      if (onBatchProgress) onBatchProgress(completed, uniqueUrls.length);
+    }
+  });
+
+  await Promise.all(workers);
+  return cache;
 }
 
 export class PrintEngineService {
@@ -82,7 +138,7 @@ export class PrintEngineService {
     if (dim.includes('a5')) {
       return { widthMm: 148.0, heightMm: 210.0 };
     }
-    // Default: Square Classic 8.25" x 8.25"
+    // Default: Square Classic 8.25" x 8.25" (209.55mm x 209.55mm)
     return { widthMm: 209.55, heightMm: 209.55 };
   }
 
@@ -127,27 +183,6 @@ export class PrintEngineService {
       }
     }
 
-    // 4. Page layout and photo presence audit
-    const pages = opts.pages || [];
-    pages.forEach((p) => {
-      if (!p.photoUrl && !p.caption) {
-        issues.push({
-          severity: 'info',
-          code: 'EMPTY_SPREAD_PAGE',
-          message: `Page ${p.pageNumber} contains neither a photo nor editorial typography.`,
-          page: p.pageNumber,
-        });
-      }
-      if (p.caption && p.caption.length > 500) {
-        issues.push({
-          severity: 'warning',
-          code: 'LONG_CAPTION_OVERFLOW',
-          message: `Page ${p.pageNumber} caption contains ${p.caption.length} characters, which exceeds single-paragraph layout guidelines.`,
-          page: p.pageNumber,
-        });
-      }
-    });
-
     const errorCount = issues.filter((i) => i.severity === 'error').length;
     const warningCount = issues.filter((i) => i.severity === 'warning').length;
     const score = Math.max(0, 100 - errorCount * 50 - warningCount * 10);
@@ -164,13 +199,15 @@ export class PrintEngineService {
   }
 
   /**
-   * Compiles press-ready 300 DPI PDF with 3mm exterior bleed and wrap-around hardcover jacket.
+   * Compiles press-ready 300 DPI PDF with full multi-layout imposition matching BookCanvas.tsx.
    */
   public static async compilePressReadyPdf(
     title: string,
     pageCount: number,
     opts: PrintEngineCompileOptions = {}
   ): Promise<{ pdfBuffer: Buffer; preflight: PreflightReport }> {
+    if (opts.onProgress) await opts.onProgress(5, 'Auditing preflight specifications...');
+
     const preflight = this.auditPreflight(pageCount, opts);
     const { widthMm, heightMm } = this.getDimensionsMm(opts.dimensions);
     const bleedMm = BINDERY_SPECS.PRESS_SPECS.bleedMarginMm; // 3.0 mm
@@ -178,6 +215,33 @@ export class PrintEngineService {
     // Total page width with 3mm bleed on both horizontal sides: width + 2*bleed
     const fullPageWidthMm = widthMm + bleedMm * 2;
     const fullPageHeightMm = heightMm + bleedMm * 2;
+
+    // Collect all candidate photo URLs to prefetch concurrently
+    const allCandidateUrls: string[] = [];
+    if (opts.coverImage) allCandidateUrls.push(opts.coverImage);
+    if (opts.photos) allCandidateUrls.push(...opts.photos);
+    if (opts.slotPhotos) {
+      Object.values(opts.slotPhotos).forEach((p) => {
+        if (p?.url) allCandidateUrls.push(p.url);
+      });
+    }
+    if (opts.pagePhotos) {
+      Object.values(opts.pagePhotos).forEach((p) => {
+        if (p?.url) allCandidateUrls.push(p.url);
+      });
+    }
+
+    if (opts.onProgress) await opts.onProgress(15, `Pre-fetching ${allCandidateUrls.length} assets concurrently...`);
+    const imageCache = await prefetchPhotosBatch(allCandidateUrls, 6);
+
+    const getImage = async (url?: string): Promise<string | null> => {
+      if (!url) return null;
+      if (imageCache.has(url)) return imageCache.get(url)!;
+      if (url.startsWith('data:image/')) return url;
+      const b64 = await fetchBase64Image(url);
+      if (b64) imageCache.set(url, b64);
+      return b64;
+    };
 
     const doc = new jsPDF({
       orientation: fullPageWidthMm > fullPageHeightMm ? 'landscape' : 'portrait',
@@ -189,46 +253,43 @@ export class PrintEngineService {
     doc.setDocumentProperties({
       title: `${title} - 300 DPI Commercial Press Master`,
       subject: `Archival Layflat Photobook (${pageCount} Pages, Fogra39 CMYK Profile)`,
-      author: 'PerfectPic Core Print Engine',
-      keywords: 'PressMaster, 300DPI, Fogra39, Layflat, BleedIncluded',
-      creator: 'PerfectPic Industrial Bindery Rasterizer v2.0',
+      author: 'PerfectPic Industrial Print Engine v2.0',
+      keywords: 'PressMaster, 300DPI, Fogra39, Layflat, BleedIncluded, MultiLayout',
+      creator: 'PerfectPic Headless Print Worker',
     });
 
     // ── SECTION 1: Wrap-Around Cover Jacket Spread ──────────────────────────
-    // Full jacket = Back Cover (width+bleed) + Spine (spineMm) + Front Cover (width+bleed) + Wrap Allowance (2*15mm)
+    if (opts.onProgress) await opts.onProgress(25, 'Rasterizing cover jacket with bindery wrap...');
     const spineMm = preflight.spineMetrics.spineWidthMm;
     const wrapTurnInMm = 15.0; // 15mm turn-in wrap over greyboard
     const totalCoverWidthMm = widthMm * 2 + spineMm + wrapTurnInMm * 2;
     const totalCoverHeightMm = heightMm + wrapTurnInMm * 2;
 
-    // Add cover jacket page
     doc.addPage([totalCoverWidthMm, totalCoverHeightMm], totalCoverWidthMm > totalCoverHeightMm ? 'landscape' : 'portrait');
 
-    // Draw cover background tone
-    const isDark = opts.coverColor?.toLowerCase().includes('dark') || opts.coverColor?.toLowerCase().includes('black');
-    if (isDark) {
-      doc.setFillColor(20, 20, 19);
-    } else {
-      doc.setFillColor(250, 248, 245);
-    }
+    // Fill cover background tone
+    const coverBgHex = opts.coverColor || '#1A1A1A';
+    const [cR, cG, cB] = hexToRgb(coverBgHex, [26, 26, 26]);
+    doc.setFillColor(cR, cG, cB);
     doc.rect(0, 0, totalCoverWidthMm, totalCoverHeightMm, 'F');
 
     // Guide lines for wrap-around turn-in
     doc.setDrawColor(212, 175, 55);
     doc.setLineWidth(0.2);
 
-    const frontCoverCenterX = wrapTurnInMm + widthMm + spineMm + (widthMm / 2);
+    const frontCoverCenterX = wrapTurnInMm + widthMm + spineMm + widthMm / 2;
     const frontCoverCenterY = totalCoverHeightMm / 2;
+    const isDark = (cR * 299 + cG * 587 + cB * 114) / 1000 < 128;
 
-    // Front Cover Title with authoritative text wrapping
-    const maxTitleWidthMm = widthMm - 40; // 20mm margin from edge and spine
+    // Front Cover Title
+    const maxTitleWidthMm = widthMm - 40;
     doc.setFont('times', 'bold');
     doc.setFontSize(22);
     doc.setTextColor(isDark ? 245 : 20, isDark ? 240 : 20, isDark ? 230 : 20);
     const titleLines = doc.splitTextToSize(opts.coverTitle || title, maxTitleWidthMm);
     const titleLineHeightMm = 22 * 0.352778 * 1.25;
     const titleBlockHeightMm = titleLines.length * titleLineHeightMm;
-    const titleStartY = frontCoverCenterY - 10 - (titleBlockHeightMm / 2);
+    const titleStartY = frontCoverCenterY - 10 - titleBlockHeightMm / 2;
     doc.text(titleLines, frontCoverCenterX, titleStartY, { align: 'center', lineHeightFactor: 1.25 });
 
     if (opts.coverSubtitle) {
@@ -243,13 +304,13 @@ export class PrintEngineService {
     // Front Cover Photo
     const coverPhotoUrl = opts.coverImage || opts.slotPhotos?.['0']?.url || opts.photos?.[0];
     if (coverPhotoUrl) {
-      const base64 = await fetchBase64Image(coverPhotoUrl);
+      const base64 = await getImage(coverPhotoUrl);
       if (base64) {
         try {
           const photoW = Math.min(widthMm - 60, 130);
           const photoH = (photoW * 3) / 4;
           const photoX = frontCoverCenterX - photoW / 2;
-          const photoY = (opts.coverSubtitle ? titleStartY + titleBlockHeightMm + 14 : titleStartY + titleBlockHeightMm + 8);
+          const photoY = opts.coverSubtitle ? titleStartY + titleBlockHeightMm + 14 : titleStartY + titleBlockHeightMm + 8;
           if (photoY + photoH < totalCoverHeightMm - wrapTurnInMm - 10) {
             doc.addImage(base64, 'JPEG', photoX, photoY, photoW, photoH);
           }
@@ -265,7 +326,6 @@ export class PrintEngineService {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(preflight.spineMetrics.recommendedFontSizePt);
       doc.setTextColor(180, 150, 60);
-      // Center on spine (rotated 90 degrees or printed vertically)
       doc.text(opts.spineText || title, spineCenterX, frontCoverCenterY, {
         align: 'center',
         angle: 90,
@@ -274,79 +334,222 @@ export class PrintEngineService {
 
     // ── SECTION 2: Layflat Interior Spread Pages ─────────────────────────────
     const totalInteriorPages = Math.max(pageCount, 20);
+    const safeZoneMm = bleedMm + BINDERY_SPECS.PRESS_SPECS.safeZoneMarginMm; // 3 + 5 = 8mm
+    const safeX = safeZoneMm;
+    const safeY = safeZoneMm;
+    const safeW = fullPageWidthMm - safeZoneMm * 2;
+    const safeH = fullPageHeightMm - safeZoneMm * 2;
+
+    const getSlotPhotoUrl = (pNum: number, subIdx: number): string | undefined => {
+      const slotKey = `${pNum}_${subIdx}`;
+      if (opts.slotPhotos?.[slotKey]?.url) return opts.slotPhotos[slotKey]!.url;
+      if (subIdx === 0 && opts.slotPhotos?.[String(pNum)]?.url) return opts.slotPhotos[String(pNum)]!.url;
+      if (subIdx === 0 && opts.pagePhotos?.[pNum]?.url) return opts.pagePhotos[pNum]!.url;
+      if (opts.photos && opts.photos.length > 0) {
+        const idx = (pNum * 3 + subIdx) % opts.photos.length;
+        return opts.photos[idx];
+      }
+      return undefined;
+    };
+
     for (let pageNum = 1; pageNum <= totalInteriorPages; pageNum++) {
+      const progressPercent = Math.round(30 + ((pageNum / totalInteriorPages) * 55));
+      if (opts.onProgress && pageNum % 4 === 0) {
+        await opts.onProgress(progressPercent, `Rendering interior page ${pageNum}/${totalInteriorPages}...`);
+      }
+
       doc.addPage([fullPageWidthMm, fullPageHeightMm], fullPageWidthMm > fullPageHeightMm ? 'landscape' : 'portrait');
 
-      // Page background
-      doc.setFillColor(255, 255, 255);
+      // 1. Page Background Tone
+      const bgHex = opts.pageBackgrounds?.[pageNum] || '#FFFFFF';
+      const [bgR, bgG, bgB] = hexToRgb(bgHex, [255, 255, 255]);
+      doc.setFillColor(bgR, bgG, bgB);
       doc.rect(0, 0, fullPageWidthMm, fullPageHeightMm, 'F');
 
-      // 3mm Exterior Bleed Indicator & 5mm Safety Zone
-      const safeX = bleedMm + BINDERY_SPECS.PRESS_SPECS.safeZoneMarginMm;
-      const safeY = bleedMm + BINDERY_SPECS.PRESS_SPECS.safeZoneMarginMm;
-      const safeW = fullPageWidthMm - safeX * 2;
-      const safeH = fullPageHeightMm - safeY * 2;
+      const isPageDark = (bgR * 299 + bgG * 587 + bgB * 114) / 1000 < 128;
 
-      // Draw subtle archival boundary markings for quality assurance
-      doc.setDrawColor(240, 240, 235);
-      doc.setLineWidth(0.1);
-      doc.rect(safeX, safeY, safeW, safeH);
+      // 2. Determine Layout and Spread Details
+      const layout = opts.pageLayouts?.[pageNum] || '1-photo';
+      const spreadIdx = Math.ceil(pageNum / 2);
+      const isLeftPage = pageNum % 2 !== 0; // In 1-indexed pages: 1=Left/First, 2=Right
+      const captionText = opts.captions?.[pageNum] || '';
 
-      // Render interior spread photo
-      const pageData = opts.pages?.find((p) => p.pageNumber === pageNum);
-      const pagePhotoUrl =
-        pageData?.photoUrl ||
-        opts.slotPhotos?.[`${pageNum}_0`]?.url ||
-        opts.slotPhotos?.[String(pageNum)]?.url ||
-        opts.pagePhotos?.[pageNum]?.url ||
-        (opts.photos && opts.photos.length > 0 ? opts.photos[(pageNum - 1) % opts.photos.length] : undefined);
+      // Determine photo area height based on caption presence
+      const hasCaption = captionText.trim().length > 0;
+      const captionHeightMm = hasCaption ? 20 : 0;
+      const photoAreaH = safeH - captionHeightMm;
 
-      if (pagePhotoUrl) {
-        const base64 = await fetchBase64Image(pagePhotoUrl);
-        if (base64) {
-          try {
-            const photoMargin = 8;
-            const pX = safeX + photoMargin;
-            const pY = safeY + photoMargin;
-            const pW = safeW - photoMargin * 2;
-            const pH = safeH - photoMargin * 2 - (pageData?.caption ? 20 : 0);
-            doc.addImage(base64, 'JPEG', pX, pY, pW, pH);
-          } catch (imgErr) {
-            logger.warn(`Could not embed interior photo on page ${pageNum}: ${imgErr}`);
+      // 3. Render Slots according to Layout Type
+      if (layout === '1-photo-full') {
+        // Full bleed: Extends to the absolute edge with 3mm bleed
+        const url = getSlotPhotoUrl(pageNum, 0);
+        if (url) {
+          const b64 = await getImage(url);
+          if (b64) {
+            try {
+              doc.addImage(b64, 'JPEG', 0, 0, fullPageWidthMm, fullPageHeightMm);
+            } catch {}
+          }
+        }
+      } else if (layout === '2-page-panoramic') {
+        // Layflat Panoramic Spread spanning left and right pages
+        const spreadUrl = opts.slotPhotos?.[`spread_${spreadIdx}`]?.url || getSlotPhotoUrl(pageNum, 0);
+        if (spreadUrl) {
+          const b64 = await getImage(spreadUrl);
+          if (b64) {
+            try {
+              // Left page gets left half, right page gets right half
+              const offsetX = isLeftPage ? 0 : -fullPageWidthMm;
+              doc.addImage(b64, 'JPEG', offsetX, 0, fullPageWidthMm * 2, fullPageHeightMm);
+            } catch {}
+          }
+        }
+      } else if (layout === '2-photo-v') {
+        // Stacked vertically
+        const gap = 3.5;
+        const slotH = (photoAreaH - gap) / 2;
+        const url0 = getSlotPhotoUrl(pageNum, 0);
+        const url1 = getSlotPhotoUrl(pageNum, 1);
+        if (url0) {
+          const b64_0 = await getImage(url0);
+          if (b64_0) doc.addImage(b64_0, 'JPEG', safeX, safeY, safeW, slotH);
+        }
+        if (url1) {
+          const b64_1 = await getImage(url1);
+          if (b64_1) doc.addImage(b64_1, 'JPEG', safeX, safeY + slotH + gap, safeW, slotH);
+        }
+      } else if (layout === '2-photo-h') {
+        // Side-by-side portraits
+        const gap = 3.5;
+        const slotW = (safeW - gap) / 2;
+        const url0 = getSlotPhotoUrl(pageNum, 0);
+        const url1 = getSlotPhotoUrl(pageNum, 1);
+        if (url0) {
+          const b64_0 = await getImage(url0);
+          if (b64_0) doc.addImage(b64_0, 'JPEG', safeX, safeY, slotW, photoAreaH);
+        }
+        if (url1) {
+          const b64_1 = await getImage(url1);
+          if (b64_1) doc.addImage(b64_1, 'JPEG', safeX + slotW + gap, safeY, slotW, photoAreaH);
+        }
+      } else if (layout === '3-photo') {
+        // Left hero (50%) + Right duo (2 stacked)
+        const gap = 3.5;
+        const heroW = (safeW - gap) / 2;
+        const duoH = (photoAreaH - gap) / 2;
+        const duoX = safeX + heroW + gap;
+        const url0 = getSlotPhotoUrl(pageNum, 0);
+        const url1 = getSlotPhotoUrl(pageNum, 1);
+        const url2 = getSlotPhotoUrl(pageNum, 2);
+        if (url0) {
+          const b64_0 = await getImage(url0);
+          if (b64_0) doc.addImage(b64_0, 'JPEG', safeX, safeY, heroW, photoAreaH);
+        }
+        if (url1) {
+          const b64_1 = await getImage(url1);
+          if (b64_1) doc.addImage(b64_1, 'JPEG', duoX, safeY, heroW, duoH);
+        }
+        if (url2) {
+          const b64_2 = await getImage(url2);
+          if (b64_2) doc.addImage(b64_2, 'JPEG', duoX, safeY + duoH + gap, heroW, duoH);
+        }
+      } else if (layout === '3-photo-h') {
+        // Top hero (58%) + Bottom duo (42%)
+        const gap = 3.5;
+        const heroH = (photoAreaH - gap) * 0.58;
+        const duoH = (photoAreaH - gap) * 0.42;
+        const duoW = (safeW - gap) / 2;
+        const duoY = safeY + heroH + gap;
+        const url0 = getSlotPhotoUrl(pageNum, 0);
+        const url1 = getSlotPhotoUrl(pageNum, 1);
+        const url2 = getSlotPhotoUrl(pageNum, 2);
+        if (url0) {
+          const b64_0 = await getImage(url0);
+          if (b64_0) doc.addImage(b64_0, 'JPEG', safeX, safeY, safeW, heroH);
+        }
+        if (url1) {
+          const b64_1 = await getImage(url1);
+          if (b64_1) doc.addImage(b64_1, 'JPEG', safeX, duoY, duoW, duoH);
+        }
+        if (url2) {
+          const b64_2 = await getImage(url2);
+          if (b64_2) doc.addImage(b64_2, 'JPEG', safeX + duoW + gap, duoY, duoW, duoH);
+        }
+      } else if (layout === '4-photo') {
+        // 2x2 grid
+        const gap = 3.5;
+        const slotW = (safeW - gap) / 2;
+        const slotH = (photoAreaH - gap) / 2;
+        for (let r = 0; r < 2; r++) {
+          for (let c = 0; c < 2; c++) {
+            const idx = r * 2 + c;
+            const x = safeX + c * (slotW + gap);
+            const y = safeY + r * (slotH + gap);
+            const url = getSlotPhotoUrl(pageNum, idx);
+            if (url) {
+              const b64 = await getImage(url);
+              if (b64) doc.addImage(b64, 'JPEG', x, y, slotW, slotH);
+            }
+          }
+        }
+      } else if (layout === '6-photo-grid') {
+        // 3x2 grid
+        const gapX = 3;
+        const gapY = 3;
+        const slotW = (safeW - 2 * gapX) / 3;
+        const slotH = (photoAreaH - gapY) / 2;
+        for (let r = 0; r < 2; r++) {
+          for (let c = 0; c < 3; c++) {
+            const idx = r * 3 + c;
+            const x = safeX + c * (slotW + gapX);
+            const y = safeY + r * (slotH + gapY);
+            const url = getSlotPhotoUrl(pageNum, idx);
+            if (url) {
+              const b64 = await getImage(url);
+              if (b64) doc.addImage(b64, 'JPEG', x, y, slotW, slotH);
+            }
+          }
+        }
+      } else {
+        // Default: '1-photo' centered with classic gallery margins
+        const photoMargin = 8;
+        const pX = safeX + photoMargin;
+        const pY = safeY + photoMargin;
+        const pW = safeW - photoMargin * 2;
+        const pH = photoAreaH - photoMargin * 2;
+        const url = getSlotPhotoUrl(pageNum, 0);
+        if (url) {
+          const b64 = await getImage(url);
+          if (b64) {
+            try {
+              doc.addImage(b64, 'JPEG', pX, pY, pW, pH);
+            } catch {}
           }
         }
       }
 
-      // Page Header / Running Folio
+      // 4. Page Header Folio & Number
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
-      doc.setTextColor(160, 160, 150);
-      const isLeftPage = pageNum % 2 === 0;
+      doc.setTextColor(isPageDark ? 160 : 130, isPageDark ? 160 : 130, isPageDark ? 160 : 130);
 
       if (isLeftPage) {
-        doc.text(title.toUpperCase(), safeX + 2, safeY + 4);
-        doc.text(String(pageNum), safeX + 2, safeY + safeH - 2);
+        doc.text(title.toUpperCase(), safeX, safeY - 3);
+        doc.text(String(pageNum), safeX, safeY + safeH + 4);
       } else {
-        doc.text(`ARCHIVAL FINE ART PRINT`, safeX + safeW - 2, safeY + 4, { align: 'right' });
-        doc.text(String(pageNum), safeX + safeW - 2, safeY + safeH - 2, { align: 'right' });
+        doc.text('ARCHIVAL FINE ART PRINT', safeX + safeW, safeY - 3, { align: 'right' });
+        doc.text(String(pageNum), safeX + safeW, safeY + safeH + 4, { align: 'right' });
       }
 
-      // Check if caption exists with authoritative multiline wrapping (ENG-01)
-      if (pageData?.caption && pageData.caption.trim().length > 0) {
+      // 5. Formatted Caption (if present)
+      if (hasCaption) {
         doc.setFont('times', 'italic');
-        doc.setFontSize(11);
-        doc.setTextColor(50, 50, 50);
+        doc.setFontSize(10.5);
+        doc.setTextColor(isPageDark ? 230 : 40, isPageDark ? 230 : 40, isPageDark ? 230 : 40);
 
-        const maxCaptionWidthMm = Math.min(safeW * 0.8, 140);
-        const wrappedCaption = doc.splitTextToSize(pageData.caption.trim(), maxCaptionWidthMm);
-        const captionLineHeightMm = 11 * 0.352778 * 1.35;
-        const captionBlockHeightMm = wrappedCaption.length * captionLineHeightMm;
-
-        // Ensure caption never truncates or collides with bottom margin
-        const captionY = Math.min(
-          fullPageHeightMm / 2 + 30,
-          safeY + safeH - captionBlockHeightMm - 8
-        );
+        const maxCaptionWidthMm = Math.min(safeW * 0.85, 140);
+        const wrappedCaption = doc.splitTextToSize(captionText.trim(), maxCaptionWidthMm);
+        const captionY = safeY + photoAreaH + 6;
 
         doc.text(wrappedCaption, fullPageWidthMm / 2, captionY, {
           align: 'center',
@@ -355,10 +558,13 @@ export class PrintEngineService {
       }
     }
 
-    // Output raw PDF array buffer as Node.js Buffer
+    if (opts.onProgress) await opts.onProgress(90, 'Serializing press-ready PDF master buffer...');
+
+    // Output binary buffer
     const arrayBuf = doc.output('arraybuffer');
     const pdfBuffer = Buffer.from(arrayBuf);
 
+    if (opts.onProgress) await opts.onProgress(100, '300 DPI press master compilation complete.');
     logger.info(`[PrintEngine] Compiled 300 DPI press master: ${pdfBuffer.length} bytes for "${title}" (${totalInteriorPages} pages)`);
     return { pdfBuffer, preflight };
   }
@@ -366,16 +572,23 @@ export class PrintEngineService {
   /**
    * Compiles and attaches press PDF for an order directly from Order database document.
    */
-  public static async compileOrderPressPdf(orderId: string): Promise<{ pdfBuffer: Buffer; preflight: PreflightReport }> {
+  public static async compileOrderPressPdf(
+    orderId: string,
+    onProgress?: (percent: number, stepName: string) => Promise<void> | void
+  ): Promise<{ pdfBuffer: Buffer; preflight: PreflightReport }> {
     const order = await OrderRepository.findById(orderId);
     if (!order) {
       throw new Error(`Order ${orderId} not found`);
     }
 
-    const snapshot = (order as any).projectSnapshot || (order as any).projectManifest || (order as any).items?.[0]?.projectSnapshot || {};
+    const snapshot =
+      (order as any).projectSnapshot ||
+      (order as any).projectManifest ||
+      (order as any).items?.[0]?.projectSnapshot ||
+      {};
     const title = snapshot.title || (order as any).title || 'Custom Photobook Keepsake';
     const pageCount = snapshot.pageCount || (order as any).pageCount || 40;
-    const dimensions = snapshot.dimensions || (order as any).dimensions || '8.25x8.25';
+    const dimensions = snapshot.dimensions || (order as any).dimensions || '8.25" × 8.25"';
     const coverType: BinderyCoverType = ((order as any).coverType as BinderyCoverType) || 'hardcover';
     const coverTitle = snapshot.coverConfig?.title || snapshot.title || title;
     const coverSubtitle = snapshot.coverConfig?.subtitle || snapshot.subtitle;
@@ -385,6 +598,10 @@ export class PrintEngineService {
     const photos: string[] = snapshot.photos || (order as any).photos || [];
     const slotPhotos = snapshot.slotPhotos || (order as any).slotPhotos || {};
     const pagePhotos = snapshot.pagePhotos || (order as any).pagePhotos || {};
+    const slotCrops = snapshot.slotCrops || (order as any).slotCrops || {};
+    const pageLayouts = snapshot.pageLayouts || (order as any).pageLayouts || {};
+    const pageBackgrounds = snapshot.pageBackgrounds || (order as any).pageBackgrounds || {};
+    const captions = snapshot.captions || (order as any).captions || {};
 
     return await this.compilePressReadyPdf(title, pageCount, {
       dimensions,
@@ -397,6 +614,11 @@ export class PrintEngineService {
       photos,
       slotPhotos,
       pagePhotos,
+      slotCrops,
+      pageLayouts,
+      pageBackgrounds,
+      captions,
+      onProgress,
     });
   }
 }

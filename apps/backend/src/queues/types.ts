@@ -20,6 +20,7 @@ export interface Job<T = any> {
   attempts: number;
   maxAttempts: number;
   failedReason?: string;
+  stackTrace?: string[];
   returnValue?: any;
   createdAt: number;
   processedAt?: number;
@@ -32,7 +33,14 @@ export interface QueueStats {
   active: number;
   completed: number;
   failed: number;
+  delayed?: number;
   total: number;
+}
+
+export interface GetJobsOptions {
+  statuses?: JobStatus[];
+  limit?: number;
+  offset?: number;
 }
 
 export type JobProcessor<T = any, R = any> = (job: Job<T>) => Promise<R>;
