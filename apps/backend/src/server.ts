@@ -65,7 +65,15 @@ async function bootstrap() {
     logger.warn(`CRM reminder scheduler initialization notice: ${err.message}`);
   }
 
-  // 7. Start HTTP server
+  // 7. Initialize Automated Anniversary & Milestone Reminder Scheduler (24h daily interval)
+  try {
+    const { AnniversaryReminderScheduler } = await import('./services/AnniversaryReminderScheduler');
+    AnniversaryReminderScheduler.start(24);
+  } catch (err: any) {
+    logger.warn(`Anniversary reminder scheduler initialization notice: ${err.message}`);
+  }
+
+  // 8. Start HTTP server
   server = app.listen(env.PORT, () => {
     logger.info(`✨ PerfectPic Server is live and listening on http://localhost:${env.PORT}`);
     logger.info(`🌐 Environment: ${env.NODE_ENV}`);

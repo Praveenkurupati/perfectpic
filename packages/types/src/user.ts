@@ -2,6 +2,23 @@ import { z } from "zod";
 
 // ─── User & Auth Types ──────────────────────────────────────────────────────
 
+export const UserMilestoneSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  occasion: z.enum(["anniversary", "birthday", "wedding", "travel", "baby", "annual", "holiday", "other"]).default("anniversary"),
+  date: z.string(), // YYYY-MM-DD or MM-DD
+  reminderDaysBefore: z.number().int().default(30),
+  optOut: z.boolean().default(false),
+});
+export type UserMilestone = z.infer<typeof UserMilestoneSchema>;
+
+export const NotificationPreferencesSchema = z.object({
+  whatsappReminders: z.boolean().default(true),
+  emailReminders: z.boolean().default(true),
+  anniversaryReminders: z.boolean().default(true),
+});
+export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
+
 export const UserSchema = z.object({
   id: z.string().uuid(),
   phone: z.string().optional(),
@@ -11,6 +28,8 @@ export const UserSchema = z.object({
   authProvider: z.enum(["otp", "google", "apple"]).default("otp"),
   role: z.enum(["customer", "admin", "super-admin"]).default("customer"),
   isVerified: z.boolean().default(false),
+  milestones: z.array(UserMilestoneSchema).optional(),
+  notificationPreferences: NotificationPreferencesSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

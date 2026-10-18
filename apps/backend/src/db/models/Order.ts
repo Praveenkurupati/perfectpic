@@ -191,6 +191,20 @@ export interface IOrder extends Document {
   originalOrderId?: string;
   originalOrderNumber?: string;
   reorderCount?: number;
+  occasion?: {
+    type: 'anniversary' | 'birthday' | 'wedding' | 'travel' | 'baby' | 'annual' | 'holiday' | 'other';
+    eventDate?: Date | string;
+    milestoneLabel?: string;
+    reminderOptOut?: boolean;
+  };
+  anniversaryReminders?: Array<{
+    stage: number;
+    sentAt: Date | string;
+    channel: string;
+    promoCode?: string;
+    recipientPhone?: string;
+    recipientEmail?: string;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -234,6 +248,8 @@ const OrderSchema: Schema = new Schema(
     originalOrderId: { type: String, index: true },
     originalOrderNumber: { type: String },
     reorderCount: { type: Number, default: 0 },
+    occasion: { type: Object },
+    anniversaryReminders: { type: Array, default: [] },
   },
   {
     timestamps: true,

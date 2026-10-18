@@ -20,6 +20,7 @@ import backupsRoutes from './backups.routes';
 import privacyRoutes from './privacy.routes';
 import reviewRoutes from './reviews.routes';
 import queuesRoutes from './queues.routes';
+import anniversaryRoutes from './anniversary.routes';
 
 const v1Router = Router();
 
@@ -31,6 +32,8 @@ v1Router.use('/projects', projectRoutes);
 v1Router.use('/customers', customerRoutes);
 v1Router.use('/production', productionRoutes);
 v1Router.use('/queues', queuesRoutes);
+v1Router.use('/anniversary', anniversaryRoutes);
+v1Router.use('/crm/anniversary', anniversaryRoutes);
 v1Router.use('/tickets', ticketRoutes);
 v1Router.use('/upload', uploadRoutes);
 v1Router.use('/payments', paymentRoutes);

@@ -110,6 +110,20 @@ export const OrderSchema = z.object({
     previousValue: z.any().optional(),
     newValue: z.any().optional(),
   })).optional(),
+  occasion: z.object({
+    type: z.enum(["anniversary", "birthday", "wedding", "travel", "baby", "annual", "holiday", "other"]).default("anniversary"),
+    eventDate: z.union([z.string(), z.date()]).optional(),
+    milestoneLabel: z.string().optional(),
+    reminderOptOut: z.boolean().default(false),
+  }).optional(),
+  anniversaryReminders: z.array(z.object({
+    stage: z.number(),
+    sentAt: z.union([z.string(), z.date()]),
+    channel: z.string(),
+    promoCode: z.string().optional(),
+    recipientPhone: z.string().optional(),
+    recipientEmail: z.string().optional(),
+  })).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

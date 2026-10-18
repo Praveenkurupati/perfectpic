@@ -294,6 +294,60 @@ export const adminApi = {
       headers: authHeaders(),
     }),
 
+  // Anniversary & Milestone CRM Retention Engine
+  getUpcomingAnniversaries: (params?: { stage?: string | number; search?: string; daysWindow?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.stage !== undefined && params.stage !== 'all') qs.set('stage', String(params.stage));
+    if (params?.search) qs.set('search', params.search);
+    if (params?.daysWindow) qs.set('daysWindow', String(params.daysWindow));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{ success: boolean; count: number; candidates: any[] }>(`/anniversary/upcoming${query}`, { headers: authHeaders() });
+  },
+  getAnniversaryMetrics: () =>
+    fetcher<{
+      success: boolean;
+      metrics: {
+        totalUpcomingMilestones30d: number;
+        totalUpcomingMilestones60d: number;
+        totalRemindersSent: number;
+        repeatConversionRate: number;
+        attributedRevenue: number;
+        repeatOrdersCount: number;
+        stageBreakdown: { stage1: number; stage2: number; stage3: number };
+        occasionBreakdown: Record<string, number>;
+        channelDeliveryRate: { whatsapp: number; email: number };
+        lastSweepAt?: string;
+      };
+    }>('/anniversary/metrics', { headers: authHeaders() }),
+  triggerAnniversaryReminder: (
+    orderId: string,
+    data?: {
+      stage?: number;
+      channel?: 'whatsapp' | 'email' | 'all';
+      customPromo?: string;
+      customPhone?: string;
+      customEmail?: string;
+    }
+  ) =>
+    fetcher<{ success: boolean; result: any; message: string }>(`/anniversary/trigger/${orderId}`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data || {}),
+    }),
+  previewAnniversaryTemplates: (orderId: string, params?: { stage?: number; promoCode?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.stage) qs.set('stage', String(params.stage));
+    if (params?.promoCode) qs.set('promoCode', params.promoCode);
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{ success: boolean; preview: any }>(`/anniversary/preview/${orderId}${query}`, { headers: authHeaders() });
+  },
+  processAnniversarySweep: () =>
+    fetcher<{ success: boolean; summary: any; message: string }>('/anniversary/sweep', {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+
   // Customers
   getCustomers: (param?: string | { search?: string; page?: number; limit?: number }) => {
     const query = new URLSearchParams();

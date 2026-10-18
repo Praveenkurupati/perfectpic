@@ -1,6 +1,21 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+export interface IUserMilestone {
+  id: string;
+  label: string;
+  occasion: 'anniversary' | 'birthday' | 'wedding' | 'travel' | 'baby' | 'annual' | 'holiday' | 'other';
+  date: string; // YYYY-MM-DD or MM-DD
+  reminderDaysBefore?: number;
+  optOut?: boolean;
+}
+
+export interface INotificationPreferences {
+  whatsappReminders?: boolean;
+  emailReminders?: boolean;
+  anniversaryReminders?: boolean;
+}
+
 export interface IUser {
   id?: string;
   name: string;
@@ -11,6 +26,8 @@ export interface IUser {
   avatar?: string;
   provider?: 'local' | 'google' | 'apple' | 'otp';
   providerId?: string;
+  milestones?: IUserMilestone[];
+  notificationPreferences?: INotificationPreferences;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -35,7 +52,12 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
     role: { type: String, enum: ['admin', 'user'], default: 'user', index: true },
     avatar: { type: String, default: '' },
     provider: { type: String, default: 'local' },
-    providerId: { type: String, default: '' }
+    providerId: { type: String, default: '' },
+    milestones: { type: Array, default: [] },
+    notificationPreferences: {
+      type: Object,
+      default: () => ({ whatsappReminders: true, emailReminders: true, anniversaryReminders: true }),
+    },
   },
   {
     timestamps: true,
