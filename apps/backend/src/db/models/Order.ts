@@ -183,6 +183,10 @@ export interface IOrder extends Document {
     newValue?: any;
   }>;
   review?: any;
+  isReorder?: boolean;
+  originalOrderId?: string;
+  originalOrderNumber?: string;
+  reorderCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,7 +225,11 @@ const OrderSchema: Schema = new Schema(
     shippingDetails: { type: Object },
     paymentDetails: { type: Object },
     production: { type: Object },
-    review: { type: Object }
+    review: { type: Object },
+    isReorder: { type: Boolean, default: false, index: true },
+    originalOrderId: { type: String, index: true },
+    originalOrderNumber: { type: String },
+    reorderCount: { type: Number, default: 0 },
   },
   {
     timestamps: true,

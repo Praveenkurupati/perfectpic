@@ -172,6 +172,25 @@ let inMemoryPromos: any[] = [
     createdAt: new Date('2026-08-15T00:00:00.000Z'),
     updatedAt: new Date(),
   },
+  {
+    id: 'promo-reorder15',
+    code: 'REORDER15',
+    description: 'Family Re-order Reward: 15% off identical archival reprint copies.',
+    discountType: 'percentage',
+    discountValue: 15,
+    maxDiscountAmount: 1500,
+    minOrderAmount: 0,
+    audienceType: 'ALL',
+    allowedUserEmails: [],
+    maxUses: null,
+    currentUses: 0,
+    maxUsesPerUser: 10,
+    startDate: new Date('2026-01-01T00:00:00.000Z'),
+    expiresAt: null,
+    isActive: true,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date(),
+  },
 ];
 
 let inMemoryUsages: any[] = [
@@ -339,6 +358,20 @@ export class PromoCodeRepository {
             ...promo.toJSON(),
             id: promo._id?.toString() || promo.id,
           };
+        }
+
+        const memoryMatch = inMemoryPromos.find((p) => p.code.toUpperCase() === normalized);
+        if (memoryMatch) {
+          try {
+            const { id: _id, ...toSeed } = memoryMatch;
+            const created = await (PromoCode as any).create(toSeed);
+            return {
+              ...created.toJSON(),
+              id: created._id?.toString() || created.id,
+            };
+          } catch {
+            return memoryMatch;
+          }
         }
       } catch (err: any) {
         logger.warn(`Error finding promo by code ${code} in Mongo:`, err.message);

@@ -197,6 +197,29 @@ export const api = {
       headers: authHeaders(),
       body: JSON.stringify(data),
     }),
+  reorder: (
+    orderId: string,
+    options?: {
+      quantity?: number;
+      shippingAddress?: any;
+      isGift?: boolean;
+      giftMessage?: string;
+      promoCode?: string;
+      accessories?: any;
+      deliveryOption?: string;
+      customerName?: string;
+      customerEmail?: string;
+      customerPhone?: string;
+    }
+  ) =>
+    fetcher<{ message: string; id: string; orderNumber: string; originalOrderId?: string; reorder: any }>(
+      `/orders/${orderId}/reorder`,
+      {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify(options || {}),
+      }
+    ),
   submitOrderReview: (orderId: string, data: any) =>
     fetcher<{ message: string; review: any }>(`/orders/${orderId}/review`, {
       method: 'POST',

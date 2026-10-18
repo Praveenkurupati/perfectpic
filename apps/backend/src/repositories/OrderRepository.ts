@@ -460,6 +460,27 @@ export class OrderRepository {
     return null;
   }
 
+  public static async incrementReorderCount(idParam: string) {
+    if (isDbConnected()) {
+      let query: any = { orderNumber: idParam };
+      if (mongoose.isValidObjectId(idParam)) {
+        query = { $or: [{ _id: idParam }, { orderNumber: idParam }] };
+      }
+      return await Order.findOneAndUpdate(
+        query,
+        { $inc: { reorderCount: 1 } },
+        { new: true }
+      );
+    }
+
+    const found = mockOrders.find((o) => o.id === idParam || o.orderNumber === idParam);
+    if (found) {
+      (found as any).reorderCount = ((found as any).reorderCount || 0) + 1;
+      return found;
+    }
+    return null;
+  }
+
   public static async updateStatus(
     idParam: string,
     status: string,

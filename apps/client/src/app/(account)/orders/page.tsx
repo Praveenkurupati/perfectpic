@@ -3,11 +3,12 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star, CheckCircle, Sparkles } from 'lucide-react';
+import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star, CheckCircle, Sparkles, RotateCcw } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeImageUrl } from '@/lib/urls';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
+import { ReorderModal } from '@/components/orders/ReorderModal';
 
 interface OrderTimelineStep {
   id: string;
@@ -179,6 +180,7 @@ function TrackOrderContent() {
   const [loading, setLoading] = useState(true);
   const [lookupNumber, setLookupNumber] = useState('');
   const [lookupError, setLookupError] = useState<string | null>(null);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   // Order Review & Rating State
   const [orderReview, setOrderReview] = useState<any>(null);
@@ -477,16 +479,27 @@ function TrackOrderContent() {
           </div>
         </div>
 
-        {/* Actions: Contact Support & Status Badge */}
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        {/* Actions: Re-order, Contact Support & Status Badge */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsReorderModalOpen(true)}
+            className="bg-amber-50 border border-amber-300 hover:bg-amber-100 text-[#0A0A0A] px-4 py-2.5 rounded-full text-xs font-semibold transition-colors lowercase flex items-center gap-1.5 shadow-2xs"
+            title="Order an identical reprint copy and save 15%"
+          >
+            <RotateCcw size={13} className="text-amber-800" />
+            <span>order another copy</span>
+            <span className="text-[10px] bg-amber-200/80 text-amber-900 px-1.5 py-0.2 rounded-full font-bold">15% off</span>
+          </button>
+
           <Link
             href="/faq"
-            className="bg-white border border-[#D9D6CF] hover:bg-[#FAF9F6] text-[#0A0A0A] px-5 py-2.5 rounded-full text-xs md:text-sm font-medium transition-colors lowercase"
+            className="bg-white border border-[#D9D6CF] hover:bg-[#FAF9F6] text-[#0A0A0A] px-4 py-2.5 rounded-full text-xs font-medium transition-colors lowercase"
           >
             contact support
           </Link>
 
-          <span className="bg-[#0A0A0A] text-white px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider">
+          <span className="bg-[#0A0A0A] text-white px-3.5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider">
             {order.status}
           </span>
         </div>
@@ -750,6 +763,26 @@ function TrackOrderContent() {
               </div>
             </div>
 
+            {/* Re-order Another Copy Card for Family */}
+            <div className="mt-4 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-2xl flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[#0A0A0A] lowercase flex items-center gap-1">
+                  <Sparkles size={12} className="text-amber-700" />
+                  <span>want an extra copy for family?</span>
+                </p>
+                <p className="text-[11px] text-[#706E69] lowercase truncate">
+                  reprints ship immediately with verified master pdf
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsReorderModalOpen(true)}
+                className="shrink-0 bg-[#0A0A0A] hover:bg-black text-white px-3.5 py-1.5 rounded-full text-xs font-semibold lowercase flex items-center gap-1 shadow-2xs"
+              >
+                <span>re-order (15% off)</span>
+              </button>
+            </div>
+
             {/* Divider */}
             <div className="border-t border-[#D9D6CF]/60 my-6" />
 
@@ -852,6 +885,13 @@ function TrackOrderContent() {
           © 2026 perfectpic · made with love in India
         </p>
       </div>
+
+      {/* 1-Click Re-order Modal */}
+      <ReorderModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        order={order}
+      />
     </div>
   );
 }

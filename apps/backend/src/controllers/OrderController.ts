@@ -269,6 +269,23 @@ export class OrderController {
       next(err);
     }
   }
+
+  public static async reorderOrder(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = String(req.params.id);
+      const user = (req as any).user;
+      const reorder = await OrderService.reorder(id, req.body, user);
+      return res.status(201).json({
+        message: 'Re-order created successfully',
+        id: (reorder as any).orderNumber || (reorder as any).id,
+        orderNumber: (reorder as any).orderNumber || (reorder as any).id,
+        originalOrderId: id,
+        reorder,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export default OrderController;

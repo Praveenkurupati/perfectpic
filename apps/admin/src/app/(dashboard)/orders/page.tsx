@@ -192,6 +192,9 @@ export default function OrdersPage() {
               pdfUrl: o.pdfUrl,
               packagingBadges,
               isGift: Boolean(o.isGift || hasGiftWrap),
+              isReorder: Boolean(o.isReorder),
+              originalOrderNumber: o.originalOrderNumber || o.originalOrderId,
+              reorderCount: Number(o.reorderCount || 0),
               production: o.production || {},
               shippingDetails: o.shippingDetails || {},
             };
@@ -587,9 +590,27 @@ export default function OrdersPage() {
                     <tr key={order.id} className="hover:bg-cream-50/40 transition-colors group">
                       {/* Order ID */}
                       <td className="p-4">
-                        <Link href={`/orders/${order.id}`} className="font-mono font-semibold text-sm text-noir-950 hover:underline">
-                          {order.id}
-                        </Link>
+                        <div className="flex flex-col items-start gap-1">
+                          <Link href={`/orders/${order.id}`} className="font-mono font-semibold text-sm text-noir-950 hover:underline">
+                            {order.id}
+                          </Link>
+                          {order.isReorder && (
+                            <span 
+                              className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded-xs flex items-center gap-1"
+                              title={`Reprint copy reusing validated print PDF from #${order.originalOrderNumber || 'original order'}`}
+                            >
+                              <span>🔁 Re-order</span>
+                              {order.originalOrderNumber && (
+                                <span className="opacity-80">({order.originalOrderNumber})</span>
+                              )}
+                            </span>
+                          )}
+                          {order.reorderCount > 0 && !order.isReorder && (
+                            <span className="text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-xs">
+                              {order.reorderCount} reprint{order.reorderCount > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Customer / Book */}

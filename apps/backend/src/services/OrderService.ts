@@ -391,6 +391,155 @@ export class OrderService {
     return (order as any).review || null;
   }
 
+  public static async reorder(
+    id: string,
+    options?: {
+      quantity?: number;
+      shippingAddress?: any;
+      isGift?: boolean;
+      giftMessage?: string;
+      promoCode?: string;
+      accessories?: any;
+      packaging?: any;
+      deliveryOption?: string;
+      customerName?: string;
+      customerEmail?: string;
+      customerPhone?: string;
+      userId?: string;
+    },
+    user?: any
+  ) {
+    const originalOrder = await OrderRepository.findById(id);
+    if (!originalOrder) {
+      throw ApiError.notFound(`Original order '${id}' not found.`);
+    }
+
+    const original: any = originalOrder;
+
+    // IDOR protection check for customer re-order
+    if (user && user.role !== 'admin') {
+      const userEmail = (user.email || '').toLowerCase().trim();
+      const orderEmail = (
+        original.customerEmail ||
+        original.shippingAddress?.email ||
+        ''
+      ).toLowerCase().trim();
+      const orderUserId = String(original.userId || '');
+      const currentUserId = String(user.id || user._id || '');
+
+      if (userEmail !== orderEmail && (!orderUserId || orderUserId !== currentUserId)) {
+        throw ApiError.forbidden('You do not have permission to re-order this photobook.');
+      }
+    }
+
+    const quantity = Math.max(1, Number(options?.quantity) || 1);
+
+    // Extract items from original order or construct from book properties
+    const originalItems = Array.isArray(original.items) && original.items.length > 0
+      ? original.items
+      : [
+          {
+            title: original.title || 'Archival Custom Photobook',
+            dimensions: original.dimensions || '8.25" × 8.25"',
+            pageCount: original.pageCount || 40,
+            price: original.pricing?.subtotal || original.total || 1999,
+            quantity: 1,
+            thumbnail: original.thumbnail || original.coverUrl,
+            pdfUrl: original.pdfUrl || original.printPdfUrl,
+          },
+        ];
+
+    // Clone items and set quantity & pdfUrl reference
+    const clonedItems = originalItems.map((item: any) => ({
+      ...item,
+      quantity,
+      pdfUrl: item.pdfUrl || original.pdfUrl || original.printPdfUrl,
+    }));
+
+    const shippingAddress = options?.shippingAddress || original.shippingAddress;
+    const isGift = options?.isGift !== undefined ? Boolean(options.isGift) : Boolean(original.isGift);
+    const giftMessage = options?.giftMessage || original.giftMessage;
+    const effectivePromoCode = options?.promoCode !== undefined ? options.promoCode : 'REORDER15';
+
+    // Calculate authoritative pricing with family reorder incentive
+    const calculatedPricing = await PricingService.calculateOrderPrice({
+      items: clonedItems,
+      accessories: options?.accessories || options?.packaging || original.accessories || original.packaging,
+      promoCode: effectivePromoCode,
+      deliveryOption: options?.deliveryOption || original.deliveryOption || 'standard',
+      customerEmail: options?.customerEmail || shippingAddress?.email || original.customerEmail,
+      customerPhone: options?.customerPhone || shippingAddress?.phone || original.customerPhone,
+      userId: options?.userId || user?.id || original.userId,
+    });
+
+    const originalOrderNum = original.orderNumber || original.id || id;
+    const reorderTitle = `${original.title || 'Photobook'} (Reprint)`;
+
+    const reorderData: any = {
+      userId: user?.id || original.userId,
+      title: reorderTitle,
+      customerName: shippingAddress?.fullName || shippingAddress?.name || options?.customerName || original.customerName,
+      customerEmail: options?.customerEmail || shippingAddress?.email || original.customerEmail,
+      customerPhone: options?.customerPhone || shippingAddress?.phone || original.customerPhone,
+      amount: calculatedPricing.finalTotal,
+      total: calculatedPricing.finalTotal,
+      status: 'confirmed',
+      isReorder: true,
+      originalOrderId: String(original.id || original._id || id),
+      originalOrderNumber: originalOrderNum,
+      pdfUrl: original.pdfUrl || original.printPdfUrl, // Instant print PDF reuse!
+      printPdfUrl: original.printPdfUrl || original.pdfUrl,
+      coverUrl: original.coverUrl || original.thumbnail,
+      thumbnail: original.thumbnail || original.coverUrl,
+      dimensions: original.dimensions || '8.25" × 8.25"',
+      pageCount: original.pageCount || 40,
+      itemsCount: quantity,
+      items: clonedItems,
+      projectSnapshot: original.projectSnapshot,
+      specifications: original.specifications,
+      packaging: original.packaging,
+      accessories: original.accessories,
+      isGift,
+      giftMessage,
+      shippingAddress,
+      deliveryOption: options?.deliveryOption || original.deliveryOption || 'standard',
+      pricing: {
+        subtotal: calculatedPricing.subtotal,
+        promoCode: calculatedPricing.promoCode,
+        discount: calculatedPricing.promoDiscount,
+        bundleDiscount: calculatedPricing.bundleDiscount,
+        bundleTier: calculatedPricing.bundleTier,
+        shipping: calculatedPricing.shippingFee,
+        packagingPrice: calculatedPricing.accessoriesSubtotal,
+        packagingAddon: calculatedPricing.accessoriesSubtotal > 0,
+        total: calculatedPricing.finalTotal,
+        paymentMethod: 'prepaid',
+        reorderDiscountApplied: Boolean(calculatedPricing.promoDiscount > 0),
+        currency: 'INR',
+      },
+      auditLog: [
+        {
+          action: 'reorder_created',
+          updatedBy: user?.email || originalOrder.customerEmail || 'Customer Re-order',
+          timestamp: new Date(),
+          details: `Re-order created for ${quantity} copy/copies from original order #${originalOrderNum}. PDF verified & reused directly.`,
+        },
+      ],
+    };
+
+    // Create the re-order
+    const created = await this.createOrder(reorderData);
+
+    // Increment reorderCount on the original order
+    try {
+      await OrderRepository.incrementReorderCount(id);
+    } catch (err: any) {
+      logger.warn(`Could not increment reorder count for order ${id}:`, err?.message);
+    }
+
+    return created;
+  }
+
   public static async getDashboardStats() {
     return await OrderRepository.getDashboardStats();
   }

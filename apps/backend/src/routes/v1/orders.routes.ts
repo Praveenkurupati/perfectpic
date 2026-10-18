@@ -20,6 +20,9 @@ router.get('/:id/pdf', optionalAuth, OrderController.downloadOrderPdf);
 router.get('/:id/review', OrderController.getOrderReview);
 router.post('/:id/review', OrderController.submitOrderReview);
 
+// One-click Re-order ("Order Another Copy")
+router.post('/:id/reorder', optionalAuth, OrderController.reorderOrder);
+
 // Create new customer order
 router.post('/', OrderController.createOrder);
 

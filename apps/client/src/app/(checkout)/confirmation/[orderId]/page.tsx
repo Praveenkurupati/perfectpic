@@ -17,10 +17,13 @@ import {
   MapPin, 
   CreditCard,
   Layers,
-  ArrowRight
+  ArrowRight,
+  RotateCcw,
+  Sparkles
 } from 'lucide-react';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
 import { generateBookPdfBlob } from '@/lib/pdfGenerator';
+import { ReorderModal } from '@/components/orders/ReorderModal';
 
 export default function ConfirmationPage() {
   const params = useParams();
@@ -33,6 +36,7 @@ export default function ConfirmationPage() {
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isUploadingPdf, setIsUploadingPdf] = useState(true);
   const [isGeneratingManualPdf, setIsGeneratingManualPdf] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -506,6 +510,37 @@ export default function ConfirmationPage() {
           </div>
         </div>
 
+        {/* Post-Purchase Family Re-order Privilege Banner */}
+        <div className="bg-linear-to-r from-amber-50/90 via-cream-50 to-amber-50/90 p-6 md:p-8 rounded-2xl border border-amber-200/90 shadow-luxury-sm flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-1.5 text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100/80 border border-amber-300/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Sparkles size={11} className="text-amber-800" />
+                <span>Family Keepsake Privilege</span>
+              </span>
+              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">
+                15% Off Code: REORDER15
+              </span>
+            </div>
+            <h3 className="font-serif text-xl md:text-2xl font-bold text-noir-950">
+              Want an extra copy for grandparents or family?
+            </h3>
+            <p className="text-xs md:text-sm text-noir-600 max-w-xl">
+              Order an identical archival copy now. Because your print-ready PDF is already verified, reprint copies bypass reproofing and ship directly to any address in India.
+            </p>
+          </div>
+
+          <div className="shrink-0 flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <button
+              onClick={() => setIsReorderModalOpen(true)}
+              className="w-full sm:w-auto px-6 py-3.5 bg-noir-950 hover:bg-black text-cream-50 rounded-full font-bold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-luxury-md group"
+            >
+              <RotateCcw size={14} className="group-hover:-rotate-45 transition-transform text-amber-300" />
+              <span>Order Another Copy (Save 15%)</span>
+            </button>
+          </div>
+        </div>
+
         {/* Action Controls & Official GST Invoice Download */}
         <div className="bg-white p-6 rounded-sm shadow-xs border border-cream-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="space-y-1 text-center sm:text-left">
@@ -585,6 +620,12 @@ export default function ConfirmationPage() {
           </div>
         </div>
 
+        {/* 1-Click Re-order Modal */}
+        <ReorderModal
+          isOpen={isReorderModalOpen}
+          onClose={() => setIsReorderModalOpen(false)}
+          order={order}
+        />
       </div>
     </div>
   );
