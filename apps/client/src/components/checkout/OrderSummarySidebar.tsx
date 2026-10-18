@@ -12,6 +12,7 @@ import {
   X,
   AlertCircle,
   Lock,
+  BookOpen,
 } from 'lucide-react';
 import {
   useCartStore,
@@ -143,6 +144,24 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
               <span>10 Mini Polaroid Prints</span>
             </span>
             <span className="font-mono font-semibold">+₹{ACCESSORY_PRICES.miniPolaroids}</span>
+          </div>
+        )}
+        {accessories.miniBookCompanion && !accessories.miniBookDuo && (
+          <div className="flex items-center justify-between text-xs text-noir-800 bg-amber-50/70 p-2 rounded-xs border border-amber-200/80">
+            <span className="flex items-center gap-1.5">
+              <BookOpen size={12} className="text-amber-700" />
+              <span>1x Mini-Book Companion (6"×6")</span>
+            </span>
+            <span className="font-mono font-semibold">+₹{ACCESSORY_PRICES.miniBookCompanion}</span>
+          </div>
+        )}
+        {accessories.miniBookDuo && (
+          <div className="flex items-center justify-between text-xs text-noir-800 bg-amber-50/70 p-2 rounded-xs border border-amber-200/80">
+            <span className="flex items-center gap-1.5">
+              <BookOpen size={12} className="text-amber-700" />
+              <span>2x Mini-Books ("Grandparents Pack")</span>
+            </span>
+            <span className="font-mono font-semibold">+₹{ACCESSORY_PRICES.miniBookDuo}</span>
           </div>
         )}
       </div>

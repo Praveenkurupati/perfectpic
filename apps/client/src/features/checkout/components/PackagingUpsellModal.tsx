@@ -10,7 +10,8 @@ import {
   Gift, 
   Image as ImageIcon, 
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  BookOpen
 } from 'lucide-react';
 import { 
   useCartStore, 
@@ -45,6 +46,18 @@ export default function PackagingUpsellModal({
     description: string;
     visual: React.ReactNode;
   }> = [
+    {
+      key: 'miniBookCompanion',
+      title: ACCESSORY_DETAILS.miniBookCompanion.title,
+      price: ACCESSORY_PRICES.miniBookCompanion,
+      badge: 'Save 40% (₹400 Off)',
+      description: 'Pocket-sized 6" × 6" softcover replica of this photobook. Ideal gift for desk, purse, or travel keepsake.',
+      visual: (
+        <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-amber-700/20 via-orange-900/30 to-amber-950/40 border border-amber-500/40 flex items-center justify-center shrink-0 shadow-inner">
+          <BookOpen className="w-6 h-6 text-amber-700" />
+        </div>
+      ),
+    },
     {
       key: 'keepsakeBox',
       title: ACCESSORY_DETAILS.keepsakeBox.title,

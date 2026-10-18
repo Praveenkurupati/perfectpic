@@ -18,6 +18,7 @@ import PackagingUpsellModal from '@/features/checkout/components/PackagingUpsell
 import CheckoutStepper from '@/components/checkout/CheckoutStepper';
 import ShippingAddressStep, { ShippingAddressFormState, SplitGiftRecipient } from '@/components/checkout/ShippingAddressStep';
 import DeliveryMethodStep from '@/components/checkout/DeliveryMethodStep';
+import MiniBookUpsellCard from '@/components/checkout/MiniBookUpsellCard';
 import AddonsStep from '@/components/checkout/AddonsStep';
 import PaymentStep from '@/components/checkout/PaymentStep';
 import OrderSummarySidebar from '@/components/checkout/OrderSummarySidebar';
@@ -557,6 +558,8 @@ export default function CheckoutPage() {
               selectedOption={deliveryOption}
               onChange={setDeliveryOption}
             />
+
+            <MiniBookUpsellCard primaryItem={items[0]} />
 
             <AddonsStep />
 

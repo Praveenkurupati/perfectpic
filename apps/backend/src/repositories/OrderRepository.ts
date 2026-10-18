@@ -365,12 +365,23 @@ export class OrderRepository {
       orderData.accessories?.miniPolaroids ||
       itemsList.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
     );
+    const hasMiniBookCompanion = Boolean(
+      orderData.packaging?.miniBookCompanion ||
+      orderData.accessories?.miniBookCompanion ||
+      itemsList.some((i: any) => i.id === 'acc-mini-book' || /pocket mini-book|companion mini/i.test(i.title || ''))
+    );
+    const hasMiniBookDuo = Boolean(
+      orderData.packaging?.miniBookDuo ||
+      orderData.accessories?.miniBookDuo ||
+      itemsList.some((i: any) => i.id === 'acc-mini-book-duo' || /grandparents pack|2 mini-book/i.test(i.title || ''))
+    );
 
     const packagingTotal = orderData.packaging?.total ?? orderData.pricing?.packagingPrice ?? (
       (hasKeepsakeBox ? 499 : 0) +
       (hasGiftWrap ? 199 : 0) +
       (hasUvGlaze ? 249 : 0) +
-      (hasMiniPolaroids ? 149 : 0)
+      (hasMiniPolaroids ? 149 : 0) +
+      (hasMiniBookDuo ? 999 : hasMiniBookCompanion ? 599 : 0)
     );
 
     const packaging = {
@@ -378,6 +389,8 @@ export class OrderRepository {
       giftWrap: hasGiftWrap,
       uvGlaze: hasUvGlaze,
       miniPolaroids: hasMiniPolaroids,
+      miniBookCompanion: hasMiniBookCompanion,
+      miniBookDuo: hasMiniBookDuo,
       total: packagingTotal,
     };
 
@@ -388,8 +401,19 @@ export class OrderRepository {
         hasGiftWrap && { id: 'acc-gift-wrap', title: 'Artisan Ribbon Wrap & Calligraphy Card', price: 199 },
         hasUvGlaze && { id: 'acc-uv-glaze', title: 'Archival UV Anti-Scratch Page Glaze', price: 249 },
         hasMiniPolaroids && { id: 'acc-mini-prints', title: '10 Mini Polaroid Keepsake Prints', price: 149 },
+        hasMiniBookCompanion && !hasMiniBookDuo && { id: 'acc-mini-book', title: 'Pocket Mini-Book Companion (6" × 6")', price: 599 },
+        hasMiniBookDuo && { id: 'acc-mini-book-duo', title: 'Set of 2 Mini-Books ("Grandparents Pack")', price: 999 },
       ].filter(Boolean),
     };
+
+    if (hasMiniBookDuo || hasMiniBookCompanion) {
+      specifications.companionMiniBooks = {
+        enabled: true,
+        count: hasMiniBookDuo ? 2 : 1,
+        size: '6" × 6" Pocket Edition',
+        coverType: 'Softcover Velvet Matte (Scaled Archive Replica)',
+      };
+    }
 
     const isGift = Boolean(orderData.isGift || hasGiftWrap);
     const guestToken = orderData.guestToken || crypto.randomBytes(24).toString('hex');

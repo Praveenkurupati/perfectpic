@@ -99,6 +99,8 @@ export interface IOrder extends Document {
     giftWrap?: boolean;
     uvGlaze?: boolean;
     miniPolaroids?: boolean;
+    miniBookCompanion?: boolean;
+    miniBookDuo?: boolean;
     total?: number;
     [key: string]: any;
   };
@@ -107,6 +109,8 @@ export interface IOrder extends Document {
     giftWrap?: boolean;
     uvGlaze?: boolean;
     miniPolaroids?: boolean;
+    miniBookCompanion?: boolean;
+    miniBookDuo?: boolean;
     total?: number;
     items?: Array<{ id: string; title?: string; name?: string; price: number; dimensions?: string }>;
     [key: string]: any;

@@ -103,6 +103,8 @@ export interface PackagingAccessories {
   giftWrap: boolean; // ₹199
   uvGlaze: boolean; // ₹249
   miniPolaroids: boolean; // ₹149
+  miniBookCompanion: boolean; // ₹599 (1 Mini-Book)
+  miniBookDuo: boolean; // ₹999 (2 Mini-Books "Grandparents Pack")
 }
 
 export const ACCESSORY_PRICES: Record<keyof PackagingAccessories, number> = {
@@ -110,6 +112,8 @@ export const ACCESSORY_PRICES: Record<keyof PackagingAccessories, number> = {
   giftWrap: 199,
   uvGlaze: 249,
   miniPolaroids: 149,
+  miniBookCompanion: 599,
+  miniBookDuo: 999,
 };
 
 export const ACCESSORY_DETAILS = {
@@ -145,6 +149,22 @@ export const ACCESSORY_DETAILS = {
     description: 'Pack of 10 retro square 2×3" photo prints on archival 300 GSM fine-art cotton cardstock.',
     icon: '📷',
   },
+  miniBookCompanion: {
+    id: 'miniBookCompanion' as keyof PackagingAccessories,
+    title: 'Pocket Mini-Book Companion (6" × 6")',
+    price: 599,
+    badge: 'Save 40%',
+    description: 'Pocket-sized 6" × 6" softcover replica of this photobook. Ideal gift for desk, purse, or travel keepsake.',
+    icon: '📖',
+  },
+  miniBookDuo: {
+    id: 'miniBookDuo' as keyof PackagingAccessories,
+    title: 'Set of 2 Mini-Books ("Grandparents Pack")',
+    price: 999,
+    badge: 'Best Value (Save 50%)',
+    description: 'Two identical 6" × 6" pocket softcover photobooks. Thoughtfully packaged for parents and grandparents.',
+    icon: '📚',
+  },
 };
 
 interface CartState {
@@ -179,6 +199,7 @@ interface CartState {
   setIsGift: (isGift: boolean) => void;
   toggleAccessory: (key: keyof PackagingAccessories) => void;
   setAccessory: (key: keyof PackagingAccessories, enabled: boolean) => void;
+  setMiniBookOption: (option: 'none' | 'single' | 'duo') => void;
   getAccessoriesTotal: () => number;
   
   getPhotobookCount: () => number;
@@ -222,6 +243,8 @@ const DEFAULT_ACCESSORIES: PackagingAccessories = {
   giftWrap: false,
   uvGlaze: false,
   miniPolaroids: false,
+  miniBookCompanion: false,
+  miniBookDuo: false,
 };
 
 const getStoredAccessories = (): PackagingAccessories => {
@@ -511,6 +534,18 @@ export const useCartStore = create<CartState>((set, get) => {
     });
   },
 
+  setMiniBookOption: (option) => {
+    set((state) => {
+      const updated = {
+        ...state.accessories,
+        miniBookCompanion: option === 'single',
+        miniBookDuo: option === 'duo',
+      };
+      saveAccessories(updated);
+      return { accessories: updated };
+    });
+  },
+
   getAccessoriesTotal: () => {
     const { accessories } = get();
     let total = 0;
@@ -518,6 +553,8 @@ export const useCartStore = create<CartState>((set, get) => {
     if (accessories?.giftWrap) total += ACCESSORY_PRICES.giftWrap;
     if (accessories?.uvGlaze) total += ACCESSORY_PRICES.uvGlaze;
     if (accessories?.miniPolaroids) total += ACCESSORY_PRICES.miniPolaroids;
+    if (accessories?.miniBookCompanion) total += ACCESSORY_PRICES.miniBookCompanion;
+    if (accessories?.miniBookDuo) total += ACCESSORY_PRICES.miniBookDuo;
     return total;
   },
   

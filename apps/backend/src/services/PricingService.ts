@@ -34,6 +34,8 @@ export interface AccessoriesInput {
   giftWrap?: boolean;
   uvGlaze?: boolean;
   miniPolaroids?: boolean;
+  miniBookCompanion?: boolean;
+  miniBookDuo?: boolean;
   total?: number;
   items?: Array<{ id: string; title: string; price: number }>;
 }
@@ -78,6 +80,8 @@ export interface AuthoritativePricingResult {
     giftWrap: boolean;
     uvGlaze: boolean;
     miniPolaroids: boolean;
+    miniBookCompanion?: boolean;
+    miniBookDuo?: boolean;
     total: number;
     items: Array<{ id: string; title: string; price: number }>;
   };
@@ -119,6 +123,16 @@ export const ACCESSORY_CATALOG = {
     id: 'acc-mini-prints',
     title: '10 Mini Polaroid Keepsake Prints',
     price: 149,
+  },
+  miniBookCompanion: {
+    id: 'acc-mini-book',
+    title: 'Pocket Mini-Book Companion (6" × 6")',
+    price: 599,
+  },
+  miniBookDuo: {
+    id: 'acc-mini-book-duo',
+    title: 'Set of 2 Mini-Books ("Grandparents Pack")',
+    price: 999,
   },
 } as const;
 
@@ -283,6 +297,8 @@ export class PricingService {
     const hasGiftWrap = Boolean(accInput.giftWrap);
     const hasUvGlaze = Boolean(accInput.uvGlaze);
     const hasMiniPolaroids = Boolean(accInput.miniPolaroids);
+    const hasMiniBookCompanion = Boolean(accInput.miniBookCompanion);
+    const hasMiniBookDuo = Boolean(accInput.miniBookDuo);
 
     if (hasKeepsakeBox) {
       selectedAccessories.push(ACCESSORY_CATALOG.keepsakeBox);
@@ -300,12 +316,21 @@ export class PricingService {
       selectedAccessories.push(ACCESSORY_CATALOG.miniPolaroids);
       accessoriesSubtotal += ACCESSORY_CATALOG.miniPolaroids.price;
     }
+    if (hasMiniBookDuo) {
+      selectedAccessories.push(ACCESSORY_CATALOG.miniBookDuo);
+      accessoriesSubtotal += ACCESSORY_CATALOG.miniBookDuo.price;
+    } else if (hasMiniBookCompanion) {
+      selectedAccessories.push(ACCESSORY_CATALOG.miniBookCompanion);
+      accessoriesSubtotal += ACCESSORY_CATALOG.miniBookCompanion.price;
+    }
 
     const accessoriesResult = {
       keepsakeBox: hasKeepsakeBox,
       giftWrap: hasGiftWrap,
       uvGlaze: hasUvGlaze,
       miniPolaroids: hasMiniPolaroids,
+      miniBookCompanion: hasMiniBookCompanion,
+      miniBookDuo: hasMiniBookDuo,
       total: accessoriesSubtotal,
       items: selectedAccessories,
     };

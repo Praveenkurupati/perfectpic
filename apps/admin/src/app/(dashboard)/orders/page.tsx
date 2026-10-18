@@ -168,12 +168,26 @@ export default function OrdersPage() {
               o.accessories?.miniPolaroids ||
               items.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
             );
+            const hasMiniBookCompanion = Boolean(
+              o.packaging?.miniBookCompanion ||
+              o.accessories?.miniBookCompanion ||
+              o.specifications?.companionMiniBooks?.count === 1 ||
+              items.some((i: any) => i.id === 'acc-mini-book' || /pocket mini-book|companion mini/i.test(i.title || ''))
+            );
+            const hasMiniBookDuo = Boolean(
+              o.packaging?.miniBookDuo ||
+              o.accessories?.miniBookDuo ||
+              o.specifications?.companionMiniBooks?.count === 2 ||
+              items.some((i: any) => i.id === 'acc-mini-book-duo' || /grandparents pack|2 mini-book/i.test(i.title || ''))
+            );
 
             const packagingBadges: string[] = [];
             if (hasKeepsakeBox) packagingBadges.push('🎁 Velvet Box');
             if (hasGiftWrap) packagingBadges.push('🎀 Ribbon Wrap');
             if (hasUvGlaze) packagingBadges.push('🛡️ UV Glaze');
             if (hasMiniPolaroids) packagingBadges.push('📷 Polaroids');
+            if (hasMiniBookDuo) packagingBadges.push('📚 2x Mini-Books (Grandparents Pack)');
+            else if (hasMiniBookCompanion) packagingBadges.push('📖 1x Mini-Book (6"×6")');
 
             const normalizedStatus = (o.status || 'confirmed').toLowerCase();
 

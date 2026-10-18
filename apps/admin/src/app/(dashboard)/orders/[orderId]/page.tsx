@@ -222,12 +222,27 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
     orderItemsList.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
   );
 
-  const packagingAddonCount = [hasKeepsakeBox, hasGiftWrap, hasUvGlaze, hasMiniPolaroids].filter(Boolean).length;
+  const hasMiniBookCompanion = Boolean(
+    order?.packaging?.miniBookCompanion ||
+    order?.accessories?.miniBookCompanion ||
+    order?.specifications?.companionMiniBooks?.count === 1 ||
+    orderItemsList.some((i: any) => i.id === 'acc-mini-book' || /pocket mini-book|companion mini/i.test(i.title || ''))
+  );
+
+  const hasMiniBookDuo = Boolean(
+    order?.packaging?.miniBookDuo ||
+    order?.accessories?.miniBookDuo ||
+    order?.specifications?.companionMiniBooks?.count === 2 ||
+    orderItemsList.some((i: any) => i.id === 'acc-mini-book-duo' || /grandparents pack|2 mini-book/i.test(i.title || ''))
+  );
+
+  const packagingAddonCount = [hasKeepsakeBox, hasGiftWrap, hasUvGlaze, hasMiniPolaroids, hasMiniBookCompanion || hasMiniBookDuo].filter(Boolean).length;
   const packagingTotal = order?.pricing?.packagingPrice ?? order?.packaging?.total ?? (
     (hasKeepsakeBox ? 499 : 0) +
     (hasGiftWrap ? 199 : 0) +
     (hasUvGlaze ? 249 : 0) +
-    (hasMiniPolaroids ? 149 : 0)
+    (hasMiniPolaroids ? 149 : 0) +
+    (hasMiniBookDuo ? 999 : hasMiniBookCompanion ? 599 : 0)
   );
 
   const baseBookPrice = Math.max(0, displayTotal - packagingTotal);
@@ -356,6 +371,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
           giftWrap: hasGiftWrap,
           uvGlaze: hasUvGlaze,
           miniPolaroids: hasMiniPolaroids,
+          miniBookCompanion: hasMiniBookCompanion,
+          miniBookDuo: hasMiniBookDuo,
         },
         coverImage: resolvedCoverImage,
         coverConfig: resolvedCoverConfig,
@@ -729,6 +746,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
                   <p className="text-noir-500 mb-1">Paper Stock</p>
                   <p className="font-medium text-noir-900">200 GSM Heavyweight Matte</p>
                 </div>
+                {(hasMiniBookCompanion || hasMiniBookDuo) && (
+                  <div className="col-span-2 p-3 bg-amber-50/70 border border-amber-200/80 rounded-sm">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-900 mb-0.5 flex items-center gap-1.5">
+                      <span>📖</span>
+                      <span>Prepress Scaled Companion Edition Included</span>
+                    </p>
+                    <p className="text-xs text-amber-950">
+                      Print <strong>{hasMiniBookDuo ? '2 Pocket Mini-Books ("Grandparents Pack")' : '1 Pocket Mini-Book'}</strong> (6" × 6", Softcover Velvet Matte, Scaled Replica from verified master imposition).
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -872,6 +900,41 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
                 </div>
                 <p className="text-xs text-noir-600 leading-relaxed">
                   10 retro square 2×3" photo prints on archival 300 GSM fine-art cotton cardstock.
+                </p>
+              </div>
+
+              {/* Companion Mini-Books */}
+              <div className={`p-4 rounded-sm border transition-all sm:col-span-2 ${
+                hasMiniBookCompanion || hasMiniBookDuo
+                  ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/60 shadow-2xs' 
+                  : 'bg-cream-50/40 border-cream-200 opacity-60'
+              }`}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📖</span>
+                    <div>
+                      <h4 className="font-semibold text-sm text-noir-950">
+                        {hasMiniBookDuo ? 'Set of 2 Mini-Books ("Grandparents Pack")' : 'Pocket Mini-Book Companion (6" × 6")'}
+                      </h4>
+                      <p className="text-[11px] text-amber-800 font-medium">
+                        {hasMiniBookDuo ? '₹999 Upsell (2 Copies)' : hasMiniBookCompanion ? '₹599 Upsell (1 Copy)' : '₹599 / ₹999 Upsell'}
+                      </p>
+                    </div>
+                  </div>
+                  {hasMiniBookDuo || hasMiniBookCompanion ? (
+                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-700" />
+                      <span>{hasMiniBookDuo ? 'Print 2 Mini-Books (6"×6")' : 'Print 1 Mini-Book (6"×6")'}</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-cream-200/60 text-noir-400 text-[10px] font-medium uppercase tracking-wider rounded-xs flex items-center gap-1">
+                      <X className="w-3 h-3" />
+                      <span>Not Selected</span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-noir-600 leading-relaxed">
+                  Prepress automatically imposes and scales the validated master photobook layout into 6" × 6" softcover velvet-matte pocket editions. Zero redesigning required.
                 </p>
               </div>
             </div>
