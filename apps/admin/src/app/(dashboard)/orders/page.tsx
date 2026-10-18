@@ -119,7 +119,7 @@ const ORDER_STAGES: StageConfig[] = [
   },
 ];
 
-const tabs = ["All", "Confirmed", "Production", "Printing", "QC", "Dispatched", "Delivered"];
+const tabs = ["All", "⚡ Rush 24H", "Confirmed", "Production", "Printing", "QC", "Dispatched", "Delivered"];
 
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("All");
@@ -190,6 +190,14 @@ export default function OrdersPage() {
             else if (hasMiniBookCompanion) packagingBadges.push('📖 1x Mini-Book (6"×6")');
 
             const normalizedStatus = (o.status || 'confirmed').toLowerCase();
+            const isRush = Boolean(
+              o.isRushProduction ||
+              o.productionPriority === 'RUSH' ||
+              o.deliveryOption === 'rush' ||
+              o.pricing?.isRushProduction ||
+              o.pricing?.deliveryOption === 'rush'
+            );
+            const targetDispatchAt = o.targetDispatchAt || (isRush && (o.createdAt || o.date) ? new Date(new Date(o.createdAt || o.date).getTime() + 24 * 60 * 60 * 1000).toISOString() : null);
 
             return {
               id: o.orderNumber || o.id,
@@ -209,6 +217,9 @@ export default function OrdersPage() {
               isReorder: Boolean(o.isReorder),
               originalOrderNumber: o.originalOrderNumber || o.originalOrderId,
               reorderCount: Number(o.reorderCount || 0),
+              isRush,
+              targetDispatchAt,
+              deliveryOption: o.deliveryOption || (isRush ? 'rush' : 'standard'),
               production: o.production || {},
               shippingDetails: o.shippingDetails || {},
             };
@@ -240,6 +251,7 @@ export default function OrdersPage() {
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = {
       all: orders.length,
+      rush: orders.filter(o => o.isRush).length,
       confirmed: 0,
       production: 0,
       printing: 0,
@@ -260,6 +272,7 @@ export default function OrdersPage() {
     return orders.filter(order => {
       const st = (order.status || 'confirmed').toLowerCase();
       const matchesTab = activeTab === "All" ||
+        (activeTab === "⚡ Rush 24H" && order.isRush) ||
         (activeTab === "Confirmed" && st === 'confirmed') ||
         (activeTab === "Production" && st === 'production') ||
         (activeTab === "Printing" && st === 'printing') ||
@@ -424,7 +437,7 @@ export default function OrdersPage() {
       </div>
 
       {/* Pipeline Stage Tracker Counters (Follow up the team faster) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <button
           onClick={() => setActiveTab("All")}
           className={cn(
@@ -437,6 +450,23 @@ export default function OrdersPage() {
           <div className="text-[11px] font-semibold uppercase tracking-wider opacity-80">All Orders</div>
           <div className="font-serif text-2xl font-bold mt-1">{stageCounts.all}</div>
           <div className="text-[10px] opacity-70 mt-0.5">Total active</div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("⚡ Rush 24H")}
+          className={cn(
+            "p-3 rounded-sm border text-left transition-all relative overflow-hidden",
+            activeTab === "⚡ Rush 24H"
+              ? "bg-amber-600 text-white border-amber-600 shadow-luxury-sm"
+              : "bg-white text-noir-800 border-amber-300 hover:border-amber-500 hover:bg-amber-50/40"
+          )}
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>⚡ Rush (24H)</span>
+          </div>
+          <div className="font-serif text-2xl font-bold mt-1 text-amber-950">{stageCounts.rush}</div>
+          <div className="text-[10px] text-amber-700 mt-0.5">Priority BullMQ</div>
         </button>
 
         <button
@@ -608,6 +638,14 @@ export default function OrdersPage() {
                           <Link href={`/orders/${order.id}`} className="font-mono font-semibold text-sm text-noir-950 hover:underline">
                             {order.id}
                           </Link>
+                          {order.isRush && (
+                            <span 
+                              className="text-[10px] font-bold bg-amber-500 text-white px-2 py-0.5 rounded-xs flex items-center gap-1 shadow-xs"
+                              title={order.targetDispatchAt ? `Dispatch target: ${new Date(order.targetDispatchAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}` : '24H Rush Dispatch'}
+                            >
+                              <span>⚡ 24H RUSH</span>
+                            </span>
+                          )}
                           {order.isReorder && (
                             <span 
                               className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-1.5 py-0.5 rounded-xs flex items-center gap-1"

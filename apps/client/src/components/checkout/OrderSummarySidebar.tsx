@@ -13,6 +13,7 @@ import {
   AlertCircle,
   Lock,
   BookOpen,
+  Zap,
 } from 'lucide-react';
 import {
   useCartStore,
@@ -20,7 +21,7 @@ import {
 } from '@/stores/useCartStore';
 
 interface OrderSummarySidebarProps {
-  deliveryOption: 'standard' | 'express';
+  deliveryOption: 'standard' | 'express' | 'rush';
   finalTotal: number;
 }
 
@@ -51,7 +52,7 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
   const totalBooks = getPhotobookCount();
   const accessoriesTotal = getAccessoriesTotal();
   const subtotal = getSubtotal();
-  const shippingFee = deliveryOption === 'express' ? 299 : 0;
+  const shippingFee = deliveryOption === 'rush' ? 499 : deliveryOption === 'express' ? 299 : 0;
 
   const handleApplyPromo = async () => {
     if (!inputCode.trim()) return;
@@ -245,8 +246,19 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
           </div>
         )}
 
-        <div className="flex justify-between">
-          <span>Shipping ({deliveryOption === 'express' ? 'Express Courier' : 'Standard'})</span>
+        <div className="flex justify-between items-center">
+          <span>
+            {deliveryOption === 'rush' ? (
+              <span className="flex items-center gap-1.5 text-amber-900 font-medium">
+                <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500 animate-pulse" />
+                <span>⚡ Rush 24H Dispatch</span>
+              </span>
+            ) : deliveryOption === 'express' ? (
+              'Shipping (Express Air)'
+            ) : (
+              'Shipping (Standard)'
+            )}
+          </span>
           <span className="font-mono">
             {shippingFee === 0 ? (
               <span className="text-emerald-700 font-bold uppercase tracking-wider text-[10px]">
@@ -257,6 +269,18 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
             )}
           </span>
         </div>
+
+        {deliveryOption === 'rush' && (
+          <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-amber-950 text-xs flex items-start gap-2">
+            <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500 shrink-0 mt-0.5" />
+            <div className="text-[11px] leading-snug">
+              <span className="font-bold block text-amber-900">⚡ 24-Hour Dispatch SLA</span>
+              <span className="text-amber-800">
+                Front-of-queue priority printing & Air Express courier delivery guaranteed.
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Total Due */}

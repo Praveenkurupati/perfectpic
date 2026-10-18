@@ -50,7 +50,8 @@ export class OrderService {
         promoCode: orderData.promoCode || orderData.pricing?.promoCode,
         deliveryOption:
           orderData.deliveryOption ||
-          (orderData.pricing?.shipping === 299 ? 'express' : 'standard'),
+          (orderData.pricing?.shipping === 499 ? 'rush' : orderData.pricing?.shipping === 299 ? 'express' : 'standard'),
+        isRushProduction: Boolean(orderData.isRushProduction || orderData.deliveryOption === 'rush' || orderData.productionPriority === 'RUSH'),
         customerEmail: orderData.customerEmail || orderData.shippingAddress?.email,
         customerPhone: orderData.customerPhone || orderData.shippingAddress?.phone,
         userId: orderData.userId,
@@ -67,6 +68,13 @@ export class OrderService {
       orderData.amount = authoritativePricing.finalTotal;
       orderData.subtotal = authoritativePricing.subtotal;
       orderData.discount = authoritativePricing.totalDiscount;
+      orderData.isRushProduction = authoritativePricing.isRushProduction;
+      orderData.rushProductionFee = authoritativePricing.rushFee;
+      orderData.productionPriority = authoritativePricing.isRushProduction ? 'RUSH' : 'STANDARD';
+      orderData.deliveryOption = authoritativePricing.deliveryOption;
+      orderData.targetDispatchAt = authoritativePricing.isRushProduction
+        ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        : new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString();
       orderData.pricing = {
         subtotal: authoritativePricing.subtotal,
         promoCode: authoritativePricing.promoCode,
@@ -76,6 +84,8 @@ export class OrderService {
         shipping: authoritativePricing.shippingFee,
         packagingPrice: authoritativePricing.accessoriesSubtotal,
         packagingAddon: authoritativePricing.accessoriesSubtotal > 0,
+        isRushProduction: authoritativePricing.isRushProduction,
+        rushFee: authoritativePricing.rushFee,
         total: authoritativePricing.finalTotal,
         paymentMethod: orderData.pricing?.paymentMethod || 'prepaid',
         advancePaid: authoritativePricing.finalTotal,
@@ -244,6 +254,14 @@ export class OrderService {
     // Enqueue print-ready PDF compilation in background worker queue
     const orderNumber = String(order.orderNumber || order.id || (order as any)._id);
     const correlationId = orderData.correlationId || `cid_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const isRushJob = Boolean(
+      orderData.isRushProduction ||
+      (order as any).isRushProduction ||
+      orderData.productionPriority === 'RUSH' ||
+      (order as any).productionPriority === 'RUSH' ||
+      orderData.deliveryOption === 'rush' ||
+      (order as any).deliveryOption === 'rush'
+    );
     printRenderQueue.add('compile-print-pdf', {
       orderId: orderNumber,
       projectId: orderData.projectId || (orderData.items && orderData.items[0]?.projectId),
@@ -252,6 +270,8 @@ export class OrderService {
       options: {
         projectManifest: orderData.projectManifest || (orderData.items && orderData.items[0]?.projectSnapshot),
       },
+    }, {
+      priority: isRushJob ? 1 : 10,
     }).catch((qErr: any) => {
       logger.warn(`Could not enqueue print render job for ${orderNumber}:`, qErr?.message);
     });

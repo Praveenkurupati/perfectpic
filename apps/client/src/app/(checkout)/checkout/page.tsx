@@ -97,6 +97,7 @@ export default function CheckoutPage() {
     isGift,
     getBundleDiscount,
     fetchBundleTiers,
+    setDeliveryOption: setCartDeliveryOption,
   } = useCartStore();
 
   const { user, isAuthenticated, initialize } = useAuthStore();
@@ -113,7 +114,7 @@ export default function CheckoutPage() {
     cityState: '',
   });
 
-  const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express'>('standard');
+  const [deliveryOption, setDeliveryOption] = useState<'standard' | 'express' | 'rush'>('standard');
   const [recipients, setRecipients] = useState<SplitGiftRecipient[]>([]);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const [hasPromptedUpsell, setHasPromptedUpsell] = useState(false);
@@ -172,7 +173,12 @@ export default function CheckoutPage() {
     setShippingForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const finalTotal = getTotal() + (deliveryOption === 'express' ? 299 : 0);
+  const handleDeliveryChange = (option: 'standard' | 'express' | 'rush') => {
+    setDeliveryOption(option);
+    setCartDeliveryOption(option);
+  };
+
+  const finalTotal = getTotal();
 
   // Validate shipping fields
   const validateForm = (): boolean => {
@@ -287,6 +293,7 @@ export default function CheckoutPage() {
           accessories,
           promoCode: promoCode || null,
           deliveryOption,
+          isRushProduction: deliveryOption === 'rush',
           amount: finalTotal,
         });
 
@@ -354,6 +361,8 @@ export default function CheckoutPage() {
                       country: 'India',
                     },
                     deliveryOption,
+                    isRushProduction: deliveryOption === 'rush',
+                    productionPriority: deliveryOption === 'rush' ? 'RUSH' : 'STANDARD',
                     accessories,
                     isGift: isGift || recipients.length > 0,
                     recipients: recipients.length > 0 ? recipients : undefined,
@@ -445,6 +454,8 @@ export default function CheckoutPage() {
           country: 'India',
         },
         deliveryOption,
+        isRushProduction: deliveryOption === 'rush',
+        productionPriority: deliveryOption === 'rush' ? 'RUSH' : 'STANDARD',
         accessories,
         isGift: isGift || recipients.length > 0,
         recipients: recipients.length > 0 ? recipients : undefined,
@@ -556,7 +567,7 @@ export default function CheckoutPage() {
 
             <DeliveryMethodStep
               selectedOption={deliveryOption}
-              onChange={setDeliveryOption}
+              onChange={handleDeliveryChange}
             />
 
             <MiniBookUpsellCard primaryItem={items[0]} />

@@ -22,6 +22,7 @@ export class ManagedJob<T = any> implements Job<T> {
   public progress: number;
   public attempts: number;
   public maxAttempts: number;
+  public priority: number;
   public failedReason?: string;
   public stackTrace?: string[];
   public returnValue?: any;
@@ -38,6 +39,7 @@ export class ManagedJob<T = any> implements Job<T> {
     this.progress = 0;
     this.attempts = 0;
     this.maxAttempts = opts?.attempts ?? 3;
+    this.priority = opts?.priority ?? 10;
     this.createdAt = Date.now();
   }
 
@@ -62,6 +64,7 @@ export class ManagedJob<T = any> implements Job<T> {
       progress: this.progress,
       attempts: this.attempts,
       maxAttempts: this.maxAttempts,
+      priority: this.priority,
       failedReason: this.failedReason,
       stackTrace: this.stackTrace,
       returnValue: this.returnValue,
@@ -72,12 +75,15 @@ export class ManagedJob<T = any> implements Job<T> {
   }
 
   public static fromJSON<T = any>(obj: any): ManagedJob<T> {
-    const job = new ManagedJob<T>(obj.queueName, obj.name, obj.data);
+    const job = new ManagedJob<T>(obj.queueName, obj.name, obj.data, {
+      priority: obj.priority,
+    });
     job.id = obj.id;
     job.status = obj.status || 'waiting';
     job.progress = obj.progress || 0;
     job.attempts = obj.attempts || 0;
     job.maxAttempts = obj.maxAttempts || 3;
+    job.priority = obj.priority || 10;
     job.failedReason = obj.failedReason;
     job.stackTrace = obj.stackTrace;
     job.returnValue = obj.returnValue;
@@ -101,17 +107,23 @@ export class Queue<T = any> extends EventEmitter {
 
   /**
    * Adds a job with durable Redis persistence and BullMQ queue mechanics
+   * Jobs with priority <= 1 jump directly to the head of the queue (Rush Production 24H)
    */
   public async add(jobName: string, data: T, opts?: JobOptions): Promise<Job<T>> {
     const job = new ManagedJob<T>(this.name, jobName, data, opts);
+    const isHighPriority = opts?.priority !== undefined && opts.priority <= 1;
 
-    // 1. In-memory state tracking
+    // 1. In-memory state tracking: High priority unshifts to the front
     this.inMemoryJobs.set(job.id, job);
     if (!this.inMemoryWaiting.includes(job.id)) {
-      this.inMemoryWaiting.push(job.id);
+      if (isHighPriority) {
+        this.inMemoryWaiting.unshift(job.id);
+      } else {
+        this.inMemoryWaiting.push(job.id);
+      }
     }
 
-    // 2. Redis-backed BullMQ persistence
+    // 2. Redis-backed BullMQ persistence: High priority lpushes to front
     if (isRedisConnected()) {
       const redis = getRedisClient();
       if (redis) {
@@ -121,8 +133,11 @@ export class Queue<T = any> extends EventEmitter {
           // Store job payload hash with 48h TTL
           pipeline.hset(`bullmq:${this.name}:jobs:${job.id}`, 'payload', serialized);
           pipeline.expire(`bullmq:${this.name}:jobs:${job.id}`, 172800);
-          // Push job ID onto waiting queue list
-          pipeline.rpush(`bullmq:${this.name}:waiting`, job.id);
+          if (isHighPriority) {
+            pipeline.lpush(`bullmq:${this.name}:waiting`, job.id);
+          } else {
+            pipeline.rpush(`bullmq:${this.name}:waiting`, job.id);
+          }
           await pipeline.exec();
         } catch (err: any) {
           logger.warn(`[BullMQ:${this.name}] Redis add warning for ${job.id}:`, err?.message);

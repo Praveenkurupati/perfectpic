@@ -45,7 +45,8 @@ export interface PricingCalculationInput {
   accessories?: AccessoriesInput | null;
   packaging?: AccessoriesInput | null;
   promoCode?: string | null;
-  deliveryOption?: 'standard' | 'express' | string;
+  deliveryOption?: 'standard' | 'express' | 'rush' | string;
+  isRushProduction?: boolean;
   customerEmail?: string;
   customerPhone?: string;
   userId?: string;
@@ -95,7 +96,9 @@ export interface AuthoritativePricingResult {
   promoCode: string | null;
   promoDetails: any | null;
   totalDiscount: number;
-  deliveryOption: 'standard' | 'express';
+  deliveryOption: 'standard' | 'express' | 'rush';
+  isRushProduction: boolean;
+  rushFee: number;
   shippingFee: number;
   finalTotal: number;
   amount: number; // In paise for payment gateway
@@ -375,12 +378,25 @@ export class PricingService {
 
     const totalDiscount = bundleDiscount + promoDiscount;
 
-    // 5. Shipping Fee Calculation
-    const deliveryOption = input.deliveryOption === 'express' ? 'express' : 'standard';
+    // 5. Shipping & Rush Production Fee Calculation
+    const isExplicitRush = Boolean(input.deliveryOption === 'rush' || input.isRushProduction);
+    const deliveryOption: 'standard' | 'express' | 'rush' = isExplicitRush
+      ? 'rush'
+      : input.deliveryOption === 'express'
+      ? 'express'
+      : 'standard';
+
     let shippingFee = 0;
     let isFreeShipping = false;
+    let isRushProduction = false;
+    let rushFee = 0;
 
-    if (deliveryOption === 'express') {
+    if (deliveryOption === 'rush') {
+      shippingFee = 499;
+      isFreeShipping = false;
+      isRushProduction = true;
+      rushFee = 499;
+    } else if (deliveryOption === 'express') {
       shippingFee = 299;
       isFreeShipping = false;
     } else {
@@ -408,6 +424,8 @@ export class PricingService {
       promoDetails,
       totalDiscount,
       deliveryOption,
+      isRushProduction,
+      rushFee,
       shippingFee,
       finalTotal,
       amount: amountInPaise,

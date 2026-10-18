@@ -294,6 +294,7 @@ export const api = {
     packaging?: any;
     promoCode?: string | null;
     deliveryOption?: string;
+    isRushProduction?: boolean;
   }) =>
     fetcher<{ success: boolean; pricing: any }>('/pricing/calculate', {
       method: 'POST',
@@ -308,6 +309,7 @@ export const api = {
     accessories?: any;
     promoCode?: string | null;
     deliveryOption?: string;
+    isRushProduction?: boolean;
     currency?: string;
     receipt?: string;
   }) =>

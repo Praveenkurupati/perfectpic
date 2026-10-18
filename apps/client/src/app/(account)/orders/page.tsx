@@ -499,6 +499,12 @@ function TrackOrderContent() {
             contact support
           </Link>
 
+          {Boolean((order as any).isRushProduction || (order as any).deliveryOption === 'rush' || (order as any).productionPriority === 'RUSH') && (
+            <span className="bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3.5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+              <span>⚡ 24H Rush Dispatch</span>
+            </span>
+          )}
+
           <span className="bg-[#0A0A0A] text-white px-3.5 py-2 rounded-full text-xs font-semibold uppercase tracking-wider">
             {order.status}
           </span>

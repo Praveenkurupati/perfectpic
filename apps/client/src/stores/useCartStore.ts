@@ -107,6 +107,16 @@ export interface PackagingAccessories {
   miniBookDuo: boolean; // ₹999 (2 Mini-Books "Grandparents Pack")
 }
 
+export type DeliveryOptionType = 'standard' | 'express' | 'rush';
+
+export const SHIPPING_PRICES: Record<DeliveryOptionType, number> = {
+  standard: 0,
+  express: 299,
+  rush: 499,
+};
+
+export const RUSH_PRODUCTION_FEE = 499;
+
 export const ACCESSORY_PRICES: Record<keyof PackagingAccessories, number> = {
   keepsakeBox: 499,
   giftWrap: 199,
@@ -175,6 +185,8 @@ interface CartState {
   discountAmount: number; // Absolute discount in ₹ (e.g. 500)
   appliedPromo: AppliedPromo | null;
   shipping: number;
+  deliveryOption: DeliveryOptionType;
+  isRushProduction: boolean;
   packagingAddon: boolean;
   isGift: boolean;
   accessories: PackagingAccessories;
@@ -201,6 +213,9 @@ interface CartState {
   setAccessory: (key: keyof PackagingAccessories, enabled: boolean) => void;
   setMiniBookOption: (option: 'none' | 'single' | 'duo') => void;
   getAccessoriesTotal: () => number;
+  setDeliveryOption: (option: DeliveryOptionType) => void;
+  toggleRushProduction: () => void;
+  getShippingFee: () => number;
   
   getPhotobookCount: () => number;
   getBundleDiscount: () => {
@@ -274,6 +289,8 @@ export const useCartStore = create<CartState>((set, get) => {
     discountAmount: 0,
     appliedPromo: null,
     shipping: 0,
+    deliveryOption: 'standard',
+    isRushProduction: false,
     packagingAddon: initialAccessories.keepsakeBox,
     isGift: false,
     accessories: initialAccessories,
@@ -588,28 +605,59 @@ export const useCartStore = create<CartState>((set, get) => {
     };
   },
   
-  getSubtotal: () => {
-    const state = get();
-    const itemsTotal = state.items.reduce((total, item) => 
-      total + (item.basePrice + (item.extraPagesPrice || 0)) * (item.quantity || 1), 0
-    );
-    return itemsTotal + state.getAccessoriesTotal();
-  },
+    setDeliveryOption: (option: DeliveryOptionType) => {
+      set({
+        deliveryOption: option,
+        isRushProduction: option === 'rush',
+      });
+    },
 
-  getTotal: () => {
-    const state = get();
-    const subtotal = state.getSubtotal();
-    const couponDiscount = state.discountAmount > 0 
-      ? state.discountAmount 
-      : subtotal * (state.discount || 0);
+    toggleRushProduction: () => {
+      set((state) => {
+        const nextOption: DeliveryOptionType = state.deliveryOption === 'rush' ? 'standard' : 'rush';
+        return {
+          deliveryOption: nextOption,
+          isRushProduction: nextOption === 'rush',
+        };
+      });
+    },
 
-    const bundleInfo = state.getBundleDiscount();
-    const bundleDiscount = bundleInfo.discountAmount;
+    getShippingFee: () => {
+      const state = get();
+      if (state.deliveryOption === 'rush') return SHIPPING_PRICES.rush;
+      if (state.deliveryOption === 'express') return SHIPPING_PRICES.express;
+      return 0;
+    },
 
-    // Qualifying bundle orders automatically receive 100% Free Shipping
-    const effectiveShipping = bundleInfo.freeShipping ? 0 : state.shipping;
+    getSubtotal: () => {
+      const state = get();
+      const itemsTotal = state.items.reduce((total, item) => 
+        total + (item.basePrice + (item.extraPagesPrice || 0)) * (item.quantity || 1), 0
+      );
+      return itemsTotal + state.getAccessoriesTotal();
+    },
 
-    return Math.max(0, subtotal - bundleDiscount - couponDiscount + effectiveShipping);
-  },
-};
+    getTotal: () => {
+      const state = get();
+      const subtotal = state.getSubtotal();
+      const couponDiscount = state.discountAmount > 0 
+        ? state.discountAmount 
+        : subtotal * (state.discount || 0);
+
+      const bundleInfo = state.getBundleDiscount();
+      const bundleDiscount = bundleInfo.discountAmount;
+
+      // Delivery & Production: Rush is ₹499 (priority queue jump), Express is ₹299, Standard is FREE
+      let effectiveShipping = 0;
+      if (state.deliveryOption === 'rush') {
+        effectiveShipping = SHIPPING_PRICES.rush;
+      } else if (state.deliveryOption === 'express') {
+        effectiveShipping = SHIPPING_PRICES.express;
+      } else {
+        effectiveShipping = bundleInfo.freeShipping ? 0 : state.shipping;
+      }
+
+      return Math.max(0, subtotal - bundleDiscount - couponDiscount + effectiveShipping);
+    },
+  };
 });
