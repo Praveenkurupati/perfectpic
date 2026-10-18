@@ -1,9 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditorStore, Photo } from '@/stores/useEditorStore';
-import { UploadCloud, Check, Plus, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { 
+  UploadCloud, 
+  Check, 
+  Plus, 
+  Image as ImageIcon, 
+  Loader2, 
+  Sparkles, 
+  Star, 
+  Layers 
+} from 'lucide-react';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
+import BurstCleanupModal from './BurstCleanupModal';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
 import { analyzeImageQuality } from '@/lib/imageQualityAnalyzer';
 import { api } from '@/lib/api';
@@ -20,13 +30,24 @@ export default function PhotoTray() {
     assignPhotoToSlot,
     currentSpreadIndex,
     pageCount,
-    pageLayouts
+    pageLayouts,
+    burstGroups,
+    detectBurstPhotos,
+    isDetectingBursts,
   } = useEditorStore();
 
   const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
   const [cloudInitialTab, setCloudInitialTab] = useState<'photos' | 'drive'>('photos');
+  const [burstModalOpen, setBurstModalOpen] = useState(false);
   const [isUploadingTray, setIsUploadingTray] = useState(false);
   const [trayProgress, setTrayProgress] = useState('');
+
+  // Auto-detect bursts when photo count changes
+  useEffect(() => {
+    if (photos.length >= 2) {
+      detectBurstPhotos().catch(() => {});
+    }
+  }, [photos.length]);
 
   const handleTrayUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
@@ -74,8 +95,12 @@ export default function PhotoTray() {
   };
 
   const reviewCount = photos.filter(p => p.isBlurry || p.isLowRes).length;
+  const uniqueCount = photos.filter(p => !p.isExcludedFromAutofill && (!p.isDuplicateOrBurst || p.isBestPick)).length;
+  const burstCount = photos.filter(p => p.burstGroupId !== undefined).length;
 
   const filteredPhotos = photos.filter(p => {
+    if (photoFilter === 'unique') return !p.isExcludedFromAutofill && (!p.isDuplicateOrBurst || p.isBestPick);
+    if (photoFilter === 'bursts') return p.burstGroupId !== undefined;
     if (photoFilter === 'unused') return (p.usedCount || 0) === 0;
     if (photoFilter === 'flagged') return p.flagged || p.isBlurry || p.isLowRes;
     return true;
@@ -123,11 +148,11 @@ export default function PhotoTray() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-1.5 mt-2.5">
+        <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto scrollbar-none pb-0.5">
           <button
             type="button"
             onClick={() => setPhotoFilter('all')}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+            className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               photoFilter === 'all'
                 ? 'bg-black text-white shadow-xs'
                 : 'bg-gray-100 text-gray-600 hover:text-black hover:bg-gray-200'
@@ -135,10 +160,41 @@ export default function PhotoTray() {
           >
             all ({photos.length})
           </button>
+
+          {burstGroups.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPhotoFilter('unique')}
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
+                photoFilter === 'unique'
+                  ? 'bg-noir-950 text-foil-gold shadow-xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              <Star size={11} className="fill-foil-gold text-foil-gold" />
+              <span>unique ({uniqueCount})</span>
+            </button>
+          )}
+
+          {burstGroups.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPhotoFilter('bursts')}
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
+                photoFilter === 'bursts'
+                  ? 'bg-black text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-600 hover:text-black hover:bg-gray-200'
+              }`}
+            >
+              <Layers size={11} />
+              <span>bursts ({burstCount})</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setPhotoFilter('unused')}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+            className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               photoFilter === 'unused'
                 ? 'bg-black text-white shadow-xs'
                 : 'bg-gray-100 text-gray-600 hover:text-black hover:bg-gray-200'
@@ -146,11 +202,12 @@ export default function PhotoTray() {
           >
             unused ({photos.length - placedCount})
           </button>
+
           {reviewCount > 0 && (
             <button
               type="button"
               onClick={() => setPhotoFilter('flagged')}
-              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center gap-1 ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 ${
                 photoFilter === 'flagged'
                   ? 'bg-rose-950 text-rose-200 shadow-xs'
                   : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
@@ -162,6 +219,30 @@ export default function PhotoTray() {
           )}
         </div>
       </div>
+
+      {/* Burst Cleanup Banner */}
+      {burstGroups.length > 0 && (
+        <div className="bg-amber-50/90 border-b border-amber-200/80 px-4 py-2 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Sparkles className="w-3.5 h-3.5 text-foil-gold shrink-0" />
+            <div className="min-w-0">
+              <span className="text-[11px] font-bold text-gray-950 block truncate">
+                {burstGroups.length} Burst Sets Detected
+              </span>
+              <span className="text-[10px] text-gray-500 font-mono block">
+                Filter out duplicate continuous shots
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setBurstModalOpen(true)}
+            className="px-2.5 py-1 bg-noir-950 text-foil-gold hover:bg-black rounded-lg text-[10px] font-bold font-mono uppercase tracking-wider shrink-0 shadow-2xs"
+          >
+            Clean Up
+          </button>
+        </div>
+      )}
       
       {/* Photos Grid & Independent Scrolling Area */}
       {photos.length === 0 ? (
@@ -176,19 +257,32 @@ export default function PhotoTray() {
         </div>
       ) : filteredPhotos.length === 0 ? (
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-6 text-center text-gray-400">
-          <p className="text-xs text-gray-400">no unused photos left.</p>
+          <p className="text-xs text-gray-400">no photos match selected filter.</p>
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto p-3.5 grid grid-cols-2 gap-2.5 content-start">
           {filteredPhotos.map((photo) => {
             const isPlaced = (photo.usedCount || 0) > 0;
+            const isExcluded = !!photo.isExcludedFromAutofill;
 
             return (
               <div 
                 key={photo.id} 
                 onClick={() => handlePhotoClick(photo)}
-                className="aspect-square bg-gray-100 rounded-xl relative group overflow-hidden cursor-pointer shadow-2xs border border-gray-100 hover:shadow-md transition-all"
-                title="Click to place into targeted layout slot"
+                className={`aspect-square bg-gray-100 rounded-xl relative group overflow-hidden cursor-pointer shadow-2xs border transition-all ${
+                  photo.isBestPick
+                    ? 'border-foil-gold/60 ring-1 ring-foil-gold/30'
+                    : isExcluded
+                    ? 'opacity-40 border-gray-200 grayscale-30'
+                    : 'border-gray-100 hover:shadow-md'
+                }`}
+                title={
+                  photo.isBestPick
+                    ? 'Best pick from burst group (sharpest optics)'
+                    : photo.isDuplicateOrBurst
+                    ? 'Burst duplicate shot'
+                    : 'Click to place into targeted layout slot'
+                }
               >
                 <img 
                   src={normalizeImageUrl(photo.url)} 
@@ -198,8 +292,24 @@ export default function PhotoTray() {
                   onError={handleImageError}
                 />
                 
-                {/* Quality pill indicator */}
-                <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none">
+                {/* Quality & Burst Badges Container */}
+                <div className="absolute top-1.5 left-1.5 z-10 pointer-events-none flex flex-col gap-1 items-start">
+                  {/* Burst Best Pick Gold Star Badge */}
+                  {photo.isBestPick && (
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-noir-950/95 text-foil-gold border border-foil-gold/60 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                      <Star size={8} className="fill-foil-gold text-foil-gold" />
+                      <span>best</span>
+                    </span>
+                  )}
+
+                  {/* Non-best Burst Shot Badge */}
+                  {!photo.isBestPick && photo.burstGroupId && (
+                    <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-black/75 text-gray-300 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                      <span>burst</span>
+                    </span>
+                  )}
+
+                  {/* Quality Pill */}
                   {photo.isBlurry ? (
                     <span
                       className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-rose-950/90 text-rose-300 border border-rose-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs"
@@ -227,7 +337,7 @@ export default function PhotoTray() {
                   ) : null}
                 </div>
 
-                {/* Placed badge (Mockup circular checkmark in corner) */}
+                {/* Placed badge */}
                 {isPlaced && (
                   <div className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full bg-black text-white flex items-center justify-center shadow-xs z-10 pointer-events-none">
                     <Check size={11} strokeWidth={3} />
@@ -328,6 +438,12 @@ export default function PhotoTray() {
         isOpen={cloudPickerOpen}
         onClose={() => setCloudPickerOpen(false)}
         initialTab={cloudInitialTab}
+      />
+
+      {/* Burst Cleanup Modal */}
+      <BurstCleanupModal
+        isOpen={burstModalOpen}
+        onClose={() => setBurstModalOpen(false)}
       />
     </div>
   );

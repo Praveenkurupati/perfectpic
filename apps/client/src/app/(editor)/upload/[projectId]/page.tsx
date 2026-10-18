@@ -11,7 +11,9 @@ import {
   ChevronRight, 
   Loader2, 
   Eye, 
-  Download 
+  Download,
+  Sparkles,
+  Star
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useEditorStore, Photo } from '@/stores/useEditorStore';
@@ -22,6 +24,7 @@ import { trackEvent } from '@/lib/analytics';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { getFallbackProduct } from '@/features/catalog/data/catalogFallback';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
+import BurstCleanupModal from '@/features/editor/components/BurstCleanupModal';
 
 interface FailedUploadItem {
   id: string;
@@ -49,7 +52,16 @@ function UploadContent() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { photos, addPhoto, removePhoto, setTemplate, setPageCount, initProject } = useEditorStore();
+  const { 
+    photos, 
+    addPhoto, 
+    removePhoto, 
+    setTemplate, 
+    setPageCount, 
+    initProject,
+    burstGroups,
+    detectBurstPhotos
+  } = useEditorStore();
 
   // Failed uploads tracking for retry functionality
   const [failedUploads, setFailedUploads] = useState<FailedUploadItem[]>([]);
@@ -58,6 +70,14 @@ function UploadContent() {
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [validationAlert, setValidationAlert] = useState<string | null>(null);
+  const [burstModalOpen, setBurstModalOpen] = useState(false);
+
+  // Auto-detect bursts when photo collection changes
+  useEffect(() => {
+    if (photos.length >= 2) {
+      detectBurstPhotos().catch(() => {});
+    }
+  }, [photos.length, detectBurstPhotos]);
 
   // Photo Preview Modal (Lightbox) state
   const [previewPhotoIndex, setPreviewPhotoIndex] = useState<number | null>(null);
@@ -450,6 +470,34 @@ function UploadContent() {
               </button>
             </div>
 
+            {/* Burst & Duplicate Clean-Up Banner */}
+            {burstGroups.length > 0 && (
+              <div className="bg-white rounded-2xl border border-amber-300 p-4 sm:p-5 flex items-center justify-between gap-4 shadow-xs animate-in fade-in">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-noir-950 text-foil-gold flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#0A0A0A] leading-tight">
+                      {burstGroups.length} Burst Sets ({burstGroups.reduce((a, c) => a + c.photos.length - 1, 0)} duplicate shots) Detected
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-[#706E69] mt-0.5 leading-snug">
+                      Our on-device analyzer identified continuous burst shots. Keep only the sharpest picks to avoid repetitive pages.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setBurstModalOpen(true)}
+                  className="bg-noir-950 hover:bg-black text-foil-gold px-5 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-colors shrink-0 lowercase shadow-xs flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>clean up bursts</span>
+                </button>
+              </div>
+            )}
+
             {/* 5. Photos Grid Header */}
             <div>
               <h2 className="text-sm sm:text-base font-bold text-[#0A0A0A] lowercase mb-4">
@@ -463,7 +511,13 @@ function UploadContent() {
                   <div
                     key={photo.id}
                     onClick={() => openPreview(idx)}
-                    className="aspect-square rounded-2xl overflow-hidden relative group cursor-pointer bg-[#DDD8D0] shadow-2xs hover:shadow-xs transition-all"
+                    className={`aspect-square rounded-2xl overflow-hidden relative group cursor-pointer bg-[#DDD8D0] shadow-2xs hover:shadow-xs transition-all ${
+                      photo.isBestPick
+                        ? 'ring-2 ring-foil-gold/60'
+                        : photo.isExcludedFromAutofill
+                        ? 'opacity-40 grayscale-40'
+                        : ''
+                    }`}
                     title="Click to preview full size"
                   >
                     <img
@@ -478,8 +532,15 @@ function UploadContent() {
                       <Eye size={18} className="drop-shadow-sm" />
                     </div>
 
-                    {/* Quality triage chip */}
-                    <div className="absolute bottom-1.5 left-1.5 z-10 pointer-events-none">
+                    {/* Quality & Burst triage chips */}
+                    <div className="absolute bottom-1.5 left-1.5 z-10 pointer-events-none flex flex-col gap-1 items-start">
+                      {photo.isBestPick && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-noir-950/95 text-foil-gold border border-foil-gold/60 shadow-xs flex items-center gap-1 backdrop-blur-xs">
+                          <Star size={8} className="fill-foil-gold text-foil-gold" />
+                          <span>best</span>
+                        </span>
+                      )}
+
                       {photo.isBlurry ? (
                         <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-rose-950/90 text-rose-300 border border-rose-500/60 shadow-xs flex items-center gap-1 backdrop-blur-xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
@@ -758,6 +819,12 @@ function UploadContent() {
         onClose={() => setPickerModalOpen(false)}
         initialTab={pickerInitialTab}
         onImportSuccess={() => setPickerModalOpen(false)}
+      />
+
+      {/* Burst & Duplicate Cleanup Modal */}
+      <BurstCleanupModal
+        isOpen={burstModalOpen}
+        onClose={() => setBurstModalOpen(false)}
       />
     </div>
   );

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { indexedDbStorage } from '@/lib/storage/indexedDbStorage';
 import { calculateEffectiveSlotDpi } from '@/lib/imageQualityAnalyzer';
+import { BurstCluster, detectBurstAndDuplicateGroups } from '@/lib/burstPhotoDetector';
 
 export interface Page {
   id: string;
@@ -23,6 +24,11 @@ export interface Photo {
   qualityGrade?: 'A+' | 'A' | 'B' | 'C' | 'D';
   summary?: string;
   recommendedLayout?: string;
+  dHash?: string;
+  burstGroupId?: string;
+  isBestPick?: boolean;
+  isDuplicateOrBurst?: boolean;
+  isExcludedFromAutofill?: boolean;
 }
 
 export interface FlaggedSlotIssue {
@@ -104,7 +110,9 @@ interface EditorState {
   coverConfig: CoverConfig;
 
   photos: Photo[];
-  photoFilter: 'all' | 'unused' | 'flagged';
+  photoFilter: 'all' | 'unique' | 'bursts' | 'unused' | 'flagged';
+  burstGroups: BurstCluster[];
+  isDetectingBursts: boolean;
   template: any | null;
   bookConfig: {
     size: string;
@@ -156,11 +164,15 @@ interface EditorState {
   addSpread: () => void;
   toggleSlotFit: (slotId: string) => void;
   rotateSlotPhoto: (slotId: string) => void;
-  setPhotoFilter: (filter: 'all' | 'unused' | 'flagged') => void;
+  setPhotoFilter: (filter: 'all' | 'unique' | 'bursts' | 'unused' | 'flagged') => void;
   setTemplate: (template: any) => void;
   setBookConfig: (config: Partial<EditorState['bookConfig']>) => void;
   updatePhotoQuality: (photoId: string, quality: Partial<Photo>) => void;
   getPreflightAudit: () => PreflightAuditReport;
+  detectBurstPhotos: () => Promise<BurstCluster[]>;
+  keepOnlyBestPicks: () => void;
+  togglePhotoExclusion: (photoId: string) => void;
+  setPhotoAsBestPick: (clusterId: string, photoId: string) => void;
 }
 
 /**
@@ -228,6 +240,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   currentPageIndex: 1,
   photos: [],
   photoFilter: 'all',
+  burstGroups: [],
+  isDetectingBursts: false,
   template: null,
   bookConfig: {
     size: '8.25x8.25',
@@ -441,21 +455,27 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   autoPopulatePages: () => set((state) => {
     if (state.photos.length === 0) return state;
 
+    // Intelligent pool: prioritize unique photos and burst best picks
+    const cleanCandidates = state.photos.filter(
+      (p) => !p.isExcludedFromAutofill && (!p.isDuplicateOrBurst || p.isBestPick)
+    );
+    const pool = cleanCandidates.length > 0 ? cleanCandidates : state.photos;
+
     const newPagePhotos: Record<number, Photo> = {};
     const newSlotPhotos: Record<string, Photo> = {};
     const newPageLayouts: Record<number, PageLayout> = {};
 
     // Page 0 = Cover
-    if (state.photos[0]) {
-      newPagePhotos[0] = state.photos[0];
-      newSlotPhotos['0'] = state.photos[0];
+    if (pool[0]) {
+      newPagePhotos[0] = pool[0];
+      newSlotPhotos['0'] = pool[0];
     }
 
     // Pages 1 to pageCount: 1 photo per page, layout strictly '1-photo'
     for (let pageNum = 1; pageNum <= state.pageCount; pageNum++) {
       newPageLayouts[pageNum] = '1-photo';
-      const photoIndex = (pageNum - 1) % state.photos.length;
-      const photo = state.photos[photoIndex];
+      const photoIndex = (pageNum - 1) % pool.length;
+      const photo = pool[photoIndex];
       if (photo) {
         newPagePhotos[pageNum] = photo;
         newSlotPhotos[pageNum.toString()] = photo;
@@ -702,6 +722,94 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       flaggedIssues,
     };
   },
+
+  detectBurstPhotos: async () => {
+    const state = get();
+    if (state.photos.length < 2) return [];
+    set({ isDetectingBursts: true });
+    try {
+      const clusters = await detectBurstAndDuplicateGroups(state.photos);
+      const bestPickIds = new Set(clusters.map((c) => c.bestPickPhotoId));
+      const burstGroupMap = new Map<string, string>();
+      clusters.forEach((c) => {
+        c.photoIds.forEach((id) => burstGroupMap.set(id, c.clusterId));
+      });
+
+      const updatedPhotos = state.photos.map((p) => {
+        const clusterId = burstGroupMap.get(p.id);
+        if (!clusterId) {
+          return {
+            ...p,
+            burstGroupId: undefined,
+            isBestPick: undefined,
+            isDuplicateOrBurst: false,
+            isExcludedFromAutofill: false,
+          };
+        }
+        const isBest = bestPickIds.has(p.id);
+        return {
+          ...p,
+          burstGroupId: clusterId,
+          isBestPick: isBest,
+          isDuplicateOrBurst: !isBest,
+          isExcludedFromAutofill: !isBest,
+        };
+      });
+
+      set({
+        photos: updatedPhotos,
+        burstGroups: clusters,
+        isDetectingBursts: false,
+      });
+      return clusters;
+    } catch (err) {
+      console.error('Failed to detect burst photos:', err);
+      set({ isDetectingBursts: false });
+      return [];
+    }
+  },
+
+  keepOnlyBestPicks: () => {
+    const state = get();
+    const updatedPhotos = state.photos.map((p) => {
+      if (p.burstGroupId && !p.isBestPick) {
+        return { ...p, isExcludedFromAutofill: true };
+      }
+      return { ...p, isExcludedFromAutofill: false };
+    });
+    set({ photos: updatedPhotos });
+    get().autoPopulatePages();
+  },
+
+  togglePhotoExclusion: (photoId: string) =>
+    set((state) => ({
+      photos: state.photos.map((p) =>
+        p.id === photoId ? { ...p, isExcludedFromAutofill: !p.isExcludedFromAutofill } : p
+      ),
+    })),
+
+  setPhotoAsBestPick: (clusterId: string, photoId: string) =>
+    set((state) => {
+      const updatedPhotos = state.photos.map((p) => {
+        if (p.burstGroupId === clusterId) {
+          const isThis = p.id === photoId;
+          return {
+            ...p,
+            isBestPick: isThis,
+            isDuplicateOrBurst: !isThis,
+            isExcludedFromAutofill: !isThis,
+          };
+        }
+        return p;
+      });
+      const updatedClusters = state.burstGroups.map((c) => {
+        if (c.clusterId === clusterId) {
+          return { ...c, bestPickPhotoId: photoId };
+        }
+        return c;
+      });
+      return { photos: updatedPhotos, burstGroups: updatedClusters };
+    }),
 
   initProject: (projectId: string, initialConfig?: any) => {
     const currentId = get().currentProjectId;
