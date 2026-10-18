@@ -107,8 +107,19 @@ export class ProjectController {
   public static async getAbandonedProjects(req: Request, res: Response, next: NextFunction) {
     try {
       const { ProjectReminderService } = await import('../services/ProjectReminderService');
-      const thresholdHours = req.query.hours ? parseInt(req.query.hours as string, 10) : 24;
-      const abandoned = await ProjectReminderService.getAbandonedProjects({ thresholdHours });
+      const thresholdHours = req.query.hours ? parseInt(req.query.hours as string, 10) : undefined;
+      const stageParam = req.query.stage;
+      const stage = stageParam === '1' ? 1 : stageParam === '2' ? 2 : stageParam === '3' ? 3 : 'all';
+      const search = req.query.search ? String(req.query.search) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
+
+      const abandoned = await ProjectReminderService.getAbandonedProjects({
+        thresholdHours,
+        stage,
+        search,
+        limit,
+      });
+
       return res.status(200).json({
         total: abandoned.length,
         projects: abandoned,
@@ -118,16 +129,28 @@ export class ProjectController {
     }
   }
 
+  public static async getRecoveryMetrics(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { ProjectReminderService } = await import('../services/ProjectReminderService');
+      const metrics = await ProjectReminderService.getRecoveryMetrics();
+      return res.status(200).json(metrics);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async sendResumeReminder(req: Request, res: Response, next: NextFunction) {
     try {
       const id = String(req.params.id);
-      const { channel, customPhone, customEmail, customName } = req.body || {};
+      const { channel, stage, customPhone, customEmail, customName, promoCode } = req.body || {};
       const { ProjectReminderService } = await import('../services/ProjectReminderService');
       const result = await ProjectReminderService.sendResumeReminder(id, {
         channel,
+        stage: stage ? Number(stage) : undefined,
         customPhone,
         customEmail,
         customName,
+        promoCode,
       });
       return res.status(200).json(result);
     } catch (err) {
@@ -140,7 +163,7 @@ export class ProjectController {
       const { ProjectReminderService } = await import('../services/ProjectReminderService');
       const summary = await ProjectReminderService.processPendingReminders();
       return res.status(200).json({
-        message: 'Automated project re-engagement reminders processed successfully',
+        message: 'Automated multi-stage abandoned draft reminders processed successfully',
         summary,
       });
     } catch (err) {

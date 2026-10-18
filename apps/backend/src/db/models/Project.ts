@@ -16,6 +16,15 @@ export interface IProject extends Document {
   lastEditedAt?: Date;
   abandonedReminderSentAt?: Date;
   reminderCount?: number;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerName?: string;
+  reminderStage?: number; // 0 = none, 1 = Stage 1 (1-3h), 2 = Stage 2 (24h), 3 = Stage 3 (72h)
+  lastReminderSentAt?: Date;
+  lastReminderChannel?: 'whatsapp' | 'email' | 'all';
+  recoveryStatus?: 'pending' | 'recovered' | 'unresponsive';
+  recoveredAt?: Date;
+  estimatedValue?: number;
   bookSize?: string;
   coverType?: string;
   theme?: string;
@@ -43,6 +52,15 @@ const ProjectSchema: Schema = new Schema(
     lastEditedAt: { type: Date, default: Date.now },
     abandonedReminderSentAt: { type: Date },
     reminderCount: { type: Number, default: 0 },
+    customerPhone: { type: String, index: true },
+    customerEmail: { type: String, index: true },
+    customerName: { type: String },
+    reminderStage: { type: Number, default: 0, index: true },
+    lastReminderSentAt: { type: Date },
+    lastReminderChannel: { type: String, enum: ['whatsapp', 'email', 'all'] },
+    recoveryStatus: { type: String, enum: ['pending', 'recovered', 'unresponsive'], default: 'pending', index: true },
+    recoveredAt: { type: Date },
+    estimatedValue: { type: Number, default: 1999 },
     bookSize: { type: String, default: '8.25x8.25' },
     coverType: { type: String, default: 'cov-1' },
     theme: { type: String, default: 'theme-1' },
@@ -70,6 +88,9 @@ ProjectSchema.index({ guestSessionId: 1, updatedAt: -1 });
 ProjectSchema.index({ userId: 1, status: 1, updatedAt: -1 });
 ProjectSchema.index({ guestSessionId: 1, status: 1, updatedAt: -1 });
 ProjectSchema.index({ userId: 1, createdAt: -1 });
+
+ProjectSchema.index({ status: 1, progressPercentage: 1, reminderStage: 1, updatedAt: -1 });
+ProjectSchema.index({ recoveryStatus: 1, updatedAt: -1 });
 
 export const Project: mongoose.Model<IProject> = 
   (mongoose.models.Project as mongoose.Model<IProject>) || mongoose.model<IProject>('Project', ProjectSchema);

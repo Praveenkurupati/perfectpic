@@ -78,6 +78,7 @@ const navSections: NavSection[] = [
       { name: "Page Options", href: "/pages", icon: Layers },
       { name: "Volume Bundles", href: "/bundles", icon: Boxes, badge: "4 Tiers", badgeColor: "bg-foil-gold/20 text-foil-gold" },
       { name: "Promo Codes", href: "/promos", icon: Tag },
+      { name: "Abandoned Drafts & CRM", href: "/drafts", icon: Sparkles, badge: "Recovery", badgeColor: "bg-foil-gold/20 text-foil-gold" },
       { name: "Influencer Creators", href: "/influencers", icon: Award },
       { name: "Conversion Funnel", href: "/analytics/funnel", icon: Activity },
       { name: "User Behaviour", href: "/analytics/behaviour", icon: Activity },

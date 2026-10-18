@@ -241,8 +241,58 @@ export const adminApi = {
       headers: authHeaders(),
     }),
   
-  // Projects
+  // Projects & Abandoned Draft Recovery
   getProjects: () => fetcher<{ projects: any[] }>('/projects', { headers: authHeaders() }),
+  getAbandonedDrafts: (params?: { stage?: string | number; search?: string; hours?: number; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.stage !== undefined && params.stage !== 'all') qs.set('stage', String(params.stage));
+    if (params?.search) qs.set('search', params.search);
+    if (params?.hours) qs.set('hours', String(params.hours));
+    if (params?.limit) qs.set('limit', String(params.limit));
+    const query = qs.toString() ? `?${qs.toString()}` : '';
+    return fetcher<{ projects: any[]; total: number }>(`/projects/abandoned${query}`, { headers: authHeaders() });
+  },
+  getDraftRecoveryMetrics: () =>
+    fetcher<{
+      totalTrappedRevenue: number;
+      totalAbandonedDrafts: number;
+      recoveredCount: number;
+      recoveredRevenue: number;
+      recoveryRatePercentage: number;
+      stageBreakdown: { stage1: number; stage2: number; stage3: number };
+      channelDeliveryRate: { whatsapp: number; email: number };
+      lastRunAt: string;
+    }>('/projects/recovery-metrics', { headers: authHeaders() }),
+  sendDraftReminder: (
+    projectId: string,
+    data: {
+      channel?: 'whatsapp' | 'email' | 'all';
+      stage?: number;
+      customPhone?: string;
+      customEmail?: string;
+      customName?: string;
+      promoCode?: string;
+    }
+  ) =>
+    fetcher<any>(`/projects/${projectId}/reminder`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  processBatchDraftReminders: () =>
+    fetcher<{
+      message: string;
+      summary: {
+        processed: number;
+        successful: number;
+        stage1Count: number;
+        stage2Count: number;
+        stage3Count: number;
+      };
+    }>('/projects/process-reminders', {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
 
   // Customers
   getCustomers: (param?: string | { search?: string; page?: number; limit?: number }) => {

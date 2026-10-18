@@ -57,7 +57,15 @@ async function bootstrap() {
     logger.warn(`Backup scheduler initialization notice: ${err.message}`);
   }
 
-  // 6. Start HTTP server
+  // 6. Initialize Automated Abandoned Draft Recovery CRM Scheduler (30m interval, Multi-Stage)
+  try {
+    const { ProjectReminderScheduler } = await import('./services/ProjectReminderScheduler');
+    ProjectReminderScheduler.start(30);
+  } catch (err: any) {
+    logger.warn(`CRM reminder scheduler initialization notice: ${err.message}`);
+  }
+
+  // 7. Start HTTP server
   server = app.listen(env.PORT, () => {
     logger.info(`✨ PerfectPic Server is live and listening on http://localhost:${env.PORT}`);
     logger.info(`🌐 Environment: ${env.NODE_ENV}`);

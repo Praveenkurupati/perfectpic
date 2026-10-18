@@ -16,6 +16,9 @@ router.get('/', ProjectController.getProjects);
 // List abandoned projects eligible for re-engagement reminders
 router.get('/abandoned', ProjectController.getAbandonedProjects);
 
+// Get CRM recovery metrics (trapped pipeline value, 30-day recovery %, stage breakdown)
+router.get('/recovery-metrics', ProjectController.getRecoveryMetrics);
+
 // Process batch re-engagement reminders across WhatsApp and Email
 router.post('/process-reminders', ProjectController.processReminders);
 
