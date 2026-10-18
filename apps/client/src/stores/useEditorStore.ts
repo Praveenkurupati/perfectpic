@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import { indexedDbStorage } from '@/lib/storage/indexedDbStorage';
 import { calculateEffectiveSlotDpi } from '@/lib/imageQualityAnalyzer';
 import { BurstCluster, detectBurstAndDuplicateGroups } from '@/lib/burstPhotoDetector';
+import {
+  AutoFlowStyle,
+  AutoFlowOrder,
+  AutoFlowOptions,
+  AutoFlowMetrics,
+  AutoFlowResult,
+  generateChronologicalAutoFlowLayout,
+} from '@/lib/chronologicalAutoFlow';
+
+export type { AutoFlowStyle, AutoFlowOrder, AutoFlowOptions, AutoFlowMetrics, AutoFlowResult };
 
 export interface Page {
   id: string;
@@ -29,6 +39,12 @@ export interface Photo {
   isBestPick?: boolean;
   isDuplicateOrBurst?: boolean;
   isExcludedFromAutofill?: boolean;
+  timestamp?: number;
+  capturedAt?: string;
+  formattedDate?: string;
+  formattedTime?: string;
+  aspectRatio?: number;
+  orientation?: 'portrait' | 'landscape' | 'square' | 'panoramic';
 }
 
 export interface FlaggedSlotIssue {
@@ -173,6 +189,9 @@ interface EditorState {
   keepOnlyBestPicks: () => void;
   togglePhotoExclusion: (photoId: string) => void;
   setPhotoAsBestPick: (clusterId: string, photoId: string) => void;
+  lastAutoFlowMetrics: AutoFlowMetrics | null;
+  applyAutoFlow: (options?: Partial<AutoFlowOptions>) => AutoFlowMetrics;
+  getAutoFlowPreview: (options?: Partial<AutoFlowOptions>) => AutoFlowMetrics;
 }
 
 /**
@@ -254,6 +273,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
   autoSaveStatus: 'saved',
   currentProjectId: null,
+  lastAutoFlowMetrics: null,
   captions: {},
   captionCase: 'lower',
   canvasZoom: 100,
@@ -452,55 +472,92 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     };
   }),
 
-  autoPopulatePages: () => set((state) => {
-    if (state.photos.length === 0) return state;
-
-    // Intelligent pool: prioritize unique photos and burst best picks
-    const cleanCandidates = state.photos.filter(
-      (p) => !p.isExcludedFromAutofill && (!p.isDuplicateOrBurst || p.isBestPick)
-    );
-    const pool = cleanCandidates.length > 0 ? cleanCandidates : state.photos;
-
-    const newPagePhotos: Record<number, Photo> = {};
-    const newSlotPhotos: Record<string, Photo> = {};
-    const newPageLayouts: Record<number, PageLayout> = {};
-
-    // Page 0 = Cover
-    if (pool[0]) {
-      newPagePhotos[0] = pool[0];
-      newSlotPhotos['0'] = pool[0];
+  applyAutoFlow: (options) => {
+    const state = get();
+    if (state.photos.length === 0) {
+      return {
+        totalPhotosMapped: 0,
+        totalPages: state.pageCount,
+        totalSpreads: Math.ceil(state.pageCount / 2),
+        panoramicSpreadsCount: 0,
+        portraitPairsCount: 0,
+        heroSoloPagesCount: 0,
+        multiPhotoPagesCount: 0,
+        chaptersCount: 0,
+        dateRangeText: 'No photos',
+        styleApplied: options?.style || 'curator',
+        orderApplied: options?.order || 'chronological',
+      };
     }
 
-    // Pages 1 to pageCount: 1 photo per page, layout strictly '1-photo'
-    for (let pageNum = 1; pageNum <= state.pageCount; pageNum++) {
-      newPageLayouts[pageNum] = '1-photo';
-      const photoIndex = (pageNum - 1) % pool.length;
-      const photo = pool[photoIndex];
-      if (photo) {
-        newPagePhotos[pageNum] = photo;
-        newSlotPhotos[pageNum.toString()] = photo;
-        newSlotPhotos[`${pageNum}_0`] = photo;
-      }
-    }
+    // Save previous state to history for instant undo
+    const snapshotBefore = JSON.stringify({
+      pagePhotos: state.pagePhotos,
+      slotPhotos: state.slotPhotos,
+      pageLayouts: state.pageLayouts,
+      captions: state.captions,
+    });
+    state.pushHistory(snapshotBefore);
+
+    const result = generateChronologicalAutoFlowLayout({
+      photos: state.photos,
+      pageCount: state.pageCount,
+      style: options?.style || 'curator',
+      order: options?.order || 'chronological',
+      enablePanoramics: options?.enablePanoramics !== false,
+      prioritizeBestPicks: options?.prioritizeBestPicks !== false,
+      generateDateHeaders: options?.generateDateHeaders !== false,
+    });
 
     const counts: Record<string, number> = {};
-    Object.values(newSlotPhotos).forEach(p => {
+    Object.values(result.slotPhotos).forEach((p) => {
       if (p) counts[p.id] = (counts[p.id] || 0) + 1;
     });
 
-    const updatedPhotos = state.photos.map(p => ({
+    const updatedPhotos = state.photos.map((p) => ({
       ...p,
-      usedCount: counts[p.id] || 0
+      usedCount: counts[p.id] || 0,
     }));
 
-    return {
-      pagePhotos: newPagePhotos,
-      slotPhotos: newSlotPhotos,
-      pageLayouts: newPageLayouts,
+    set({
+      pagePhotos: result.pagePhotos,
+      slotPhotos: result.slotPhotos,
+      pageLayouts: result.pageLayouts,
+      captions: {
+        ...state.captions,
+        ...result.captions,
+      },
       photos: updatedPhotos,
-      autoSaveStatus: 'saved'
-    };
-  }),
+      lastAutoFlowMetrics: result.metrics,
+      autoSaveStatus: 'saved',
+    });
+
+    return result.metrics;
+  },
+
+  getAutoFlowPreview: (options) => {
+    const state = get();
+    const result = generateChronologicalAutoFlowLayout({
+      photos: state.photos,
+      pageCount: state.pageCount,
+      style: options?.style || 'curator',
+      order: options?.order || 'chronological',
+      enablePanoramics: options?.enablePanoramics !== false,
+      prioritizeBestPicks: options?.prioritizeBestPicks !== false,
+      generateDateHeaders: options?.generateDateHeaders !== false,
+    });
+    return result.metrics;
+  },
+
+  autoPopulatePages: () => {
+    get().applyAutoFlow({
+      style: 'curator',
+      order: 'chronological',
+      enablePanoramics: true,
+      prioritizeBestPicks: true,
+      generateDateHeaders: true,
+    });
+  },
 
   setPhotos: (photos) => {
     set({ photos });

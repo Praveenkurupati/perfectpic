@@ -16,7 +16,8 @@ import {
   LayoutGrid,
   Type,
   Palette,
-  BookOpen
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 import { generateBookProofPdf } from '@/lib/pdfGenerator';
 import { trackEvent } from '@/lib/analytics';
@@ -28,6 +29,7 @@ const PhotoTray = dynamic(() => import('@/features/editor/components/PhotoTray')
 const SpreadFilmstrip = dynamic(() => import('@/features/editor/components/SpreadFilmstrip'), { ssr: false });
 const EditorRightPanel = dynamic(() => import('@/features/editor/components/EditorRightPanel'), { ssr: false });
 const MobileEditorDock = dynamic(() => import('@/features/editor/components/MobileEditorDock'), { ssr: false });
+const AutoFlowModal = dynamic(() => import('@/features/editor/components/AutoFlowModal'), { ssr: false });
 
 function StudioContent() {
   const router = useRouter();
@@ -58,6 +60,7 @@ function StudioContent() {
 
   const { addItem } = useCartStore();
   const [unsavedModalOpen, setUnsavedModalOpen] = useState(false);
+  const [autoFlowModalOpen, setAutoFlowModalOpen] = useState(false);
 
   // Initialize and hydrate project state for this projectId
   useEffect(() => {
@@ -270,13 +273,26 @@ function StudioContent() {
           </div>
         </div>
 
-        <button 
-          type="button"
-          onClick={handleApproveAndOrder}
-          className="px-5 py-2 rounded-full bg-black text-white text-xs font-semibold hover:bg-neutral-800 shadow-xs transition-colors shrink-0"
-        >
-          continue
-        </button>
+        <div className="flex items-center gap-2">
+          {photos && photos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAutoFlowModalOpen(true)}
+              className="px-2.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 to-amber-600/20 text-amber-950 border border-amber-300 text-[11px] font-semibold flex items-center gap-1 shadow-2xs hover:bg-amber-100 transition-colors"
+              title="Chronological Auto-Flow"
+            >
+              <Sparkles size={11} className="text-amber-700 fill-amber-700/20" />
+              <span>auto-flow</span>
+            </button>
+          )}
+          <button 
+            type="button"
+            onClick={handleApproveAndOrder}
+            className="px-5 py-2 rounded-full bg-black text-white text-xs font-semibold hover:bg-neutral-800 shadow-xs transition-colors shrink-0"
+          >
+            continue
+          </button>
+        </div>
       </header>
 
       {/* 1b. Desktop Top Header (>= lg) */}
@@ -327,8 +343,20 @@ function StudioContent() {
           </button>
         </div>
 
-        {/* Right: PDF Proof + Preview + Continue Buttons */}
+        {/* Right: Auto-Flow + PDF Proof + Preview + Continue Buttons */}
         <div className="flex items-center gap-2 shrink-0">
+          {photos && photos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setAutoFlowModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 via-amber-600/20 to-amber-700/15 text-amber-950 border border-amber-300 hover:bg-amber-100 text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all group"
+              title="Chronological Auto-Flow Curator"
+            >
+              <Sparkles size={12} className="text-amber-700 fill-amber-700/20 group-hover:scale-110 transition-transform" />
+              <span>auto-flow</span>
+            </button>
+          )}
+
           <button 
             type="button"
             onClick={handleExportPdf}
@@ -425,6 +453,12 @@ function StudioContent() {
           <EditorRightPanel />
         </aside>
       </div>
+
+      {/* Auto-Flow Layout Engine Modal */}
+      <AutoFlowModal
+        isOpen={autoFlowModalOpen}
+        onClose={() => setAutoFlowModalOpen(false)}
+      />
 
       {/* Unsaved Changes Confirmation Modal (media_1792048593432.png Modal 2) */}
       <ConfirmationModal

@@ -25,6 +25,7 @@ import { BrandLogo } from '@/components/brand/BrandLogo';
 import { getFallbackProduct } from '@/features/catalog/data/catalogFallback';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 import BurstCleanupModal from '@/features/editor/components/BurstCleanupModal';
+import { extractPhotoDateTime, calculatePhotoOrientation } from '@/lib/chronologicalAutoFlow';
 
 interface FailedUploadItem {
   id: string;
@@ -144,11 +145,14 @@ function UploadContent() {
       try {
         localBlobUrl = URL.createObjectURL(file);
 
-        // 1. Fast parallel client compression + quality & DPI analysis
-        const [compressed, qualityReport] = await Promise.all([
+        // 1. Fast parallel client compression + quality analysis + EXIF date extraction
+        const [compressed, qualityReport, timeMeta] = await Promise.all([
           compressImage(file, { maxDimension: 2400, quality: 0.85 }),
           analyzeImageQuality(file),
+          extractPhotoDateTime(file, file.name, filesToUpload.findIndex((f) => f.id === uploadId)),
         ]);
+
+        const orient = calculatePhotoOrientation(qualityReport.naturalWidth, qualityReport.naturalHeight);
 
         // Update progress in queue
         setUploadingQueue((prev) =>
@@ -165,7 +169,7 @@ function UploadContent() {
           finalUrl = await fileToDataUrl(compressed);
         }
 
-        // 3. Add to editor store with quality triage metadata
+        // 3. Add to editor store with quality and chronological metadata
         addPhoto({
           id: uploadId,
           url: finalUrl,
@@ -180,6 +184,12 @@ function UploadContent() {
           qualityGrade: qualityReport.qualityGrade,
           summary: qualityReport.summary,
           recommendedLayout: qualityReport.recommendedLayout,
+          timestamp: timeMeta.timestamp,
+          capturedAt: timeMeta.capturedAt,
+          formattedDate: timeMeta.formattedDate,
+          formattedTime: timeMeta.formattedTime,
+          aspectRatio: orient.aspectRatio,
+          orientation: orient.orientation,
         });
 
         // Remove from failed uploads if it was previously failing

@@ -5,11 +5,13 @@ import { useEditorStore, PageLayout } from '@/stores/useEditorStore';
 import { LayoutGrid, Sparkles, Type, Palette, Check } from 'lucide-react';
 import { trackEvent } from '@/lib/analytics';
 import { getSpineMetrics } from '@/lib/spineCalculator';
+import AutoFlowModal from './AutoFlowModal';
 
 const panels = ['Layouts', 'Cover', 'Backgrounds'] as const;
 
 export default function EditorToolbar() {
   const [activePanel, setActivePanel] = useState<string>('Layouts');
+  const [autoFlowModalOpen, setAutoFlowModalOpen] = useState(false);
 
   const {
     currentSpreadIndex,
@@ -158,6 +160,28 @@ export default function EditorToolbar() {
                     </p>
                   ) : (
                     <div className="space-y-4">
+                      {/* Chronological Auto-Flow Quick Action Banner */}
+                      <div className="p-3 bg-gradient-to-r from-amber-50 via-cream-100 to-amber-50/60 border border-amber-300/80 rounded-sm flex items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-noir-950 block truncate">
+                              Auto-Flow Story
+                            </span>
+                            <span className="text-[10px] text-noir-500 block truncate">
+                              Day 1–N chronological rhythm
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAutoFlowModalOpen(true)}
+                          className="px-2.5 py-1 bg-noir-950 text-cream-50 hover:bg-neutral-800 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 transition-all shadow-xs"
+                        >
+                          Auto-Flow
+                        </button>
+                      </div>
+
                       {/* Page Target Selector for Current Spread */}
                       <div>
                         <div className="flex justify-between items-center mb-1.5">
@@ -441,6 +465,12 @@ export default function EditorToolbar() {
           )}
         </div>
       ))}
+
+      {/* Chronological Auto-Flow Modal */}
+      <AutoFlowModal
+        isOpen={autoFlowModalOpen}
+        onClose={() => setAutoFlowModalOpen(false)}
+      />
     </div>
   );
 }

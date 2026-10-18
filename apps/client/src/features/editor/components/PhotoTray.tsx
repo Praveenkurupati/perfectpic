@@ -14,8 +14,10 @@ import {
 } from 'lucide-react';
 import GooglePhotoPickerModal, { GooglePhotosLogo, GoogleDriveLogo } from '@/components/photos/GooglePhotoPickerModal';
 import BurstCleanupModal from './BurstCleanupModal';
+import AutoFlowModal from './AutoFlowModal';
 import { compressImage, fileToDataUrl, isImageFile } from '@/lib/imageCompressor';
 import { analyzeImageQuality } from '@/lib/imageQualityAnalyzer';
+import { extractPhotoDateTime, calculatePhotoOrientation } from '@/lib/chronologicalAutoFlow';
 import { api } from '@/lib/api';
 import { normalizeImageUrl, handleImageError } from '@/lib/urls';
 
@@ -39,6 +41,7 @@ export default function PhotoTray() {
   const [cloudPickerOpen, setCloudPickerOpen] = useState(false);
   const [cloudInitialTab, setCloudInitialTab] = useState<'photos' | 'drive'>('photos');
   const [burstModalOpen, setBurstModalOpen] = useState(false);
+  const [autoFlowModalOpen, setAutoFlowModalOpen] = useState(false);
   const [isUploadingTray, setIsUploadingTray] = useState(false);
   const [trayProgress, setTrayProgress] = useState('');
 
@@ -59,10 +62,13 @@ export default function PhotoTray() {
       const file = fileArray[idx]!;
       setTrayProgress(`${idx + 1}/${fileArray.length}`);
       try {
-        const [compressed, qualityReport] = await Promise.all([
+        const [compressed, qualityReport, timeMeta] = await Promise.all([
           compressImage(file, { maxDimension: 2400, quality: 0.85 }),
           analyzeImageQuality(file),
+          extractPhotoDateTime(file, file.name, idx),
         ]);
+        const orient = calculatePhotoOrientation(qualityReport.naturalWidth, qualityReport.naturalHeight);
+
         let photoUrl = '';
         try {
           const res = await api.uploadPhoto(compressed);
@@ -84,6 +90,12 @@ export default function PhotoTray() {
           qualityGrade: qualityReport.qualityGrade,
           summary: qualityReport.summary,
           recommendedLayout: qualityReport.recommendedLayout,
+          timestamp: timeMeta.timestamp,
+          capturedAt: timeMeta.capturedAt,
+          formattedDate: timeMeta.formattedDate,
+          formattedTime: timeMeta.formattedTime,
+          aspectRatio: orient.aspectRatio,
+          orientation: orient.orientation,
         });
       } catch (err) {
         console.error('Tray upload error:', err);
@@ -141,7 +153,20 @@ export default function PhotoTray() {
       {/* Tray Header */}
       <div className="p-4 border-b border-gray-100 bg-white shrink-0">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-bold text-gray-950">your photos</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-gray-950">your photos</h2>
+            {photos.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAutoFlowModalOpen(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-500/15 via-amber-600/20 to-amber-700/15 text-amber-950 border border-amber-300 hover:bg-amber-100 transition-all shadow-2xs group"
+                title="Open Chronological Auto-Flow Curator"
+              >
+                <Sparkles size={11} className="text-amber-700 fill-amber-700/20 group-hover:scale-110 transition-transform" />
+                <span>Auto-Flow</span>
+              </button>
+            )}
+          </div>
           <span className="text-xs text-gray-400 font-medium font-mono">
             {photos.length} added · {placedCount} used
           </span>
@@ -444,6 +469,12 @@ export default function PhotoTray() {
       <BurstCleanupModal
         isOpen={burstModalOpen}
         onClose={() => setBurstModalOpen(false)}
+      />
+
+      {/* Chronological Auto-Flow Modal */}
+      <AutoFlowModal
+        isOpen={autoFlowModalOpen}
+        onClose={() => setAutoFlowModalOpen(false)}
       />
     </div>
   );

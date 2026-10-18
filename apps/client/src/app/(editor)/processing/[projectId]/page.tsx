@@ -3,12 +3,13 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
+import { useEditorStore } from '@/stores/useEditorStore';
 
 const steps = [
-  "Sorting your timeline...",
-  "Formatting 1 photo per page standard...",
-  "Applying gallery archival margins...",
-  "Generating your lay-flat book layout..."
+  "Analyzing camera timestamps & EXIF metadata...",
+  "Sorting photos chronologically from Day 1 to Day N...",
+  "Pairing portraits & composing panoramic layflat spreads...",
+  "Generating your chronological heirloom book layout..."
 ];
 
 function ProcessingContent() {
@@ -18,14 +19,33 @@ function ProcessingContent() {
   const projectId = (params?.projectId as string) || '';
   const pages = searchParams.get('pages') || '32';
 
+  const { initProject, autoPopulatePages, photos, pagePhotos } = useEditorStore();
+
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
+
+  // Hydrate store state for this project
+  useEffect(() => {
+    if (projectId) {
+      initProject(projectId);
+    }
+  }, [projectId, initProject]);
+
+  // Execute chronological auto-population during composition step
+  useEffect(() => {
+    if (progress >= 60 && photos.length > 0 && Object.keys(pagePhotos).length === 0) {
+      autoPopulatePages();
+    }
+  }, [progress, photos.length, pagePhotos, autoPopulatePages]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress(p => {
         if (p >= 100) {
           clearInterval(interval);
+          if (photos.length > 0 && Object.keys(pagePhotos).length === 0) {
+            autoPopulatePages();
+          }
           setTimeout(() => {
             router.push(`/studio/${projectId}?pages=${pages}`);
           }, 1200);
@@ -33,10 +53,10 @@ function ProcessingContent() {
         }
         return p + 1;
       });
-    }, 40);
+    }, 35);
 
     return () => clearInterval(interval);
-  }, [pages, projectId, router]);
+  }, [pages, projectId, router, photos.length, pagePhotos, autoPopulatePages]);
 
   useEffect(() => {
     if (progress > 25 && currentStep === 0) setCurrentStep(1);
@@ -76,7 +96,7 @@ function ProcessingContent() {
               {progress === 100 ? `Your ${pages}-page photobook is ready!` : steps[currentStep]}
             </motion.h2>
           </AnimatePresence>
-          <p className="text-xs text-noir-500 font-mono">1 photo per page • archival gallery margins</p>
+          <p className="text-xs text-noir-500 font-mono">chronological storytelling • dynamic panoramic spreads • zero-crop portrait pairing</p>
         </div>
 
         <div className="space-y-6">
