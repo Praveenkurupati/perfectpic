@@ -36,6 +36,9 @@ import {
   Star,
   CalendarHeart,
   Gift,
+  Send,
+  MessageSquare,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -86,6 +89,17 @@ const navSections: NavSection[] = [
       { name: "Influencer Creators", href: "/influencers", icon: Award },
       { name: "Conversion Funnel", href: "/analytics/funnel", icon: Activity },
       { name: "User Behaviour", href: "/analytics/behaviour", icon: Activity },
+    ],
+  },
+  {
+    title: "Marketing & Campaigns",
+    items: [
+      { name: "Marketing Hub", href: "/marketing", icon: Send, badge: "Mass Comms", badgeColor: "bg-blue-500/20 text-blue-400" },
+      { name: "Campaigns Console", href: "/marketing/campaigns", icon: MessageSquare },
+      { name: "Create Campaign", href: "/marketing/campaigns/create", icon: Sparkles },
+      { name: "Communication Templates", href: "/marketing/templates", icon: Mail },
+      { name: "Saved Audiences", href: "/marketing/audiences", icon: Users },
+      { name: "Suppression & Opt-Outs", href: "/marketing/suppressions", icon: ShieldAlert },
     ],
   },
   {

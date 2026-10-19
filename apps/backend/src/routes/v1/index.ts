@@ -23,6 +23,7 @@ import queuesRoutes from './queues.routes';
 import anniversaryRoutes from './anniversary.routes';
 import giftCardsRoutes from './giftCards.routes';
 import walletRoutes from './wallet.routes';
+import campaignsRoutes from './campaigns.routes';
 
 const v1Router = Router();
 
@@ -50,6 +51,7 @@ v1Router.use('/privacy', privacyRoutes);
 v1Router.use('/reviews', reviewRoutes);
 v1Router.use('/gift-cards', giftCardsRoutes);
 v1Router.use('/wallet', walletRoutes);
+v1Router.use('/campaigns', campaignsRoutes);
 v1Router.use('/admin/backups', backupsRoutes);
 
 export default v1Router;

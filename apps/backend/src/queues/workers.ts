@@ -161,3 +161,6 @@ export const notificationWorker = new Worker<{
   },
   { concurrency: 5 }
 );
+
+// ── 4. Campaign Mass Communication Workers ─────────────────────────────────
+export { campaignDispatchWorker, campaignRecipientWorker } from './CampaignWorker';

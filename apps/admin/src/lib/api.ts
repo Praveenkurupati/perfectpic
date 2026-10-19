@@ -663,6 +663,226 @@ export const adminApi = {
       body: JSON.stringify(data),
     }),
 
+  // ── Marketing & Communication Campaigns ─────────────────────────────────
+  getCampaigns: (params?: { channel?: string; status?: string; search?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.channel && params.channel !== 'all') query.append('channel', params.channel);
+    if (params?.status && params.status !== 'all') query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      campaigns: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/v1/campaigns${qs}`, { headers: authHeaders() });
+  },
+  getCampaign: (id: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}`, { headers: authHeaders() }),
+  createCampaign: (data: any) =>
+    fetcher<{ success: boolean; campaign: any }>('/v1/campaigns', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updateCampaign: (id: string, data: any) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  calculateCampaignAudience: (id: string) =>
+    fetcher<{ success: boolean; campaign: any; estimate: any }>(`/v1/campaigns/${id}/audience/calculate`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  previewCampaignAudience: (id: string, limit = 10) =>
+    fetcher<{ success: boolean; preview: any[] }>(`/v1/campaigns/${id}/audience/preview?limit=${limit}`, {
+      headers: authHeaders(),
+    }),
+  scheduleCampaign: (id: string, scheduledAt: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}/schedule`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ scheduledAt }),
+    }),
+  launchCampaign: (id: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}/launch`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  pauseCampaign: (id: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}/pause`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  resumeCampaign: (id: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}/resume`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  cancelCampaign: (id: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}/cancel`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  retryFailedRecipients: (id: string) =>
+    fetcher<{ success: boolean; retriedCount: number; message: string }>(`/v1/campaigns/${id}/retry`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  duplicateCampaign: (id: string) =>
+    fetcher<{ success: boolean; campaign: any }>(`/v1/campaigns/${id}/duplicate`, {
+      method: 'POST',
+      headers: authHeaders(),
+    }),
+  getCampaignAnalytics: (id: string) =>
+    fetcher<{ success: boolean; analytics: any }>(`/v1/campaigns/${id}/analytics`, {
+      headers: authHeaders(),
+    }),
+  getCampaignRecipients: (
+    id: string,
+    params?: { status?: string; search?: string; page?: number; limit?: number }
+  ) => {
+    const query = new URLSearchParams();
+    if (params?.status && params.status !== 'all') query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      recipients: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/v1/campaigns/${id}/recipients${qs}`, { headers: authHeaders() });
+  },
+  testSendCampaign: (data: {
+    channel: 'email' | 'whatsapp';
+    recipient: string;
+    templateId?: string;
+    customContent?: any;
+    variables?: Record<string, string>;
+  }) =>
+    fetcher<{ success: boolean; result: any }>('/v1/campaigns/test-send', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  estimateAudienceFilter: (data: { filter: any; channel?: 'email' | 'whatsapp' }) =>
+    fetcher<{ success: boolean; result: any }>('/v1/campaigns/audience/estimate', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  previewAudienceFilter: (data: { filter: any; channel?: 'email' | 'whatsapp'; limit?: number }) =>
+    fetcher<{ success: boolean; preview: any[] }>('/v1/campaigns/audience/preview', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  getCampaignTemplates: (params?: { channel?: string; category?: string; status?: string; search?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.channel && params.channel !== 'all') query.append('channel', params.channel);
+    if (params?.category && params.category !== 'all') query.append('category', params.category);
+    if (params?.status && params.status !== 'all') query.append('status', params.status);
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      templates: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/v1/campaigns/templates${qs}`, { headers: authHeaders() });
+  },
+  createCampaignTemplate: (data: any) =>
+    fetcher<{ success: boolean; template: any }>('/v1/campaigns/templates', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  updateCampaignTemplate: (id: string, data: any) =>
+    fetcher<{ success: boolean; template: any }>(`/v1/campaigns/templates/${id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  deleteCampaignTemplate: (id: string) =>
+    fetcher<{ success: boolean; message: string }>(`/v1/campaigns/templates/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  getSavedAudiences: (params?: { search?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      audiences: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/v1/campaigns/saved-audiences${qs}`, { headers: authHeaders() });
+  },
+  createSavedAudience: (data: any) =>
+    fetcher<{ success: boolean; audience: any }>('/v1/campaigns/saved-audiences', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  deleteSavedAudience: (id: string) =>
+    fetcher<{ success: boolean; message: string }>(`/v1/campaigns/saved-audiences/${id}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  getSuppressions: (params?: { search?: string; channel?: string; reason?: string; page?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.channel && params.channel !== 'all') query.append('channel', params.channel);
+    if (params?.reason && params.reason !== 'all') query.append('reason', params.reason);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return fetcher<{
+      success: boolean;
+      entries: any[];
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    }>(`/v1/campaigns/suppressions${qs}`, { headers: authHeaders() });
+  },
+  addSuppression: (data: { identifier: string; channel: string; reason: string; notes?: string }) =>
+    fetcher<{ success: boolean; entry: any }>('/v1/campaigns/suppressions', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }),
+  removeSuppression: (identifier: string, channel = 'all') =>
+    fetcher<{ success: boolean; removed: boolean }>(`/v1/campaigns/suppressions/${encodeURIComponent(identifier)}?channel=${channel}`, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }),
+  getSuppressionStats: () =>
+    fetcher<{ success: boolean; stats: any }>('/v1/campaigns/suppressions/stats', { headers: authHeaders() }),
+  getCampaignVariables: () =>
+    fetcher<{ success: boolean; variables: any[] }>('/v1/campaigns/variables', { headers: authHeaders() }),
+  getCampaignProviders: () =>
+    fetcher<{ success: boolean; providers: any }>('/v1/campaigns/providers', { headers: authHeaders() }),
+
   // Health
   health: () => fetcher<{ status: string }>('/health'),
 };
