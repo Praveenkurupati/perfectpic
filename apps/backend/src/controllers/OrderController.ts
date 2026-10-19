@@ -7,7 +7,7 @@ import { ApiError } from '../utils/apiError';
 export class OrderController {
   public static async getOrders(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status, search, limit, skip, page, customerEmail } = req.query;
+      const { status, search, limit, skip, page, customerEmail, deliveryOption, isRush } = req.query;
       const user = req.user;
 
       let emailFilter = typeof customerEmail === 'string' ? customerEmail : undefined;
@@ -25,6 +25,8 @@ export class OrderController {
         status: typeof status === 'string' ? status : undefined,
         search: typeof search === 'string' ? search : undefined,
         customerEmail: emailFilter,
+        deliveryOption: typeof deliveryOption === 'string' ? deliveryOption : undefined,
+        isRush: deliveryOption === 'rush' || isRush === 'true' || isRush === '1',
         limit: limit ? parseInt(limit as string, 10) : undefined,
         skip: skip ? parseInt(skip as string, 10) : undefined,
         page: page ? parseInt(page as string, 10) : undefined,

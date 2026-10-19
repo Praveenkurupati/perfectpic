@@ -14,7 +14,16 @@ import { logger } from '../utils/logger';
 import { printRenderQueue } from '../queues/QueueManager';
 
 export class OrderService {
-  public static async getOrders(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number }) {
+  public static async getOrders(filter: {
+    status?: string;
+    search?: string;
+    customerEmail?: string;
+    deliveryOption?: string;
+    isRush?: boolean;
+    limit?: number;
+    skip?: number;
+    page?: number;
+  }) {
     return await OrderRepository.findAll(filter);
   }
 

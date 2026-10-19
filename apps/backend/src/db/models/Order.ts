@@ -270,6 +270,10 @@ OrderSchema.index({ customerEmail: 1, createdAt: -1 });
 OrderSchema.index({ userId: 1, createdAt: -1 });
 OrderSchema.index({ status: 1, createdAt: -1 });
 OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ deliveryOption: 1, createdAt: -1 });
+OrderSchema.index({ status: 1, deliveryOption: 1, createdAt: -1 });
+OrderSchema.index({ customerName: 1, createdAt: -1 });
+OrderSchema.index({ orderNumber: 1, customerEmail: 1, customerName: 1 });
 
 export const Order: mongoose.Model<IOrder> = 
   (mongoose.models.Order as mongoose.Model<IOrder>) || mongoose.model<IOrder>('Order', OrderSchema);

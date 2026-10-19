@@ -40,14 +40,23 @@ export const adminApi = {
     }),
 
   // Orders
-  getOrders: (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+  getOrders: (params?: { page?: number; limit?: number; status?: string; search?: string; deliveryOption?: string; isRush?: boolean }) => {
     const query = new URLSearchParams();
     if (params?.page) query.append('page', String(params.page));
     if (params?.limit) query.append('limit', String(params.limit));
     if (params?.status && params.status !== 'All') query.append('status', params.status);
+    if (params?.deliveryOption) query.append('deliveryOption', params.deliveryOption);
+    if (params?.isRush) query.append('isRush', 'true');
     if (params?.search) query.append('search', params.search);
     const qs = query.toString() ? `?${query.toString()}` : '';
-    return fetcher<{ orders: any[]; total: number; page?: number; totalPages?: number; limit?: number }>(`/orders${qs}`, { headers: authHeaders() });
+    return fetcher<{ 
+      orders: any[]; 
+      total: number; 
+      page?: number; 
+      totalPages?: number; 
+      limit?: number;
+      stageCounts?: Record<string, number>;
+    }>(`/orders${qs}`, { headers: authHeaders() });
   },
   getOrder: (id: string) => fetcher<any>(`/orders/${id}`, { headers: authHeaders() }),
   updateOrderStatus: (

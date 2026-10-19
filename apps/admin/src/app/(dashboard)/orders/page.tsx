@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -121,11 +121,94 @@ const ORDER_STAGES: StageConfig[] = [
 
 const tabs = ["All", "⚡ Rush 24H", "Confirmed", "Production", "Printing", "QC", "Dispatched", "Delivered"];
 
+function mapApiOrder(o: any) {
+  const items = Array.isArray(o.items) ? o.items : [];
+  const hasKeepsakeBox = Boolean(
+    o.packaging?.keepsakeBox ||
+    o.accessories?.keepsakeBox ||
+    items.some((i: any) => i.id === 'acc-keepsake-box' || i.id === 'keepsakeBox' || /keepsake|velvet box/i.test(i.title || ''))
+  );
+  const hasGiftWrap = Boolean(
+    o.packaging?.giftWrap ||
+    o.accessories?.giftWrap ||
+    o.isGift ||
+    items.some((i: any) => i.id === 'acc-gift-wrap' || i.id === 'giftWrap' || /ribbon|gift wrap|calligraphy/i.test(i.title || ''))
+  );
+  const hasUvGlaze = Boolean(
+    o.packaging?.uvGlaze ||
+    o.accessories?.uvGlaze ||
+    items.some((i: any) => i.id === 'acc-uv-glaze' || i.id === 'uvGlaze' || /uv glaze|anti-scratch/i.test(i.title || ''))
+  );
+  const hasMiniPolaroids = Boolean(
+    o.packaging?.miniPolaroids ||
+    o.accessories?.miniPolaroids ||
+    items.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
+  );
+  const hasMiniBookCompanion = Boolean(
+    o.packaging?.miniBookCompanion ||
+    o.accessories?.miniBookCompanion ||
+    o.specifications?.companionMiniBooks?.count === 1 ||
+    items.some((i: any) => i.id === 'acc-mini-book' || /pocket mini-book|companion mini/i.test(i.title || ''))
+  );
+  const hasMiniBookDuo = Boolean(
+    o.packaging?.miniBookDuo ||
+    o.accessories?.miniBookDuo ||
+    o.specifications?.companionMiniBooks?.count === 2 ||
+    items.some((i: any) => i.id === 'acc-mini-book-duo' || /grandparents pack|2 mini-book/i.test(i.title || ''))
+  );
+
+  const packagingBadges: string[] = [];
+  if (hasKeepsakeBox) packagingBadges.push('🎁 Velvet Box');
+  if (hasGiftWrap) packagingBadges.push('🎀 Ribbon Wrap');
+  if (hasUvGlaze) packagingBadges.push('🛡️ UV Glaze');
+  if (hasMiniPolaroids) packagingBadges.push('📷 Polaroids');
+  if (hasMiniBookDuo) packagingBadges.push('📚 2x Mini-Books (Grandparents Pack)');
+  else if (hasMiniBookCompanion) packagingBadges.push('📖 1x Mini-Book (6"×6")');
+
+  const normalizedStatus = (o.status || 'confirmed').toLowerCase();
+  const isRush = Boolean(
+    o.isRushProduction ||
+    o.productionPriority === 'RUSH' ||
+    o.deliveryOption === 'rush' ||
+    o.pricing?.isRushProduction ||
+    o.pricing?.deliveryOption === 'rush'
+  );
+  const targetDispatchAt = o.targetDispatchAt || (isRush && (o.createdAt || o.date) ? new Date(new Date(o.createdAt || o.date).getTime() + 24 * 60 * 60 * 1000).toISOString() : null);
+
+  return {
+    id: o.orderNumber || o.id,
+    orderNumber: o.orderNumber || o.id,
+    customer: o.title || 'Custom Photobook Keepsake',
+    customerName: o.customerName || 'Valued Customer',
+    customerPhone: o.customerPhone || o.shippingAddress?.phone || '',
+    customerEmail: o.customerEmail || o.email || '',
+    date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
+    pages: o.pageCount || 40,
+    size: o.dimensions || '8.25" × 8.25"',
+    status: normalizedStatus,
+    amount: (o.amount || o.total || 1999).toLocaleString('en-IN'),
+    pdfUrl: o.pdfUrl,
+    packagingBadges,
+    isGift: Boolean(o.isGift || hasGiftWrap),
+    isReorder: Boolean(o.isReorder),
+    originalOrderNumber: o.originalOrderNumber || o.originalOrderId,
+    reorderCount: Number(o.reorderCount || 0),
+    isRush,
+    targetDispatchAt,
+    deliveryOption: o.deliveryOption || (isRush ? 'rush' : 'standard'),
+    production: o.production || {},
+    shippingDetails: o.shippingDetails || {},
+  };
+}
+
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState("All");
   const [orders, setOrders] = useState<any[]>([]);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
@@ -140,105 +223,69 @@ export default function OrdersPage() {
   const [modalTrackingNumber, setModalTrackingNumber] = useState<string>('');
   const [modalSubmitting, setModalSubmitting] = useState(false);
 
-  const fetchOrders = () => {
+  // Pipeline stage counters loaded directly from backend aggregation
+  const [stageCounts, setStageCounts] = useState<Record<string, number>>({
+    all: 0,
+    rush: 0,
+    confirmed: 0,
+    production: 0,
+    printing: 0,
+    qc: 0,
+    dispatched: 0,
+    delivered: 0,
+  });
+
+  // Debounce search input by 300ms to avoid unnecessary API requests
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset to first page when filter tab or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, debouncedSearch]);
+
+  const fetchOrders = useCallback((page = currentPage, size = pageSize, tab = activeTab, search = debouncedSearch) => {
     setIsLoading(true);
-    adminApi.getOrders()
+    const isRushTab = tab === "⚡ Rush 24H";
+    const statusParam = (!isRushTab && tab !== "All") ? tab.toLowerCase() : undefined;
+    const deliveryOptionParam = isRushTab ? "rush" : undefined;
+
+    adminApi.getOrders({
+      page,
+      limit: size,
+      status: statusParam,
+      deliveryOption: deliveryOptionParam,
+      search: search.trim() || undefined,
+    })
       .then(res => {
         if (res && Array.isArray(res.orders)) {
-          const apiOrders = res.orders.map((o: any) => {
-            const items = Array.isArray(o.items) ? o.items : [];
-            const hasKeepsakeBox = Boolean(
-              o.packaging?.keepsakeBox ||
-              o.accessories?.keepsakeBox ||
-              items.some((i: any) => i.id === 'acc-keepsake-box' || i.id === 'keepsakeBox' || /keepsake|velvet box/i.test(i.title || ''))
-            );
-            const hasGiftWrap = Boolean(
-              o.packaging?.giftWrap ||
-              o.accessories?.giftWrap ||
-              o.isGift ||
-              items.some((i: any) => i.id === 'acc-gift-wrap' || i.id === 'giftWrap' || /ribbon|gift wrap|calligraphy/i.test(i.title || ''))
-            );
-            const hasUvGlaze = Boolean(
-              o.packaging?.uvGlaze ||
-              o.accessories?.uvGlaze ||
-              items.some((i: any) => i.id === 'acc-uv-glaze' || i.id === 'uvGlaze' || /uv glaze|anti-scratch/i.test(i.title || ''))
-            );
-            const hasMiniPolaroids = Boolean(
-              o.packaging?.miniPolaroids ||
-              o.accessories?.miniPolaroids ||
-              items.some((i: any) => i.id === 'acc-mini-prints' || i.id === 'miniPolaroids' || /polaroid/i.test(i.title || ''))
-            );
-            const hasMiniBookCompanion = Boolean(
-              o.packaging?.miniBookCompanion ||
-              o.accessories?.miniBookCompanion ||
-              o.specifications?.companionMiniBooks?.count === 1 ||
-              items.some((i: any) => i.id === 'acc-mini-book' || /pocket mini-book|companion mini/i.test(i.title || ''))
-            );
-            const hasMiniBookDuo = Boolean(
-              o.packaging?.miniBookDuo ||
-              o.accessories?.miniBookDuo ||
-              o.specifications?.companionMiniBooks?.count === 2 ||
-              items.some((i: any) => i.id === 'acc-mini-book-duo' || /grandparents pack|2 mini-book/i.test(i.title || ''))
-            );
-
-            const packagingBadges: string[] = [];
-            if (hasKeepsakeBox) packagingBadges.push('🎁 Velvet Box');
-            if (hasGiftWrap) packagingBadges.push('🎀 Ribbon Wrap');
-            if (hasUvGlaze) packagingBadges.push('🛡️ UV Glaze');
-            if (hasMiniPolaroids) packagingBadges.push('📷 Polaroids');
-            if (hasMiniBookDuo) packagingBadges.push('📚 2x Mini-Books (Grandparents Pack)');
-            else if (hasMiniBookCompanion) packagingBadges.push('📖 1x Mini-Book (6"×6")');
-
-            const normalizedStatus = (o.status || 'confirmed').toLowerCase();
-            const isRush = Boolean(
-              o.isRushProduction ||
-              o.productionPriority === 'RUSH' ||
-              o.deliveryOption === 'rush' ||
-              o.pricing?.isRushProduction ||
-              o.pricing?.deliveryOption === 'rush'
-            );
-            const targetDispatchAt = o.targetDispatchAt || (isRush && (o.createdAt || o.date) ? new Date(new Date(o.createdAt || o.date).getTime() + 24 * 60 * 60 * 1000).toISOString() : null);
-
-            return {
-              id: o.orderNumber || o.id,
-              orderNumber: o.orderNumber || o.id,
-              customer: o.title || 'Custom Photobook Keepsake',
-              customerName: o.customerName || 'Valued Customer',
-              customerPhone: o.customerPhone || o.shippingAddress?.phone || '',
-              customerEmail: o.customerEmail || o.email || '',
-              date: (o.createdAt || o.date) ? new Date(o.createdAt || o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
-              pages: o.pageCount || 40,
-              size: o.dimensions || '8.25" × 8.25"',
-              status: normalizedStatus,
-              amount: (o.amount || o.total || 1999).toLocaleString('en-IN'),
-              pdfUrl: o.pdfUrl,
-              packagingBadges,
-              isGift: Boolean(o.isGift || hasGiftWrap),
-              isReorder: Boolean(o.isReorder),
-              originalOrderNumber: o.originalOrderNumber || o.originalOrderId,
-              reorderCount: Number(o.reorderCount || 0),
-              isRush,
-              targetDispatchAt,
-              deliveryOption: o.deliveryOption || (isRush ? 'rush' : 'standard'),
-              production: o.production || {},
-              shippingDetails: o.shippingDetails || {},
-            };
-          });
+          const apiOrders = res.orders.map(mapApiOrder);
           setOrders(apiOrders);
+          setTotalOrders(res.total ?? apiOrders.length);
+          setTotalPages(res.totalPages ?? Math.max(1, Math.ceil((res.total ?? apiOrders.length) / size)));
+          if (res.stageCounts) {
+            setStageCounts(res.stageCounts);
+          }
         }
       })
       .catch(err => {
         console.warn("Using offline mock orders:", err);
         setOrders(recentOrders);
+        setTotalOrders(recentOrders.length);
+        setTotalPages(Math.max(1, Math.ceil(recentOrders.length / size)));
       })
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }, [currentPage, pageSize, activeTab, debouncedSearch]);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(currentPage, pageSize, activeTab, debouncedSearch);
+  }, [fetchOrders, currentPage, pageSize, activeTab, debouncedSearch]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setFeedbackToast({ message, type });
@@ -246,60 +293,6 @@ export default function OrdersPage() {
       setFeedbackToast(null);
     }, 4000);
   };
-
-  // Pipeline stage counters
-  const stageCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: orders.length,
-      rush: orders.filter(o => o.isRush).length,
-      confirmed: 0,
-      production: 0,
-      printing: 0,
-      qc: 0,
-      dispatched: 0,
-      delivered: 0,
-    };
-    orders.forEach(o => {
-      const st = (o.status || 'confirmed').toLowerCase();
-      if (counts[st] !== undefined) {
-        counts[st] += 1;
-      }
-    });
-    return counts;
-  }, [orders]);
-
-  const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const st = (order.status || 'confirmed').toLowerCase();
-      const matchesTab = activeTab === "All" ||
-        (activeTab === "⚡ Rush 24H" && order.isRush) ||
-        (activeTab === "Confirmed" && st === 'confirmed') ||
-        (activeTab === "Production" && st === 'production') ||
-        (activeTab === "Printing" && st === 'printing') ||
-        (activeTab === "QC" && (st === 'qc' || st === 'qc inspection')) ||
-        (activeTab === "Dispatched" && st === 'dispatched') ||
-        (activeTab === "Delivered" && st === 'delivered');
-
-      const matchesSearch = !searchQuery || 
-        order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customerPhone.toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesTab && matchesSearch;
-    });
-  }, [orders, activeTab, searchQuery]);
-
-  // Reset to first page whenever filter or tab changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
-  const paginatedOrders = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredOrders.slice(start, start + pageSize);
-  }, [filteredOrders, currentPage, pageSize]);
 
   const handleQuickAdvance = async (order: any, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -429,7 +422,7 @@ export default function OrdersPage() {
         </div>
 
         <button
-          onClick={fetchOrders}
+          onClick={() => fetchOrders()}
           className="px-3.5 py-1.5 bg-white border border-cream-300 hover:bg-cream-50 rounded-sm text-xs font-medium text-noir-700 transition-colors self-start sm:self-auto"
         >
           ↻ Refresh Orders
@@ -619,14 +612,23 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-cream-100">
-              {filteredOrders.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="p-12 text-center text-sm text-noir-500">
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin text-noir-700" />
+                      <span>Loading orders...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : orders.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-sm text-noir-500">
                     No orders match your filter criteria.
                   </td>
                 </tr>
               ) : (
-                paginatedOrders.map((order) => {
+                orders.map((order) => {
                   const stageInfo = getStageInfo(order.status);
                   const isUpdating = updatingOrderId === order.id;
 
@@ -783,10 +785,13 @@ export default function OrdersPage() {
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={filteredOrders.length}
+          totalItems={totalOrders}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           pageSizeOptions={[10, 25, 50]}
           itemLabel="orders"
         />

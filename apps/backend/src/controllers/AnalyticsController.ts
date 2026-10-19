@@ -24,15 +24,25 @@ export class AnalyticsController {
    */
   public static async getCommandCenterStats(req: Request, res: Response) {
     try {
-      const dashboard = await OrderRepository.getDashboardStats();
-      const ordersRes = await OrderRepository.findAll();
+      // 1. Fetch dashboard aggregated metrics and lean orders concurrently in parallel
+      const [dashboard, ordersRes] = await Promise.all([
+        OrderRepository.getDashboardStats(),
+        OrderRepository.findAll({ limit: 100 }),
+      ]);
       const orders: any[] = ordersRes?.orders || [];
+
+      // 2. Compute in-memory operational metrics reusing preloaded lean data
       const sla = SlaService.calculateOverview(orders);
-      const realtime = await OperationsService.getRealtimeStatus();
+      const realtime = await OperationsService.getRealtimeStatus(orders);
       const health = OperationsService.calculateBusinessHealth(sla, realtime);
-      const alerts = await OperationsService.getAttentionItems();
-      const financials = await OperationsService.getFinancials();
-      const dailySummary = await OperationsService.getDailySummary();
+      const alerts = await OperationsService.getAttentionItems(orders);
+      const financials = await OperationsService.getFinancials(dashboard);
+      const dailySummary = await OperationsService.getDailySummary({
+        realtime,
+        financials,
+        orders,
+        slaMetrics: sla,
+      });
 
       const data = {
         ...dashboard,
@@ -56,7 +66,7 @@ export class AnalyticsController {
    */
   public static async getSlaMetrics(req: Request, res: Response) {
     try {
-      const ordersRes = await OrderRepository.findAll();
+      const ordersRes = await OrderRepository.findAll({ limit: 200 });
       const orders: any[] = ordersRes?.orders || [];
       const sla = SlaService.calculateOverview(orders);
       return ApiResponse.success(res, sla, 'SLA operational metrics retrieved');

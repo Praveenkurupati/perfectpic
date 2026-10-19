@@ -66,11 +66,10 @@ export interface FinancialDecomposition {
 
 export class OperationsService {
   /**
-   * Get Real-time Operational Counts
+   * Get Real-time Operational Counts (supports preloaded lean orders to avoid duplicate scans)
    */
-  public static async getRealtimeStatus(): Promise<RealtimeOperationalStatus> {
-    const res = await OrderRepository.findAll();
-    const orders: any[] = res?.orders || [];
+  public static async getRealtimeStatus(preloadedOrders?: any[]): Promise<RealtimeOperationalStatus> {
+    const orders: any[] = preloadedOrders || (await OrderRepository.findAll({ limit: 100 }))?.orders || [];
     const now = Date.now();
     const oneHourAgo = now - 60 * 60 * 1000;
 
@@ -167,9 +166,8 @@ export class OperationsService {
   /**
    * Surface prioritized actionable alerts in "Attention Required" center
    */
-  public static async getAttentionItems(): Promise<AttentionItem[]> {
-    const res = await OrderRepository.findAll();
-    const orders: any[] = res?.orders || [];
+  public static async getAttentionItems(preloadedOrders?: any[]): Promise<AttentionItem[]> {
+    const orders: any[] = preloadedOrders || (await OrderRepository.findAll({ limit: 100 }))?.orders || [];
     const slaAssessments = orders.map((o) => SlaService.assessOrder(o));
     const alerts: AttentionItem[] = [];
 
@@ -241,10 +239,10 @@ export class OperationsService {
   /**
    * Get Financial Decomposition & Unit Economics
    */
-  public static async getFinancials(): Promise<FinancialDecomposition> {
-    const dashboardStats = await OrderRepository.getDashboardStats();
-    const grossRevenue = dashboardStats.summary?.totalRevenue || 284500;
-    const totalOrders = dashboardStats.summary?.totalOrders || 98;
+  public static async getFinancials(preloadedDashboardStats?: any): Promise<FinancialDecomposition> {
+    const dashboardStats = preloadedDashboardStats || (await OrderRepository.getDashboardStats());
+    const grossRevenue = dashboardStats.totalRevenue || dashboardStats.summary?.totalRevenue || 284500;
+    const totalOrders = dashboardStats.totalOrders || dashboardStats.summary?.totalOrders || 98;
 
     const promoDiscounts = Math.round(grossRevenue * 0.052); // ~5.2% promo code discount
     const bundleDiscounts = Math.round(grossRevenue * 0.078); // ~7.8% multi-copy volume discount
@@ -329,12 +327,16 @@ export class OperationsService {
   /**
    * Daily Business Summary & Actionable Recommendations
    */
-  public static async getDailySummary() {
-    const realtime = await this.getRealtimeStatus();
-    const financials = await this.getFinancials();
-    const ordersRes = await OrderRepository.findAll();
-    const orders: any[] = ordersRes?.orders || [];
-    const slaMetrics = SlaService.calculateOverview(orders);
+  public static async getDailySummary(options?: {
+    realtime?: RealtimeOperationalStatus;
+    financials?: FinancialDecomposition;
+    orders?: any[];
+    slaMetrics?: SlaOverviewMetrics;
+  }) {
+    const orders = options?.orders || (await OrderRepository.findAll({ limit: 100 }))?.orders || [];
+    const realtime = options?.realtime || (await this.getRealtimeStatus(orders));
+    const financials = options?.financials || (await this.getFinancials());
+    const slaMetrics = options?.slaMetrics || SlaService.calculateOverview(orders);
 
     return {
       date: new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),

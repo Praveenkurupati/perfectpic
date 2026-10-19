@@ -345,33 +345,149 @@ const mockOrders = [
 ];
 
 export class OrderRepository {
-  public static async findAll(filter: { status?: string; search?: string; customerEmail?: string; limit?: number; skip?: number; page?: number } = {}) {
+  public static async findAll(filter: {
+    status?: string;
+    search?: string;
+    customerEmail?: string;
+    deliveryOption?: string;
+    isRush?: boolean;
+    limit?: number;
+    skip?: number;
+    page?: number;
+    projection?: string | Record<string, any>;
+  } = {}) {
     const limit = Math.max(1, filter.limit ? Number(filter.limit) : 50);
     const page = Math.max(1, filter.page ? Number(filter.page) : (filter.skip !== undefined ? Math.floor(Number(filter.skip) / limit) + 1 : 1));
     const skip = filter.skip !== undefined ? Number(filter.skip) : (page - 1) * limit;
-    const { status, search, customerEmail } = filter;
+    const { status, search, customerEmail, deliveryOption, isRush } = filter;
+
+    // By default, project away heavy canvas layouts, slot crops, and audit logs for maximum wire speed
+    const projection = filter.projection !== undefined ? filter.projection : '-projectSnapshot -auditLog';
 
     try {
       if (isDbConnected()) {
         const query: any = {};
+
+        // Status filter: exact matching on lowercase index
         if (status && status !== 'all') {
-          query.status = new RegExp(`^${status}$`, 'i');
+          const st = status.trim().toLowerCase();
+          if (st === 'qc') {
+            query.status = { $in: ['qc', 'qc inspection'] };
+          } else {
+            query.status = st;
+          }
         }
+
+        // Customer email filter
         if (customerEmail) {
           query.customerEmail = new RegExp(`^${customerEmail.trim()}$`, 'i');
         }
-        if (search) {
-          const s = new RegExp(search.trim(), 'i');
-          query.$or = [{ orderNumber: s }, { title: s }, { customerName: s }, { customerEmail: s }];
+
+        // Delivery / Rush filter
+        if (deliveryOption === 'rush' || isRush) {
+          query.$or = [
+            { deliveryOption: 'rush' },
+            { isRushProduction: true },
+            { productionPriority: 'RUSH' },
+            { 'pricing.deliveryOption': 'rush' },
+            { 'pricing.isRushProduction': true },
+          ];
         }
 
-        const orders = await Order.find(query)
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(limit);
-        const total = await Order.countDocuments(query);
+        // Search filter: optimized for compound indexes
+        if (search) {
+          const s = search.trim();
+          const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const searchConditions: any[] = [
+            { orderNumber: new RegExp('^' + escaped, 'i') },
+            { customerName: new RegExp(escaped, 'i') },
+            { customerEmail: new RegExp('^' + escaped, 'i') },
+            { title: new RegExp(escaped, 'i') },
+            { 'shippingAddress.phone': new RegExp(escaped, 'i') },
+            { 'paymentDetails.razorpayOrderId': s },
+          ];
+
+          if (query.$or) {
+            query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+            delete query.$or;
+          } else {
+            query.$or = searchConditions;
+          }
+        }
+
+        // Execute orders query, total count, and tab stage aggregation concurrently in parallel
+        const [orders, total, stageAgg] = await Promise.all([
+          Order.find(query)
+            .select(projection)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+          Order.countDocuments(query),
+          Order.aggregate([
+            {
+              $group: {
+                _id: '$status',
+                count: { $sum: 1 },
+                rushCount: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $or: [
+                          { $eq: ['$deliveryOption', 'rush'] },
+                          { $eq: ['$isRushProduction', true] },
+                          { $eq: ['$productionPriority', 'RUSH'] },
+                          { $eq: ['$pricing.deliveryOption', 'rush'] },
+                          { $eq: ['$pricing.isRushProduction', true] },
+                        ],
+                      },
+                      1,
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          ]),
+        ]);
+
         const totalPages = Math.max(1, Math.ceil(total / limit));
-        return { orders, total, page, totalPages, limit };
+
+        // Format stage counts for admin tab badges
+        const stageCounts: Record<string, number> = {
+          all: 0,
+          rush: 0,
+          confirmed: 0,
+          production: 0,
+          printing: 0,
+          qc: 0,
+          dispatched: 0,
+          delivered: 0,
+          cancelled: 0,
+        };
+
+        let totalAllOrders = 0;
+        let totalRushOrders = 0;
+
+        if (Array.isArray(stageAgg)) {
+          stageAgg.forEach((item: any) => {
+            const st = String(item._id || '').toLowerCase();
+            const cnt = Number(item.count || 0);
+            totalAllOrders += cnt;
+            totalRushOrders += Number(item.rushCount || 0);
+
+            if (st === 'qc' || st === 'qc inspection') {
+              stageCounts.qc = (stageCounts.qc || 0) + cnt;
+            } else if (stageCounts[st] !== undefined) {
+              stageCounts[st] += cnt;
+            }
+          });
+        }
+
+        stageCounts.all = totalAllOrders;
+        stageCounts.rush = totalRushOrders;
+
+        return { orders, total, page, totalPages, limit, stageCounts };
       }
     } catch (err: any) {
       logger.error('OrderRepository findAll error:', err.message);
@@ -380,7 +496,24 @@ export class OrderRepository {
 
     // In-memory fallback only when database is disconnected (offline dev)
     if (isDbConnected()) {
-      return { orders: [], total: 0, page, totalPages: 1, limit };
+      return {
+        orders: [],
+        total: 0,
+        page,
+        totalPages: 1,
+        limit,
+        stageCounts: {
+          all: 0,
+          rush: 0,
+          confirmed: 0,
+          production: 0,
+          printing: 0,
+          qc: 0,
+          dispatched: 0,
+          delivered: 0,
+          cancelled: 0,
+        },
+      };
     }
 
     let filtered = [...mockOrders];
@@ -388,21 +521,39 @@ export class OrderRepository {
       filtered = filtered.filter((o) => o.customerEmail?.toLowerCase() === customerEmail.toLowerCase());
     }
     if (status && status !== 'all') {
-      filtered = filtered.filter((o) => o.status.toLowerCase() === status.toLowerCase());
+      const st = status.toLowerCase();
+      filtered = filtered.filter((o) => o.status.toLowerCase() === st || (st === 'qc' && o.status.toLowerCase() === 'qc inspection'));
+    }
+    if (deliveryOption === 'rush' || isRush) {
+      filtered = filtered.filter((o: any) => o.deliveryOption === 'rush' || o.isRush || o.isRushProduction);
     }
     if (search) {
       const s = search.trim().toLowerCase();
-      filtered = filtered.filter((o) =>
+      filtered = filtered.filter((o: any) =>
         (o.orderNumber && o.orderNumber.toLowerCase().includes(s)) ||
         (o.title && o.title.toLowerCase().includes(s)) ||
         (o.customerName && o.customerName.toLowerCase().includes(s)) ||
-        (o.customerEmail && o.customerEmail.toLowerCase().includes(s))
+        (o.customerEmail && o.customerEmail.toLowerCase().includes(s)) ||
+        (o.shippingAddress?.phone && o.shippingAddress.phone.includes(s))
       );
     }
+
+    const stageCounts: Record<string, number> = {
+      all: mockOrders.length,
+      rush: mockOrders.filter((o: any) => o.deliveryOption === 'rush' || o.isRush || o.isRushProduction).length,
+      confirmed: mockOrders.filter((o) => o.status.toLowerCase() === 'confirmed').length,
+      production: mockOrders.filter((o) => o.status.toLowerCase() === 'production').length,
+      printing: mockOrders.filter((o) => o.status.toLowerCase() === 'printing').length,
+      qc: mockOrders.filter((o) => o.status.toLowerCase() === 'qc' || o.status.toLowerCase() === 'qc inspection').length,
+      dispatched: mockOrders.filter((o) => o.status.toLowerCase() === 'dispatched').length,
+      delivered: mockOrders.filter((o) => o.status.toLowerCase() === 'delivered').length,
+      cancelled: mockOrders.filter((o) => o.status.toLowerCase() === 'cancelled').length,
+    };
+
     const total = filtered.length;
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const paged = filtered.slice(skip, skip + limit);
-    return { orders: paged, total, page, totalPages, limit };
+    return { orders: paged, total, page, totalPages, limit, stageCounts };
   }
 
   public static async findById(idParam: string) {
@@ -868,37 +1019,83 @@ export class OrderRepository {
 
     if (isDbConnected()) {
       try {
-        const count = await Order.countDocuments();
-        totalOrders = count;
+        const now = new Date();
+        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-        const agg = await Order.aggregate([
-          { $group: { _id: null, totalRevenue: { $sum: '$total' } } },
+        // Execute all dashboard analytical metrics in parallel using $facet and lean projections
+        const [
+          userCount,
+          facetResult,
+          prodAgg,
+          cityAgg,
+          monthlyAgg,
+          recentDocs
+        ] = await Promise.all([
+          User.countDocuments(),
+          Order.aggregate([
+            {
+              $facet: {
+                revenueAndCount: [
+                  { $group: { _id: null, totalRevenue: { $sum: '$total' }, totalOrders: { $sum: 1 } } }
+                ],
+                stageCounts: [
+                  { $group: { _id: '$status', count: { $sum: 1 } } }
+                ]
+              }
+            }
+          ]),
+          Order.aggregate([
+            { $group: { _id: '$title', units: { $sum: 1 }, revenue: { $sum: '$total' } } },
+            { $sort: { revenue: -1 } },
+            { $limit: 5 }
+          ]),
+          Order.aggregate([
+            { $match: { 'shippingAddress.city': { $exists: true, $ne: '' } } },
+            { $group: { _id: '$shippingAddress.city', orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
+            { $sort: { orders: -1 } },
+            { $limit: 5 }
+          ]),
+          Order.aggregate([
+            { $match: { createdAt: { $gte: sixMonthsAgo } } },
+            {
+              $group: {
+                _id: {
+                  year: { $year: '$createdAt' },
+                  month: { $month: '$createdAt' },
+                },
+                revenue: { $sum: '$total' },
+                orders: { $sum: 1 },
+              },
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1 } },
+          ]),
+          Order.find()
+            .select('orderNumber title customerName total amount status createdAt deliveryOption isRushProduction thumbnail coverUrl')
+            .sort({ createdAt: -1 })
+            .limit(6)
+            .lean()
         ]);
-        if (agg && agg.length > 0 && agg[0].totalRevenue) {
-          totalRevenue = agg[0].totalRevenue;
-        }
 
-        const pending = await Order.countDocuments({ status: { $in: ['pending', 'production', 'printing', 'qc'] } });
-        pendingPrints = pending;
-
-        // Dynamic user count
-        const userCount = await User.countDocuments();
         activeCustomers = userCount;
 
-        // Pipeline aggregation
-        const stageAgg = await Order.aggregate([
-          { $group: { _id: '$status', count: { $sum: 1 } } }
-        ]);
-        stageAgg.forEach((s: any) => {
-          if (s._id) pipelineCounts[s._id] = s.count;
-        });
+        if (facetResult && facetResult[0]) {
+          const rev = facetResult[0].revenueAndCount?.[0];
+          if (rev) {
+            totalRevenue = rev.totalRevenue || 0;
+            totalOrders = rev.totalOrders || 0;
+          }
+          const stages = facetResult[0].stageCounts || [];
+          stages.forEach((s: any) => {
+            if (s._id) {
+              const st = String(s._id).toLowerCase();
+              pipelineCounts[st] = s.count;
+              if (['pending', 'production', 'printing', 'qc'].includes(st)) {
+                pendingPrints += s.count;
+              }
+            }
+          });
+        }
 
-        // Top products aggregation
-        const prodAgg = await Order.aggregate([
-          { $group: { _id: '$title', units: { $sum: 1 }, revenue: { $sum: '$total' } } },
-          { $sort: { revenue: -1 } },
-          { $limit: 5 }
-        ]);
         if (prodAgg && prodAgg.length > 0) {
           topProducts = prodAgg.map((p: any) => ({
             title: p._id || 'Custom Photobook Keepsake',
@@ -908,13 +1105,6 @@ export class OrderRepository {
           }));
         }
 
-        // Top cities aggregation
-        const cityAgg = await Order.aggregate([
-          { $match: { 'shippingAddress.city': { $exists: true, $ne: '' } } },
-          { $group: { _id: '$shippingAddress.city', orders: { $sum: 1 }, revenue: { $sum: '$total' } } },
-          { $sort: { orders: -1 } },
-          { $limit: 5 }
-        ]);
         if (cityAgg && cityAgg.length > 0) {
           const totalCityOrders = cityAgg.reduce((acc: number, c: any) => acc + c.orders, 0) || 1;
           topCities = cityAgg.map((c: any) => ({
@@ -924,24 +1114,6 @@ export class OrderRepository {
             share: Math.round((c.orders / totalCityOrders) * 100),
           }));
         }
-
-        // Dynamic monthly trend aggregation for the trailing 6 calendar months
-        const now = new Date();
-        const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-        const monthlyAgg = await Order.aggregate([
-          { $match: { createdAt: { $gte: sixMonthsAgo } } },
-          {
-            $group: {
-              _id: {
-                year: { $year: '$createdAt' },
-                month: { $month: '$createdAt' },
-              },
-              revenue: { $sum: '$total' },
-              orders: { $sum: 1 },
-            },
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1 } },
-        ]);
 
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthlyMap = new Map<string, { revenue: number; orders: number }>();
@@ -965,8 +1137,7 @@ export class OrderRepository {
           });
         }
 
-        const docs = await Order.find().sort({ createdAt: -1 }).limit(6);
-        recent = docs as any;
+        recent = recentDocs as any;
       } catch (err: any) {
         logger.error('Error fetching aggregate dashboard stats:', err.message);
       }
