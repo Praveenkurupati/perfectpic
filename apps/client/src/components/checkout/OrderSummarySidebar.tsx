@@ -461,9 +461,9 @@ export const OrderSummarySidebar: React.FC<OrderSummarySidebarProps> = ({
           <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-amber-950 text-xs flex items-start gap-2">
             <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-500 shrink-0 mt-0.5" />
             <div className="text-[11px] leading-snug">
-              <span className="font-bold block text-amber-900">⚡ 24-Hour Dispatch SLA</span>
+              <span className="font-bold block text-amber-900">⚡ 24-Hour Dispatch Guarantee</span>
               <span className="text-amber-800">
-                Front-of-queue priority printing & Air Express courier delivery guaranteed.
+                Priority craft printing & Air Express courier delivery guaranteed.
               </span>
             </div>
           </div>

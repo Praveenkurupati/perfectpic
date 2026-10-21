@@ -9,6 +9,7 @@ import { normalizeImageUrl } from '@/lib/urls';
 import { LazyImage } from '@/components/ui/LazyImage';
 import { generateGstInvoicePdf } from '@/lib/invoiceGenerator';
 import { ReorderModal } from '@/components/orders/ReorderModal';
+import { formatCustomerOrderNumber } from '@/lib/terminology';
 
 interface OrderTimelineStep {
   id: string;
@@ -450,7 +451,7 @@ function TrackOrderContent() {
                     : 'bg-white border border-[#D9D6CF] text-[#706E69] hover:text-[#0A0A0A]'
                 }`}
               >
-                {o.orderNumber}
+                {formatCustomerOrderNumber(o.orderNumber || o.id)}
               </button>
             ))}
           </div>
@@ -464,7 +465,7 @@ function TrackOrderContent() {
           <div>
             <p className="text-xs text-[#706E69] font-normal lowercase mb-1">order</p>
             <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-[#0A0A0A]">
-              {order.orderNumber}
+              {formatCustomerOrderNumber(order.orderNumber || order.id)}
             </p>
           </div>
 

@@ -81,7 +81,7 @@ export default function BusinessCommandCenter() {
       {
         id: "alert-1",
         severity: "warning",
-        title: "SLA Deadline Approaching (3.5h remaining) — Order #PP-8491",
+        title: "Delivery Deadline Approaching (3.5h remaining) — Order #PP-8491",
         entity: "PP-8491",
         entityType: "production",
         reason: "Order has spent 20.5h in production (HP Indigo press run complete, awaiting thermal bindery).",
@@ -105,7 +105,7 @@ export default function BusinessCommandCenter() {
     ],
     dailySummary: {
       date: new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-      headline: "Operations Running at Normal Capacity • 1 Priority SLA Order",
+      headline: "Operations Running at Normal Capacity • 1 Priority Delivery Order",
       metrics: {
         todayRevenue: 24990,
         todayOrders: 11,
@@ -183,7 +183,7 @@ export default function BusinessCommandCenter() {
           </div>
           <h1 className="text-3xl font-serif font-bold text-noir-950">Business Command Center</h1>
           <p className="text-xs text-noir-500 mt-1 max-w-2xl">
-            Real-time executive oversight across revenue, order velocity, digital press pipeline, SLA health, and actionable bottlenecks.
+            Real-time executive oversight across revenue, order velocity, digital press production, on-time delivery health, and actionable bottlenecks.
           </p>
         </div>
 
@@ -271,7 +271,7 @@ export default function BusinessCommandCenter() {
               <span className="font-bold text-emerald-700">92%</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-noir-500">SLA Fulfillment</span>
+              <span className="text-noir-500">On-Time Delivery</span>
               <span className="font-bold text-emerald-700">94.2%</span>
             </div>
             <div className="flex justify-between items-center">
@@ -327,7 +327,7 @@ export default function BusinessCommandCenter() {
             <div className="pt-3 border-t border-cream-100 flex items-center justify-between text-xs font-mono text-noir-500 mt-3">
               <span>Today: {dailySummary.metrics?.todayOrders || 11} new orders</span>
               <Link href="/orders" className="text-noir-900 font-semibold hover:underline flex items-center gap-1">
-                <span>View Queue</span>
+                <span>View Orders</span>
                 <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
@@ -337,7 +337,7 @@ export default function BusinessCommandCenter() {
           <div className="bg-white border border-cream-300 rounded-sm p-5 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center text-noir-500 mb-2">
-                <span className="text-xs font-mono uppercase tracking-wider">Fulfillment SLA Compliance</span>
+                <span className="text-xs font-mono uppercase tracking-wider">On-Time Delivery Rate</span>
                 <Clock className="w-4 h-4 text-emerald-600" />
               </div>
               <div className="font-serif text-3xl font-bold text-emerald-700">
@@ -350,7 +350,7 @@ export default function BusinessCommandCenter() {
             <div className="pt-3 border-t border-cream-100 flex items-center justify-between text-xs font-mono text-noir-500 mt-3">
               <span>Avg Cycle: 28.4 hours</span>
               <Link href="/sla" className="text-noir-900 font-semibold hover:underline flex items-center gap-1">
-                <span>SLA Intel</span>
+                <span>Delivery Intel</span>
                 <ChevronRight className="w-3 h-3" />
               </Link>
             </div>
@@ -389,7 +389,7 @@ export default function BusinessCommandCenter() {
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-emerald-600" />
             <h2 className="font-serif text-lg font-bold text-noir-950">
-              Live Operations Pipeline — What is Happening Right Now?
+              Live Operations Workflow — What is Happening Right Now?
             </h2>
           </div>
           <span className="text-xs font-mono text-noir-500">
@@ -575,7 +575,7 @@ export default function BusinessCommandCenter() {
                 className="flex items-center justify-between p-3 rounded-sm border border-cream-200 hover:border-noir-950 hover:bg-cream-50 transition-all group"
               >
                 <div>
-                  <span className="font-bold text-noir-900 block group-hover:text-black">SLA & Operations Intelligence</span>
+                  <span className="font-bold text-noir-900 block group-hover:text-black">Delivery & Operations Intelligence</span>
                   <span className="text-[11px] text-noir-500 font-sans">Track risk predictions & stage-by-stage targets</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-noir-400 group-hover:text-black group-hover:translate-x-0.5 transition-all" />

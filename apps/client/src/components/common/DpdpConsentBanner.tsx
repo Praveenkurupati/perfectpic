@@ -83,7 +83,7 @@ export const DpdpConsentBanner: React.FC = () => {
               Your Privacy & Data Protection (DPDP Act 2023)
             </h3>
             <p className="text-xs text-noir-600 mt-1 leading-relaxed">
-              We respect your digital privacy. In accordance with India’s Digital Personal Data Protection Act, we only process your photographs and order details to render and print your photobooks, and use privacy-first telemetry to improve bindery workflows.
+              We respect your digital privacy. In accordance with India’s Digital Personal Data Protection Act, we only process your photographs and order details to craft and print your photobooks, and use privacy-first insights to ensure high print quality and reliable delivery.
             </p>
           </div>
         </div>
@@ -99,7 +99,7 @@ export const DpdpConsentBanner: React.FC = () => {
                   Essential Services & Print Production
                 </p>
                 <p className="text-noir-500 text-[11px] mt-0.5">
-                  Required for project session state, cart integrity, and commercial print compilation.
+                  Required for saving your book design, cart contents, and high-resolution print generation.
                 </p>
               </div>
               <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -112,7 +112,7 @@ export const DpdpConsentBanner: React.FC = () => {
               <div className="pr-4">
                 <p className="font-semibold text-noir-900">High-Resolution Photo Processing</p>
                 <p className="text-noir-500 text-[11px] mt-0.5">
-                  Allows temporary S3 storage and automated print layout rasterization. Retained strictly according to our 30-day lifecycle rule.
+                  Allows secure temporary cloud storage and automated print layout preparation. Photos are automatically removed 30 days after dispatch.
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -129,9 +129,9 @@ export const DpdpConsentBanner: React.FC = () => {
             {/* Performance Analytics */}
             <div className="flex items-center justify-between p-2.5 bg-cream-50 rounded-sm">
               <div className="pr-4">
-                <p className="font-semibold text-noir-900">Performance & Funnel Analytics</p>
+                <p className="font-semibold text-noir-900">Performance & Browsing Quality</p>
                 <p className="text-noir-500 text-[11px] mt-0.5">
-                  Anonymized Core Web Vitals and drop-off diagnostics to optimize studio speed.
+                  Anonymized page responsiveness and browsing diagnostics to optimize studio speed.
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">

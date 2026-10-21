@@ -395,11 +395,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
         if (uploadRes?.url) {
           await adminApi.updateOrderPdf(orderId, uploadRes.url);
           setOrder((prev: any) => prev ? { ...prev, pdfUrl: uploadRes.url, printPdfUrl: uploadRes.url } : prev);
-          setFeedbackToast(`High-resolution print PDF compiled, downloaded, and synced to S3!`);
+          setFeedbackToast(`High-resolution print master PDF compiled, downloaded, and synced to production storage!`);
           setTimeout(() => setFeedbackToast(null), 5000);
         }
       } catch (uploadErr) {
-        console.warn('Background S3 upload sync note:', uploadErr);
+        console.warn('Background print file sync note:', uploadErr);
       }
     } catch (err: any) {
       console.error("Print Run PDF generation error:", err);
@@ -477,10 +477,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
               rel="noreferrer"
               download={`PerfectPic-Photobook-${order?.orderNumber || orderId}.pdf`}
               className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-noir-900 rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-1.5 border border-amber-300 shadow-xs"
-              title="Download Commercial Print-Ready PDF from AWS S3"
+              title="Download High-Resolution Print Master PDF"
             >
               <Download className="w-3.5 h-3.5 text-foil-gold" />
-              <span>Download PDF (S3)</span>
+              <span>Download Print PDF</span>
             </a>
           )}
 
@@ -488,10 +488,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
             onClick={handleRenderPrintPdf}
             disabled={isRenderingPdf}
             className="px-3.5 py-2 bg-noir-950 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider hover:bg-noir-900 transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
-            title="Compile Ultra-HD Print PDF with photos & upload to AWS S3"
+            title="Compile High-Resolution Print Master PDF"
           >
             {isRenderingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" /> : <Printer className="w-3.5 h-3.5 text-foil-gold" />}
-            <span>{isRenderingPdf ? 'Uploading to S3...' : (order?.pdfUrl ? 'Re-upload to S3' : 'Upload to S3')}</span>
+            <span>{isRenderingPdf ? 'Generating Print File...' : (order?.pdfUrl ? 'Regenerate Print File' : 'Generate Print File')}</span>
           </button>
         </div>
       </div>
@@ -1046,10 +1046,10 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
                 rel="noreferrer"
                 download={`PerfectPic-Photobook-${order?.orderNumber || orderId}.pdf`}
                 className="w-full py-2.5 bg-noir-950 hover:bg-noir-900 text-cream-50 rounded-sm text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs"
-                title="Download Print PDF directly from AWS S3"
+                title="Download High-Resolution Print Master PDF"
               >
                 <Download className="w-3.5 h-3.5 text-foil-gold" />
-                <span>Download Print PDF (S3)</span>
+                <span>Download Print PDF</span>
               </a>
             ) : (
               <button 
@@ -1060,12 +1060,12 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
                 {isRenderingPdf ? (
                   <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" />
-                    <span>Uploading to S3...</span>
+                    <span>Generating Print File...</span>
                   </>
                 ) : (
                   <>
                     <Download className="w-3.5 h-3.5 text-foil-gold" />
-                    <span>Upload Print PDF to S3</span>
+                    <span>Generate Print PDF</span>
                   </>
                 )}
               </button>

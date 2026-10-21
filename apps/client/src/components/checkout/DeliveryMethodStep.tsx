@@ -160,7 +160,7 @@ export const DeliveryMethodStep: React.FC<DeliveryMethodStepProps> = ({
               Est. Arrival: {formatDayMonth(expStart)} – {formatDayMonth(expEnd)}
             </p>
             <p className="text-[11px] text-noir-500 leading-relaxed mb-3">
-              Expedited bindery queue & priority Air Express courier dispatch.
+              Expedited bindery processing & priority Air Express courier dispatch.
             </p>
           </div>
 
@@ -213,11 +213,11 @@ export const DeliveryMethodStep: React.FC<DeliveryMethodStepProps> = ({
               Est. Arrival: {formatDayMonth(rushStart)} – {formatDayMonth(rushEnd)}
             </p>
             <p className="text-[11px] text-noir-600 leading-relaxed mb-3">
-              Jumps directly to front of HP Indigo queue. Hand-crafted & dispatched within 24 business hours.
+              First-priority press production. Hand-crafted & dispatched within 24 business hours.
             </p>
           </div>
 
-          {/* Countdown & SLA Bullet Points */}
+          {/* Countdown & Delivery Commitment Details */}
           <div>
             {/* Live Cutoff Countdown Timer */}
             <div className="bg-amber-100/60 border border-amber-200/80 rounded px-2.5 py-1.5 mb-2.5 flex items-center gap-2 text-amber-900">
@@ -234,7 +234,7 @@ export const DeliveryMethodStep: React.FC<DeliveryMethodStepProps> = ({
             <div className="pt-2 border-t border-amber-200/60 text-[10px] text-amber-900 space-y-1">
               <div className="flex items-center gap-1 font-medium">
                 <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
-                <span>Priority 1 Queue Jump & BlueDart Air</span>
+                <span>Priority 1 Crafting & BlueDart Air Express</span>
               </div>
               <div className="text-noir-500">100% On-time guarantee or ₹499 fee refunded</div>
             </div>

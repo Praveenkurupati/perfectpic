@@ -68,7 +68,7 @@ export default function BusinessModelCanvasPage() {
         "Cloud-based WebGL photobook canvas rendering engine",
         "Automated photo resolution & bleed preflight verification",
         "Thermal layflat binding & velvet-touch lamination",
-        "Algorithmic SLA routing & proactive NDR carrier remediation",
+        "Predictive delivery routing & proactive NDR carrier remediation",
         "High-intent D2C digital customer acquisition",
       ],
     },
@@ -80,7 +80,7 @@ export default function BusinessModelCanvasPage() {
       items: [
         "Proprietary WebGL canvas editor architecture",
         "Exclusive Italian FSC-certified archival paper inventory",
-        "Automated press imposition & color profile pipeline",
+        "Automated press imposition & color profile automation",
         "Dedicated customer concierge infrastructure",
       ],
     },
@@ -104,7 +104,7 @@ export default function BusinessModelCanvasPage() {
       color: "border-emerald-200 bg-emerald-50/20",
       items: [
         "White-glove concierge support via WhatsApp & direct phone line",
-        "Real-time SLA transparency with live production stage updates",
+        "Real-time delivery transparency with live crafting stage updates",
         "100% Satisfaction reprint guarantee for any binder or color flaw",
         "Milestone travel & anniversary automated re-engagement",
       ],
@@ -144,7 +144,7 @@ export default function BusinessModelCanvasPage() {
         "Italian archival layflat paper stock & velvet lamination film",
         "Custom rigid presentation keepsake boxes & gold foil stamping (~₹110)",
         "Pan-India insured air express courier freight (~₹110 - ₹150)",
-        "Cloud GPU canvas rendering & AWS S3 direct-presigned storage",
+        "Cloud GPU canvas rendering & secure high-resolution cloud storage",
       ],
     },
     revenueStreams: {
@@ -394,10 +394,10 @@ export default function BusinessModelCanvasPage() {
           <div className="p-6 rounded-lg border border-cream-200 bg-white shadow-sm">
             <span className="text-xs font-mono uppercase tracking-widest text-foil-gold font-bold">Pillar 2</span>
             <h3 className="font-serif text-lg font-bold text-noir-900 mt-1 mb-2">
-              96-Hour Guaranteed SLA Pipeline
+              96-Hour Guaranteed Delivery Commitment
             </h3>
             <p className="text-xs text-noir-700 leading-relaxed">
-              Most premium photobook printers require 10 to 14 business days. PerfectPic's direct prepress automation, real-time HP Indigo queue scheduling, and BlueDart air express integration guarantee delivery anywhere in India within 96 hours.
+              Most premium photobook printers require 10 to 14 business days. PerfectPic's direct prepress automation, real-time HP Indigo press scheduling, and BlueDart air express integration guarantee delivery anywhere in India within 96 hours.
             </p>
           </div>
 

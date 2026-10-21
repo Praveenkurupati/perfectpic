@@ -576,7 +576,7 @@ export default function CreateCampaignWizardPage() {
                 {calculatingAudience ? (
                   <div className="py-12 text-center text-xs text-zinc-500">
                     <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-2 text-foil-gold" />
-                    Querying audience facet...
+                    Calculating matching audience...
                   </div>
                 ) : audienceEstimate ? (
                   <div className="mt-4 space-y-4">
@@ -960,7 +960,7 @@ export default function CreateCampaignWizardPage() {
                   <span className="font-semibold text-sm text-white">Send Immediately</span>
                 </div>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Enqueues background worker chunks right now. Delivery begins within seconds.
+                  Initiates automated campaign dispatch immediately. Delivery begins within seconds.
                 </p>
               </div>
 
@@ -977,7 +977,7 @@ export default function CreateCampaignWizardPage() {
                   <span className="font-semibold text-sm text-white">Schedule for Later</span>
                 </div>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Specify an exact future dispatch time. Workers will wake up and process automatically.
+                  Specify an exact future dispatch time. Messages will be dispatched automatically at the scheduled time.
                 </p>
               </div>
             </div>

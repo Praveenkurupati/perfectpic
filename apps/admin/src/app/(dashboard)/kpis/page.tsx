@@ -47,7 +47,7 @@ const kpiDictionary: KpiDefinition[] = [
     status: "on_target",
     ownerRole: "Chief Operating Officer",
     updateFrequency: "Real-time",
-    dataSource: "OperationsService Composite Engine",
+    dataSource: "Operations Intelligence System",
     description: "Holistic 7-dimension weighted health index assessing enterprise resilience across cash, press floor, shipping, and CSAT.",
   },
   {
@@ -61,7 +61,7 @@ const kpiDictionary: KpiDefinition[] = [
     status: "on_target",
     ownerRole: "Chief Financial Officer",
     updateFrequency: "Daily",
-    dataSource: "MongoDB Orders & Ledger Collection",
+    dataSource: "Orders & Financial Ledger",
     description: "Percentage of gross customer spend retained after covering all direct manufacturing, keepsake presentation box, and courier shipping costs.",
   },
   {
@@ -75,13 +75,13 @@ const kpiDictionary: KpiDefinition[] = [
     status: "on_target",
     ownerRole: "Financial Analyst",
     updateFrequency: "Daily",
-    dataSource: "Razorpay Ledger & Financial Service",
+    dataSource: "Payment Gateway & Financial Reports",
     description: "True net margin available for general corporate overhead, cloud GPU rendering infrastructure, and digital marketing acquisition.",
   },
   {
     id: "kpi-sla",
-    name: "Order-to-Doorstep SLA Compliance",
-    code: "OPS-SLA",
+    name: "Order-to-Doorstep On-Time Delivery Rate",
+    code: "OPS-OTD",
     category: "Fulfillment",
     formula: "(Orders Delivered ≤ 96 Hours / Total Delivered Orders) * 100",
     targetBenchmark: "≥ 95.0%",
@@ -89,7 +89,7 @@ const kpiDictionary: KpiDefinition[] = [
     status: "watch",
     ownerRole: "Logistics & Fulfillment Lead",
     updateFrequency: "Real-time",
-    dataSource: "BlueDart Express Webhook & SlaService",
+    dataSource: "Express Courier Tracking & Delivery Logs",
     description: "Percentage of custom photobooks delivered to the customer's doorstep within the guaranteed 4-day (96 hour) pan-India window.",
   },
   {
@@ -103,7 +103,7 @@ const kpiDictionary: KpiDefinition[] = [
     status: "on_target",
     ownerRole: "Production Floor Lead",
     updateFrequency: "Daily",
-    dataSource: "HP PrintOS API & Factory Telemetry",
+    dataSource: "Digital Press Floor Activity",
     description: "Availability and throughput efficiency of the primary HP Indigo 12K digital press during production shifts.",
   },
   {
@@ -131,7 +131,7 @@ const kpiDictionary: KpiDefinition[] = [
     status: "on_target",
     ownerRole: "Customer Concierge Lead",
     updateFrequency: "Real-time",
-    dataSource: "Courier Webhook & Concierge CRM",
+    dataSource: "Courier Tracking & Support Records",
     description: "Percentage of delivery exception reports (missing address, phone unreachable) converted into successful deliveries without RTO.",
   },
   {

@@ -114,16 +114,16 @@ export default function SlaManagementPage() {
           <div className="flex items-center gap-2 mb-1.5">
             <Clock className="w-4 h-4 text-emerald-600" />
             <span className="text-[11px] uppercase tracking-widest text-emerald-700 font-bold font-mono">
-              Fulfillment SLA Engine
+              Fulfillment Delivery Engine
             </span>
             <span className="text-noir-300">•</span>
             <span className="text-[11px] uppercase tracking-wider text-noir-500 font-mono">
               Predictive Risk Monitoring
             </span>
           </div>
-          <h1 className="text-3xl font-serif font-bold text-noir-950">SLA & Operations Intelligence</h1>
+          <h1 className="text-3xl font-serif font-bold text-noir-950">Delivery & Operations Intelligence</h1>
           <p className="text-xs text-noir-500 mt-1 max-w-2xl">
-            Configure stage timelines, predict deadline breaches before they happen, and monitor on-time delivery across the entire customer lifecycle.
+            Configure stage timelines, predict deadline delays before they happen, and monitor on-time delivery across the entire customer lifecycle.
           </p>
         </div>
 
@@ -145,13 +145,13 @@ export default function SlaManagementPage() {
               onClick={() => setActiveTab('config')}
               className={cn("px-3 py-1 text-xs font-mono uppercase font-semibold rounded-xs transition-colors", activeTab === 'config' ? "bg-noir-950 text-cream-50" : "text-noir-600 hover:text-noir-950")}
             >
-              SLA Targets
+              Delivery Targets
             </button>
             <button
               onClick={() => setActiveTab('escalation')}
               className={cn("px-3 py-1 text-xs font-mono uppercase font-semibold rounded-xs transition-colors", activeTab === 'escalation' ? "bg-noir-950 text-cream-50" : "text-noir-600 hover:text-noir-950")}
             >
-              Escalation Engine
+              Escalation Workflow
             </button>
           </div>
 
@@ -159,7 +159,7 @@ export default function SlaManagementPage() {
             onClick={fetchSlaData}
             disabled={refreshing}
             className="p-2 border border-cream-300 bg-white hover:bg-cream-100 rounded-sm text-noir-700 transition-colors shadow-xs"
-            title="Refresh SLA calculations"
+            title="Refresh delivery calculations"
           >
             <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
           </button>
@@ -170,14 +170,14 @@ export default function SlaManagementPage() {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="bg-white border border-cream-300 p-5 rounded-sm shadow-xs">
           <div className="flex justify-between items-center text-noir-500 mb-2">
-            <span className="text-xs font-mono uppercase tracking-wider">SLA Compliance Rate</span>
+            <span className="text-xs font-mono uppercase tracking-wider">On-Time Delivery Rate</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="font-serif text-3xl font-bold text-emerald-700">
             {slaData.complianceRate}%
           </div>
           <span className="text-[11px] text-noir-500 font-medium mt-1 block">
-            Target: 95.0% • Breach Rate: {slaData.breachRate}%
+            Target: 95.0% • Delay Rate: {slaData.breachRate}%
           </span>
         </div>
 
@@ -229,7 +229,7 @@ export default function SlaManagementPage() {
             <div className="flex items-center justify-between border-b border-cream-200 pb-3">
               <div>
                 <h2 className="font-serif text-lg font-bold text-noir-950">
-                  Standard Photobook Lifecycle & Stage SLA Milestones
+                  Standard Photobook Lifecycle & Stage Delivery Commitments
                 </h2>
                 <p className="text-xs text-noir-500">
                   Target total fulfillment duration: <strong>96 Hours (4 Days)</strong> from order placement to customer doorstep delivery.
@@ -256,7 +256,7 @@ export default function SlaManagementPage() {
                     <p className="text-[11px] text-noir-600 leading-snug">{s.description}</p>
                   </div>
                   <div className="pt-3 border-t border-cream-200 mt-3 flex items-center justify-between text-[10px] font-mono text-noir-500">
-                    <span>SLA: {s.targetHours}h Max</span>
+                    <span>Target: {s.targetHours}h Max</span>
                     <Check className="w-3 h-3 text-emerald-600" />
                   </div>
                 </div>
@@ -264,13 +264,13 @@ export default function SlaManagementPage() {
             </div>
           </div>
 
-          {/* SLA At-Risk Priority Stream */}
+          {/* Delivery At-Risk Priority Stream */}
           <div className="bg-white border border-cream-300 rounded-sm p-6 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-cream-200 pb-3">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600" />
                 <h2 className="font-serif text-lg font-bold text-noir-950">
-                  Orders Requiring Expedited Action (SLA Risk Prediction)
+                  Orders Requiring Expedited Action (Delivery Risk Prediction)
                 </h2>
               </div>
               <span className="text-xs font-mono text-noir-500">
@@ -344,7 +344,7 @@ export default function SlaManagementPage() {
         <div className="bg-white border border-cream-300 rounded-sm p-6 shadow-xs space-y-6">
           <div className="border-b border-cream-200 pb-3">
             <h2 className="font-serif text-lg font-bold text-noir-950">
-              Configurable Stage SLA Durations & Deadlines
+              Configurable Stage Delivery Targets & Deadlines
             </h2>
             <p className="text-xs text-noir-500 mt-0.5">
               Adjust standard target hours for each operational department. Alerts and risk predictions will recalculate dynamically.
@@ -382,7 +382,7 @@ export default function SlaManagementPage() {
         <div className="bg-white border border-cream-300 rounded-sm p-6 shadow-xs space-y-6">
           <div className="border-b border-cream-200 pb-3">
             <h2 className="font-serif text-lg font-bold text-noir-950">
-              4-Tier SLA Escalation Engine
+              4-Tier Delivery Escalation Engine
             </h2>
             <p className="text-xs text-noir-500 mt-0.5">
               Automated alert pathways triggered when orders enter at-risk or breached states.

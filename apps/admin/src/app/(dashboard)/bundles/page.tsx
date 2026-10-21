@@ -352,7 +352,7 @@ export default function BundlesManagementPage() {
             Bundle Pricing & Unit Economics
           </h1>
           <p className="text-sm text-noir-600 mt-1 max-w-3xl">
-            Manage the 4 dynamic multi-copy photobook bundles (<strong>1 Book Single</strong>, <strong>2 Books Duo</strong>, <strong>4 Books Quartet</strong>, <strong>6 Books Collector</strong>). Selling prices, print costs, shipping fees, and gross margins are stored in MongoDB Atlas and updated dynamically across Storefront, Cart, and Checkout.
+            Manage the 4 dynamic multi-copy photobook bundles (<strong>1 Book Single</strong>, <strong>2 Books Duo</strong>, <strong>4 Books Quartet</strong>, <strong>6 Books Collector</strong>). Selling prices, print costs, shipping fees, and gross margins are configured centrally and updated dynamically across Storefront, Cart, and Checkout.
           </p>
         </div>
 
@@ -389,7 +389,7 @@ export default function BundlesManagementPage() {
             {activeCount} <span className="text-xs font-mono text-noir-400 font-normal">/ {bundles.length} Total</span>
           </div>
           <span className="text-[11px] text-emerald-700 font-medium mt-1 block">
-            Stored in MongoDB & Cached in Redis
+            Active & Synchronized Across Catalog
           </span>
         </div>
 
@@ -443,7 +443,7 @@ export default function BundlesManagementPage() {
             </span>
           </div>
           <span className="text-[11px] text-noir-500 font-mono">
-            Automatically reflects updates in MongoDB to Homepage & Cart
+            Automatically reflects live updates across Storefront & Cart
           </span>
         </div>
 
@@ -1007,7 +1007,7 @@ export default function BundlesManagementPage() {
               <h3 className="font-serif text-lg font-bold text-noir-950">Restore 4 Authoritative Tiers?</h3>
             </div>
             <div className="text-xs text-noir-600 leading-relaxed mb-6 space-y-2">
-              <p>This will restore the 4 authoritative photobook bundle tiers into MongoDB Atlas:</p>
+              <p>This will restore the 4 authoritative photobook bundle tiers to your catalog:</p>
               <div className="bg-cream-50 p-3 rounded border border-cream-200 font-mono text-[11px] space-y-1">
                 <div>• <strong>1 Book (Single)</strong>: ₹1,999 | 55.7% Margin</div>
                 <div>• <strong>2 Books (Duo)</strong>: ₹3,499 | Save ₹499 | 53.2% Margin</div>

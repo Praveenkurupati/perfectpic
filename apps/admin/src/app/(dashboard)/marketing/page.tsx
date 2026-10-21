@@ -84,7 +84,7 @@ export default function MarketingHubPage() {
       case 'running':
         return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Running</span>;
       case 'queued':
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"><Clock className="w-3 h-3 animate-spin" />Queued</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20"><Clock className="w-3 h-3 animate-spin" />Preparing Dispatch</span>;
       case 'scheduled':
         return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20"><Clock className="w-3 h-3" />Scheduled</span>;
       case 'paused':
@@ -143,7 +143,7 @@ export default function MarketingHubPage() {
           </div>
           <div className="mt-3">
             <span className="text-3xl font-bold text-white font-mono">{stats.activeCampaigns}</span>
-            <span className="text-xs text-zinc-500 ml-2">in queue / running</span>
+            <span className="text-xs text-zinc-500 ml-2">scheduled or active</span>
           </div>
         </div>
 
@@ -169,7 +169,7 @@ export default function MarketingHubPage() {
           </div>
           <div className="mt-3">
             <span className="text-3xl font-bold text-white font-mono">{stats.avgDeliveryRate}%</span>
-            <span className="text-xs text-emerald-400 ml-2">Healthy SLA</span>
+            <span className="text-xs text-emerald-400 ml-2">High Deliverability</span>
           </div>
         </div>
 
@@ -198,7 +198,7 @@ export default function MarketingHubPage() {
               <MessageSquare className="w-5 h-5" />
             </div>
             <h3 className="font-semibold text-white text-base">Campaign Console</h3>
-            <p className="text-zinc-400 text-xs mt-1">Review live execution, pause/resume workers, inspect recipient status.</p>
+            <p className="text-zinc-400 text-xs mt-1">Review live execution, pause or resume delivery, inspect recipient status.</p>
           </div>
           <div className="flex items-center gap-1 text-xs text-blue-400 font-medium mt-4 group-hover:translate-x-1 transition">
             View All Campaigns <ChevronRight className="w-3.5 h-3.5" />
@@ -254,14 +254,14 @@ export default function MarketingHubPage() {
         </Link>
       </div>
 
-      {/* Provider Abstraction & Infrastructure Status */}
+      {/* Connected Channels & Delivery Services */}
       <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-base font-semibold text-white">Provider Abstraction Layer (Decoupled Infrastructure)</h2>
+            <h2 className="text-base font-semibold text-white">Connected Messaging Channels & Delivery Services</h2>
           </div>
-          <span className="text-xs text-zinc-400">Zero vendor lock-in</span>
+          <span className="text-xs text-zinc-400">Multi-provider delivery routing</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Email Provider Card */}

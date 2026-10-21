@@ -160,6 +160,24 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Developer & System Health */}
+      <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200 overflow-hidden">
+        <div className="p-6 bg-cream-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-noir-950">Developer & System Health Diagnostics</h2>
+            <p className="text-sm text-noir-500 mt-1">
+              Dedicated monitoring console for server infrastructure, database connectivity, cache memory, and background task processing.
+            </p>
+          </div>
+          <a
+            href="/system-status"
+            className="px-4 py-2 bg-noir-950 hover:bg-black text-cream-50 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold transition-colors inline-flex items-center gap-1.5 shrink-0"
+          >
+            Open System Health &rarr;
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

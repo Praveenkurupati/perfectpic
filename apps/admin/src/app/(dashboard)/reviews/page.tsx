@@ -145,19 +145,19 @@ export default function ReviewsAdminPage() {
   const handleSeedReviews = async () => {
     if (
       !window.confirm(
-        'Seed/refresh authoritative dataset with 100+ photobook customer reviews into MongoDB Atlas?'
+        'Populate sample dataset with 100+ verified customer reviews?'
       )
     )
       return;
     try {
       setSeeding(true);
       const res = await adminApi.seedReviews(true);
-      alert(res.message || '100+ reviews successfully seeded!');
+      alert(res.message || '100+ reviews successfully generated!');
       setPage(1);
       await fetchReviews();
     } catch (err) {
       console.error('Failed to seed reviews:', err);
-      alert('Failed to seed reviews.');
+      alert('Failed to generate sample reviews.');
     } finally {
       setSeeding(false);
     }
@@ -205,7 +205,7 @@ export default function ReviewsAdminPage() {
             className="px-4 py-2 text-xs font-semibold text-white bg-noir-900 rounded-sm hover:bg-black transition-colors flex items-center gap-1.5 shadow-xs"
           >
             <Sparkles size={13} className={seeding ? 'animate-spin text-amber-400' : 'text-amber-400'} />
-            <span>{seeding ? 'Seeding Atlas...' : 'Seed 100+ Reviews'}</span>
+            <span>{seeding ? 'Generating Sample Reviews...' : 'Generate 100+ Sample Reviews'}</span>
           </button>
         </div>
       </div>
@@ -427,20 +427,20 @@ export default function ReviewsAdminPage() {
       {loading ? (
         <div className="bg-white p-16 rounded-sm border border-cream-200/80 shadow-xs text-center">
           <RefreshCw size={24} className="animate-spin mx-auto text-amber-500 mb-3" />
-          <p className="text-xs font-medium text-noir-700">Loading reviews from MongoDB Atlas...</p>
+          <p className="text-xs font-medium text-noir-700">Loading customer reviews...</p>
         </div>
       ) : reviews.length === 0 ? (
         <div className="bg-white p-16 rounded-sm border border-cream-200/80 shadow-xs text-center max-w-lg mx-auto">
           <MessageSquare size={36} className="mx-auto text-noir-300 mb-3" />
           <h3 className="font-serif text-lg text-noir-900 font-semibold mb-1">No reviews match your filters</h3>
           <p className="text-xs text-noir-500 mb-4">
-            Try adjusting your search terms or seed the initial 100+ review dataset.
+            Try adjusting your search terms or generate the sample review dataset.
           </p>
           <button
             onClick={handleSeedReviews}
             className="px-4 py-2 text-xs font-semibold text-white bg-noir-900 rounded-sm hover:bg-black transition-colors"
           >
-            Seed 100+ Verified Reviews
+            Generate 100+ Sample Reviews
           </button>
         </div>
       ) : (

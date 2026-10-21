@@ -411,7 +411,7 @@ export default function OrdersPage() {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-noir-950 flex items-center gap-2.5">
-            <span>Orders & Stage Pipeline</span>
+            <span>Orders & Fulfillment Progress</span>
             <span className="text-xs font-mono font-medium px-2 py-0.5 bg-cream-200 text-noir-800 rounded-sm">
               Live Fulfillment
             </span>
@@ -429,7 +429,7 @@ export default function OrdersPage() {
         </button>
       </div>
 
-      {/* Pipeline Stage Tracker Counters (Follow up the team faster) */}
+      {/* Fulfillment Stage Tracker Counters */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
         <button
           onClick={() => setActiveTab("All")}
@@ -459,7 +459,7 @@ export default function OrdersPage() {
             <span>⚡ Rush (24H)</span>
           </div>
           <div className="font-serif text-2xl font-bold mt-1 text-amber-950">{stageCounts.rush}</div>
-          <div className="text-[10px] text-amber-700 mt-0.5">Priority BullMQ</div>
+          <div className="text-[10px] text-amber-700 mt-0.5">Priority Dispatch</div>
         </button>
 
         <button
@@ -751,7 +751,7 @@ export default function OrdersPage() {
                               rel="noreferrer"
                               download={`PerfectPic-Photobook-${order.id}.pdf`}
                               className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 px-2 py-1 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-sm flex items-center gap-1 shadow-xs"
-                              title="Download Print PDF directly from S3"
+                              title="Download High-Resolution Print Master PDF"
                             >
                               <Download className="w-3 h-3 text-emerald-700" />
                               <span>PDF</span>

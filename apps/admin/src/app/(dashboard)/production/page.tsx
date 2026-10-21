@@ -202,11 +202,11 @@ export default function ProductionPage() {
               <h1 className="text-xl font-serif font-bold text-noir-950">Industrial Production Command Center</h1>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>BullMQ Headless Worker Active</span>
+                <span>Print Render Engine Online</span>
               </span>
             </div>
             <p className="text-xs text-noir-500 mt-0.5">
-              Fogra39 CMYK • 300 DPI Press Master Rasterization & Asynchronous Queue
+              Fogra39 CMYK • 300 DPI Press Master Generation & Industrial Automation
             </p>
           </div>
 
@@ -223,16 +223,16 @@ export default function ProductionPage() {
               <span className="font-bold text-emerald-700">{renderQueueStats.completed}</span>
             </div>
 
-            {/* DLQ / Failed Badge Button */}
+            {/* Failed Renders Badge Button */}
             {renderQueueStats.failed > 0 && (
               <button
                 type="button"
                 onClick={() => setIsDlqDrawerOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100 text-xs font-bold transition-colors animate-pulse"
-                title="Inspect Dead-Letter Queue"
+                title="Inspect Failed Print Jobs"
               >
                 <AlertTriangle size={13} className="text-rose-600" />
-                <span>DLQ: {renderQueueStats.failed} Failed</span>
+                <span>Failed Renders: {renderQueueStats.failed}</span>
               </button>
             )}
 
@@ -327,7 +327,7 @@ export default function ProductionPage() {
                           {(col.id === 'pending' || col.id === 'rendering') && (
                             <button 
                               type="button"
-                              title="Enqueue 300 DPI Background Render"
+                              title="Start 300 DPI High-Resolution Render"
                               disabled={triggeringRenderId === item.id}
                               onClick={() => handleTriggerPrintRender(item.id)}
                               className="p-1.5 rounded-md text-amber-700 hover:bg-amber-50 transition-colors border border-amber-200"
@@ -396,7 +396,7 @@ export default function ProductionPage() {
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
                 <div>
-                  <h3 className="font-serif font-bold text-noir-950 text-base">Dead-Letter Queue (DLQ) Inspector</h3>
+                  <h3 className="font-serif font-bold text-noir-950 text-base">Failed Print Renders & Resolution Center</h3>
                   <p className="text-xs text-rose-800">
                     {failedJobs.length} Failed render jobs requiring operations review
                   </p>
@@ -415,7 +415,7 @@ export default function ProductionPage() {
               {failedJobs.length === 0 ? (
                 <div className="p-8 text-center text-xs text-noir-500">
                   <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                  <span>Dead-letter queue is completely clear. All background print renders successful.</span>
+                  <span>All render jobs complete. No failed print files in the queue.</span>
                 </div>
               ) : (
                 failedJobs.map((job) => (

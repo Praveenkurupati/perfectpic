@@ -39,6 +39,7 @@ import {
   Send,
   MessageSquare,
   Mail,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getStorefrontUrl } from "@/lib/urls";
@@ -65,10 +66,10 @@ const navSections: NavSection[] = [
     ],
   },
   {
-    title: "Operations & SLA",
+    title: "Operations & Fulfillment",
     items: [
       { name: "Orders (360°)", href: "/orders", icon: ShoppingCart },
-      { name: "SLA Intelligence", href: "/sla", icon: Clock, badge: "94.2%", badgeColor: "bg-emerald-500/20 text-emerald-400" },
+      { name: "Delivery Intelligence", href: "/sla", icon: Clock, badge: "94.2%", badgeColor: "bg-emerald-500/20 text-emerald-400" },
       { name: "Production & Capacity", href: "/production", icon: Printer },
       { name: "Shipping & Logistics", href: "/shipping", icon: Truck },
       { name: "Customers & LTV", href: "/customers", icon: Users },
@@ -116,6 +117,7 @@ const navSections: NavSection[] = [
       { name: "Team & Roles", href: "/team", icon: ShieldAlert },
       { name: "Audit Trail", href: "/audit-logs", icon: FileSpreadsheet },
       { name: "Platform Settings", href: "/settings", icon: Settings },
+      { name: "System Health", href: "/system-status", icon: Server },
     ],
   },
 ];
@@ -286,7 +288,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search orders (e.g. PP-8491), customers, SLA tickets..." 
+                placeholder="Search orders (e.g. PP-8491), customers, delivery tickets..." 
                 className="w-full pl-10 pr-12 py-2 bg-cream-50 border border-cream-300 rounded-sm text-xs text-noir-900 focus:outline-none focus:border-noir-950 font-mono transition-colors"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-noir-400 border border-cream-300 px-1.5 py-0.5 rounded bg-white">
@@ -332,7 +334,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                   <div className="space-y-2.5 max-h-80 overflow-y-auto">
                     {alerts.length === 0 ? (
-                      <p className="text-xs text-noir-500 py-4 text-center">No outstanding alerts. All operations within SLA.</p>
+                      <p className="text-xs text-noir-500 py-4 text-center">No outstanding alerts. All operations on schedule.</p>
                     ) : (
                       alerts.map((alert) => (
                         <div 

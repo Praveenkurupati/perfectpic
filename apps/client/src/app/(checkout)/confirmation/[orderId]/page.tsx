@@ -286,7 +286,7 @@ export default function ConfirmationPage() {
             Order Confirmed!
           </h1>
           <p className="text-noir-600 max-w-lg text-sm leading-relaxed">
-            Thank you for creating with PerfectPic. Your custom photobook edition is now in our precision HP Indigo 12K print queue at perfectpic.in.
+            Thank you for creating with PerfectPic. Your custom photobook edition is now being prepared for artisan printing on our precision HP Indigo digital press.
           </p>
         </div>
 
@@ -295,7 +295,7 @@ export default function ConfirmationPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
             <div>
               <span className="block text-[10px] text-noir-400 uppercase tracking-widest font-semibold mb-1">
-                Order ID
+                Order Number
               </span>
               <span className="font-mono font-bold text-noir-950 text-base">
                 #{orderNum}
@@ -580,7 +580,7 @@ export default function ConfirmationPage() {
                 rel="noreferrer"
                 download={`PerfectPic-Photobook-${orderNum}.pdf`}
                 className="w-full sm:w-auto px-5 py-3 border border-amber-300 text-noir-900 bg-amber-50 hover:bg-amber-100 rounded-sm font-semibold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-xs"
-                title="Download Ultra-HD Photobook Print PDF from AWS S3"
+                title="Download High-Resolution Photobook PDF"
               >
                 <Download size={15} className="text-foil-gold" />
                 <span>Download Photobook PDF</span>
@@ -588,19 +588,19 @@ export default function ConfirmationPage() {
             ) : isUploadingPdf || isGeneratingManualPdf ? (
               <div
                 className="w-full sm:w-auto px-5 py-3 border border-amber-200 text-amber-900 bg-amber-50/60 rounded-sm font-semibold text-xs uppercase tracking-wider text-center flex items-center justify-center gap-2 shadow-xs"
-                title="Ultra-HD Photobook PDF is uploading to AWS S3 in background..."
+                title="High-resolution photobook PDF is being prepared in the background..."
               >
                 <Loader2 size={15} className="text-foil-gold animate-spin" />
-                <span>Uploading to S3...</span>
+                <span>Preparing Print File...</span>
               </div>
             ) : (
               <button
                 onClick={handleManualGeneratePdf}
                 className="w-full sm:w-auto px-5 py-3 border border-cream-300 text-noir-800 bg-white hover:bg-cream-100 rounded-sm font-semibold text-xs uppercase tracking-wider text-center transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                title="Generate Ultra-HD Photobook PDF and upload to AWS S3"
+                title="Generate high-resolution photobook PDF for your records"
               >
                 <Download size={15} className="text-foil-gold" />
-                <span>Upload to S3</span>
+                <span>Generate Book PDF</span>
               </button>
             )}
 

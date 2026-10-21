@@ -471,7 +471,7 @@ export default function FinanceEconomicsPage() {
 
             <div>
               <div className="flex justify-between text-noir-800 mb-1">
-                <span>SLA On-Time Compliance: 95.0%</span>
+                <span>On-Time Fulfillment Rate: 95.0%</span>
                 <span className="font-semibold text-amber-600">94.2% (-0.8% variance)</span>
               </div>
               <div className="w-full bg-cream-200 h-2 rounded-full overflow-hidden">
@@ -492,7 +492,7 @@ export default function FinanceEconomicsPage() {
             </span>
           </div>
           <p className="text-xs text-noir-600 mb-5">
-            Automated bank disbursement pipeline to company operating account.
+            Automated bank settlement schedule to company operating account.
           </p>
 
           <div className="space-y-3 font-mono text-xs">
@@ -509,7 +509,7 @@ export default function FinanceEconomicsPage() {
 
             <div className="p-3 rounded border border-cream-200 bg-cream-50 flex items-center justify-between">
               <div>
-                <div className="font-medium text-noir-900 font-sans">In Clearing Pipeline</div>
+                <div className="font-medium text-noir-900 font-sans">In Settlement Processing</div>
                 <div className="text-[11px] text-noir-600">Orders captured in last 24h</div>
               </div>
               <div className="text-right">

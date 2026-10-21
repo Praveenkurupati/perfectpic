@@ -209,7 +209,7 @@ export default function UserBehaviourAnalyticsPage() {
                 "w-1.5 h-1.5 rounded-full",
                 dataSource === "mongodb" ? "bg-emerald-500 animate-pulse" : "bg-indigo-500"
               )} />
-              {dataSource === "mongodb" ? "MongoDB Atlas Live Aggregation" : "Live Real-Time Telemetry Stream"}
+              {dataSource === "mongodb" ? "Authoritative Live Summary" : "Live Activity Stream"}
             </span>
             {liveMode && (
               <span className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50/60 border border-emerald-200 px-2 py-0.5 rounded-full">

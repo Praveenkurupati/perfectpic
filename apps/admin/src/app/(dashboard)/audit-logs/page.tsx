@@ -87,7 +87,7 @@ const mockAuditLogs: AuditEvent[] = [
     ipAddress: "122.179.88.10",
     location: "Hyderabad, IN",
     severity: "info",
-    details: "Updated 4-Book Quartet pricing in MongoDB to authoritative MRP ₹6,399 (51.0% net margin).",
+    details: "Updated 4-Book Quartet pricing to authoritative MRP ₹6,399 (51.0% net margin).",
     beforeValue: "MRP: ₹6,499",
     afterValue: "MRP: ₹6,399 (Net Profit: ₹3,263)",
   },
@@ -312,7 +312,7 @@ export default function AuditLogsPage() {
                 <th className="py-3 px-4">Event Action</th>
                 <th className="py-3 px-4">Entity</th>
                 <th className="py-3 px-4">Severity</th>
-                <th className="py-3 px-4 text-right">Payload Details</th>
+                <th className="py-3 px-4 text-right">Change Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-cream-100">

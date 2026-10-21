@@ -227,7 +227,7 @@ export default function AbandonedDraftsPage() {
             </span>
           </div>
           <p className="text-xs text-noir-600">
-            Multi-stage recovery drip recovering trapped pipeline revenue across WhatsApp (Kapso.ai) and Email.
+            Multi-stage recovery drip re-engaging customers with uncompleted photobook designs across WhatsApp and Email.
           </p>
         </div>
 
@@ -258,7 +258,7 @@ export default function AbandonedDraftsPage() {
         <div className="bg-white border border-cream-300 rounded-sm p-5 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-mono uppercase tracking-wider text-noir-500 font-semibold">
-              Trapped Pipeline Revenue
+              Unclaimed Cart Value
             </span>
             <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-600">
               <IndianRupee className="w-4 h-4" />
@@ -349,7 +349,7 @@ export default function AbandonedDraftsPage() {
             <h3 className="font-serif text-lg text-white">3-Stage Psychological Re-engagement Drip</h3>
           </div>
           <span className="text-xs font-mono text-noir-400">
-            Worker cadence: Every 30 mins
+            Automated schedule: Every 30 mins
           </span>
         </div>
 
@@ -509,7 +509,7 @@ export default function AbandonedDraftsPage() {
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-noir-500 font-mono">
                     <RefreshCw className="w-5 h-5 mx-auto animate-spin mb-2 text-noir-400" />
-                    Scanning trapped pipeline drafts...
+                    Scanning uncompleted customer drafts...
                   </td>
                 </tr>
               ) : filteredDrafts.length === 0 ? (
