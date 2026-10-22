@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { UploadController } from '../../controllers/UploadController';
-import { optionalAuth } from '../../middlewares/auth.middleware';
+import { optionalAuth, authenticate } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -37,6 +37,6 @@ router.post('/file', optionalAuth, upload.single('file'), UploadController.uploa
 router.post('/presign', optionalAuth, UploadController.presign);
 router.post('/confirm-order-pdf', optionalAuth, UploadController.confirmOrderPdf);
 router.post('/complete', optionalAuth, UploadController.complete);
-router.delete('/:photoId', optionalAuth, UploadController.deletePhoto);
+router.delete('/:photoId', authenticate, UploadController.deletePhoto);
 
 export default router;

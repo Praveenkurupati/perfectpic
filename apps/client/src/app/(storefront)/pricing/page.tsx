@@ -18,19 +18,19 @@ export default function PricingPage() {
             </thead>
             <tbody className="text-noir-700">
               <tr className="border-b border-cream-300">
-                <td className="p-6 font-medium text-noir-900">Base Price (includes 40 pages)</td>
+                <td className="p-6 font-medium text-noir-900">Base Price (includes 32 pages)</td>
                 <td className="p-6 border-l border-cream-300 font-medium">₹1,999</td>
                 <td className="p-6 border-l border-cream-300 font-medium">₹2,499</td>
               </tr>
               <tr className="border-b border-cream-300 bg-cream-50/50">
-                <td className="p-6">Extra Pages (per 2 pages)</td>
+                <td className="p-6">Extra Pages (per 2-page spread)</td>
                 <td className="p-6 border-l border-cream-300">₹50</td>
-                <td className="p-6 border-l border-cream-300">₹75</td>
+                <td className="p-6 border-l border-cream-300">₹50</td>
               </tr>
               <tr className="border-b border-cream-300">
-                <td className="p-6">Max Pages</td>
-                <td className="p-6 border-l border-cream-300">76 pages</td>
-                <td className="p-6 border-l border-cream-300">76 pages</td>
+                <td className="p-6">Page Capacity</td>
+                <td className="p-6 border-l border-cream-300">32 to 72 pages (up to 120)</td>
+                <td className="p-6 border-l border-cream-300">32 to 72 pages (up to 120)</td>
               </tr>
               <tr className="border-b border-cream-300 bg-cream-50/50">
                 <td className="p-6">Paper Quality</td>

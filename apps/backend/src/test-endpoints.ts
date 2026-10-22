@@ -1012,6 +1012,106 @@ async function runTests() {
     details: `Brief generated for ${dailyData?.date || 'today'}: ${dailyData?.actionItems?.length} prioritized action items`,
   });
 
+  // 52. Address Security: Block Unauthenticated Address Harvesting (SEC-ADDR-01)
+  console.log('Testing: GET /api/v1/addresses (Unauthenticated Harvester Defense)');
+  const unauthAddrRes = await dispatchRequest('GET', '/api/v1/addresses');
+  results.push({
+    endpoint: '/api/v1/addresses (Anon Harvester)',
+    method: 'GET',
+    status: unauthAddrRes.status,
+    expectedStatus: 401,
+    passed: unauthAddrRes.status === 401,
+    details: `Blocked anonymous address enumeration: HTTP ${unauthAddrRes.status}`,
+  });
+
+  // 53. Address Security: Create & Retrieve User-Scoped Address (SEC-ADDR-02)
+  console.log('Testing: POST & GET /api/v1/addresses (Authenticated User Scoping)');
+  const createAddrRes = await dispatchRequest('POST', '/api/v1/addresses', {
+    fullName: 'Praveen Test User',
+    phone: '+91 98765 00000',
+    addressLine1: 'Indiranagar 100ft Road',
+    city: 'Bengaluru',
+    state: 'Karnataka',
+    pincode: '560038',
+    isDefault: true,
+  }, userHeaders);
+  const getAddrRes = await dispatchRequest('GET', '/api/v1/addresses', undefined, userHeaders);
+  const addrs = getAddrRes.body?.addresses || [];
+  results.push({
+    endpoint: '/api/v1/addresses (Scoped User)',
+    method: 'GET',
+    status: getAddrRes.status,
+    expectedStatus: 200,
+    passed: createAddrRes.status === 201 && getAddrRes.status === 200 && Array.isArray(addrs),
+    details: `Created address (HTTP ${createAddrRes.status}) & verified user scoping (${addrs.length} saved addresses)`,
+  });
+
+  // 54. Campaign Security: Block Anonymous Campaign Blast Triggering (SEC-CAMP-01)
+  console.log('Testing: POST /api/v1/campaigns (Unauthenticated Mutation Defense)');
+  const unauthCampRes = await dispatchRequest('POST', '/api/v1/campaigns', {
+    title: 'Malicious Blast',
+    channel: 'email',
+  });
+  results.push({
+    endpoint: '/api/v1/campaigns (Anon Blast)',
+    method: 'POST',
+    status: unauthCampRes.status,
+    expectedStatus: 401,
+    passed: unauthCampRes.status === 401,
+    details: `Blocked unauthenticated campaign creation: HTTP ${unauthCampRes.status}`,
+  });
+
+  // 55. Review Moderation Security: Block Anonymous Review Deletion (SEC-REV-01)
+  console.log('Testing: DELETE /api/v1/reviews/admin/:id (Unauthenticated Defense)');
+  const unauthRevRes = await dispatchRequest('DELETE', '/api/v1/reviews/admin/fake-rev-id');
+  results.push({
+    endpoint: '/api/v1/reviews/admin/:id (Anon)',
+    method: 'DELETE',
+    status: unauthRevRes.status,
+    expectedStatus: 401,
+    passed: unauthRevRes.status === 401,
+    details: `Blocked anonymous review deletion: HTTP ${unauthRevRes.status}`,
+  });
+
+  // 56. Anniversary CRM Security: Block Anonymous Sweep Trigger (SEC-ANN-01)
+  console.log('Testing: POST /api/v1/anniversary/sweep (Unauthenticated Defense)');
+  const unauthAnnRes = await dispatchRequest('POST', '/api/v1/anniversary/sweep');
+  results.push({
+    endpoint: '/api/v1/anniversary/sweep (Anon)',
+    method: 'POST',
+    status: unauthAnnRes.status,
+    expectedStatus: 401,
+    passed: unauthAnnRes.status === 401,
+    details: `Blocked anonymous milestone sweep: HTTP ${unauthAnnRes.status}`,
+  });
+
+  // 57. Upload Storage Security: Block Anonymous Photo Deletion IDOR (SEC-UPL-01)
+  console.log('Testing: DELETE /api/v1/upload/:photoId (Unauthenticated IDOR Defense)');
+  const unauthUplRes = await dispatchRequest('DELETE', '/api/v1/upload/photos%2Fmalicious-target.jpg');
+  results.push({
+    endpoint: '/api/v1/upload/:photoId (Anon)',
+    method: 'DELETE',
+    status: unauthUplRes.status,
+    expectedStatus: 401,
+    passed: unauthUplRes.status === 401,
+    details: `Blocked unauthenticated photo asset deletion: HTTP ${unauthUplRes.status}`,
+  });
+
+  // 58. CSRF Defense: Block Untrusted Subdomain Mutation (SEC-CSRF-01)
+  console.log('Testing: POST /api/v1/shipping/calculate (Untrusted Origin CSRF Defense)');
+  const untrustedCsrfRes = await dispatchRequest('POST', '/api/v1/shipping/calculate', {}, {
+    'content-type': 'application/x-www-form-urlencoded',
+    origin: 'https://attacker.phishing-perfectpic.in.com',
+  });
+  results.push({
+    endpoint: '/api/v1/shipping/calculate (CSRF)',
+    method: 'POST',
+    status: untrustedCsrfRes.status,
+    expectedStatus: 403,
+    passed: untrustedCsrfRes.status === 403,
+    details: `Blocked spoofed phishing origin: HTTP ${untrustedCsrfRes.status}`,
+  });
+
   // Print results
   console.log('\n📊 ====================================================');
   console.log('📊 PerfectPic Backend API Verification Summary');

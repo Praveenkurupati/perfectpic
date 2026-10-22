@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star, CheckCircle, Sparkles, RotateCcw } from 'lucide-react';
+import { Check, Download, ExternalLink, HelpCircle, Search, ArrowRight, Loader2, Star, CheckCircle, Sparkles, RotateCcw, Package } from 'lucide-react';
 import { api } from '@/lib/api';
 import { normalizeImageUrl } from '@/lib/urls';
 import { LazyImage } from '@/components/ui/LazyImage';
@@ -68,107 +68,6 @@ interface OrderDetail {
     thumbnail?: string;
   }>;
 }
-
-const DEFAULT_ORDERS: OrderDetail[] = [
-  {
-    id: 'PP-000000',
-    orderNumber: 'PP-000000',
-    title: 'kerala · 3 books',
-    productTitle: 'kerala — custom photobook',
-    customerName: 'Priya Sharma',
-    customerEmail: 'priya@example.com',
-    customerPhone: '+919876543210',
-    date: '2026-10-10',
-    createdAt: new Date('2026-10-10T14:20:00.000Z').toISOString(),
-    amount: 5697,
-    total: 5697,
-    subtotal: 5997,
-    bundleSavings: 300,
-    deliveryFee: 0,
-    status: 'printing',
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      name: 'Priya Sharma',
-      addressLine1: 'Flat 402, Lotus Residency',
-      addressLine2: 'Indiranagar 100 Feet Road',
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      pincode: '560038',
-      phone: '+919876543210',
-    },
-    thumbnail: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
-    coverUrl: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
-    itemsCount: 3,
-    quantity: 3,
-    pageCount: 32,
-    dimensions: '8.25" × 8.25"',
-    seriesLabel: 'travel series',
-    coverType: 'hardcover',
-    binding: 'lay-flat',
-    items: [
-      {
-        title: 'kerala — custom photobook',
-        series: 'travel series',
-        dimensions: '8.25" × 8.25"',
-        coverType: 'hardcover',
-        binding: 'lay-flat',
-        quantity: 3,
-        price: 1999,
-        thumbnail: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?w=800&auto=format&fit=crop',
-      },
-    ],
-  },
-  {
-    id: 'PP-000001',
-    orderNumber: 'PP-000001',
-    title: 'himalaya · 1 book',
-    productTitle: 'himalaya — expedition journal',
-    customerName: 'Priya Sharma',
-    customerEmail: 'priya@example.com',
-    customerPhone: '+919876543210',
-    date: '2026-10-05',
-    createdAt: new Date('2026-10-05T09:15:00.000Z').toISOString(),
-    amount: 1999,
-    total: 1999,
-    subtotal: 1999,
-    bundleSavings: 0,
-    deliveryFee: 0,
-    status: 'delivered',
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    shippingAddress: {
-      name: 'Priya Sharma',
-      addressLine1: 'Flat 402, Lotus Residency',
-      addressLine2: 'Indiranagar 100 Feet Road',
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      pincode: '560038',
-      phone: '+919876543210',
-    },
-    thumbnail: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
-    coverUrl: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
-    itemsCount: 1,
-    quantity: 1,
-    pageCount: 32,
-    dimensions: '8.25" × 8.25"',
-    seriesLabel: 'monograph series',
-    coverType: 'hardcover',
-    binding: 'lay-flat',
-    items: [
-      {
-        title: 'himalaya — expedition journal',
-        series: 'monograph series',
-        dimensions: '8.25" × 8.25"',
-        coverType: 'hardcover',
-        binding: 'lay-flat',
-        quantity: 1,
-        price: 1999,
-        thumbnail: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800&auto=format&fit=crop',
-      },
-    ],
-  },
-];
 
 function TrackOrderContent() {
   const searchParams = useSearchParams();
@@ -244,32 +143,29 @@ function TrackOrderContent() {
             },
           }));
 
-          setOrders(parsedOrders);
+          if (parsedOrders.length > 0) {
+            setOrders(parsedOrders);
 
-          // Select matching order from query param or fallback to first order
-          if (queryOrder) {
-            const matched = parsedOrders.find(
-              (o) => o.orderNumber?.toLowerCase() === queryOrder.toLowerCase() || o.id?.toLowerCase() === queryOrder.toLowerCase()
-            );
-            setSelectedOrder(matched || parsedOrders[0] || null);
+            // Select matching order from query param or fallback to first order
+            if (queryOrder) {
+              const matched = parsedOrders.find(
+                (o) => o.orderNumber?.toLowerCase() === queryOrder.toLowerCase() || o.id?.toLowerCase() === queryOrder.toLowerCase()
+              );
+              setSelectedOrder(matched || parsedOrders[0] || null);
+            } else {
+              setSelectedOrder(parsedOrders[0] || null);
+            }
           } else {
-            setSelectedOrder(parsedOrders[0] || null);
+            setOrders([]);
+            setSelectedOrder(null);
           }
         } else {
-          // Fallback to rich dynamic defaults
-          setOrders(DEFAULT_ORDERS);
-          if (queryOrder) {
-            const matched = DEFAULT_ORDERS.find(
-              (o) => o.orderNumber?.toLowerCase() === queryOrder.toLowerCase() || o.id?.toLowerCase() === queryOrder.toLowerCase()
-            );
-            setSelectedOrder(matched || DEFAULT_ORDERS[0] || null);
-          } else {
-            setSelectedOrder(DEFAULT_ORDERS[0] || null);
-          }
+          setOrders([]);
+          setSelectedOrder(null);
         }
       } catch {
-        setOrders(DEFAULT_ORDERS);
-        setSelectedOrder(DEFAULT_ORDERS[0] || null);
+        setOrders([]);
+        setSelectedOrder(null);
       } finally {
         setLoading(false);
       }
@@ -312,11 +208,31 @@ function TrackOrderContent() {
     return `${datePart} · ${timePart}`;
   };
 
-  if (loading || !selectedOrder) {
+  if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex flex-col items-center justify-center min-h-[50vh]">
         <Loader2 className="w-8 h-8 animate-spin text-[#0A0A0A] mb-3" />
         <p className="text-sm font-medium text-[#706E69] lowercase">loading order details...</p>
+      </div>
+    );
+  }
+
+  if (orders.length === 0 || !selectedOrder) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="bg-white border border-[#E5E4E0] rounded-sm p-12 text-center max-w-xl mx-auto shadow-sm">
+          <Package className="w-12 h-12 text-[#706E69] mx-auto mb-4 stroke-[1.5]" />
+          <h2 className="font-serif text-2xl text-[#0A0A0A] mb-2">No keepsakes ordered yet</h2>
+          <p className="text-sm text-[#706E69] mb-8 leading-relaxed">
+            Your customized archival photobooks and fine art keepsakes will appear here once placed.
+          </p>
+          <Link
+            href="/configure"
+            className="inline-flex items-center justify-center px-6 py-3 bg-[#0A0A0A] text-[#FAF8F5] text-xs font-medium tracking-wide uppercase hover:bg-noir-800 transition"
+          >
+            Create Your First Photobook →
+          </Link>
+        </div>
       </div>
     );
   }

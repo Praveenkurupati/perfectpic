@@ -1,7 +1,7 @@
 // apps/backend/src/routes/v1/campaigns.routes.ts
 import { Router } from 'express';
 import { CampaignController } from '../../controllers/CampaignController';
-import { optionalAuth } from '../../middlewares/auth.middleware';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -9,8 +9,8 @@ const router = Router();
 router.get('/unsubscribe', CampaignController.handleUnsubscribe);
 router.post('/unsubscribe', CampaignController.handleUnsubscribe);
 
-// Apply optionalAuth across all administrative campaign endpoints
-router.use(optionalAuth);
+// Require strict admin authentication across all campaign operations
+router.use(authenticate, adminOnly);
 
 // ── Campaigns ─────────────────────────────────────────────────────────────
 router.get('/', CampaignController.listCampaigns);

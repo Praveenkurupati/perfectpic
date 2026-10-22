@@ -30,35 +30,11 @@ interface Milestone {
   reminderEnabled: boolean;
 }
 
-const DEFAULT_MILESTONES: Milestone[] = [
-  {
-    id: 'm-1',
-    label: 'Our Wedding Anniversary',
-    occasion: 'wedding',
-    date: '2026-11-20',
-    reminderEnabled: true,
-  },
-  {
-    id: 'm-2',
-    label: "Aarav's Birthday",
-    occasion: 'baby',
-    date: '2026-12-05',
-    reminderEnabled: true,
-  },
-  {
-    id: 'm-3',
-    label: 'Annual Family Vacation',
-    occasion: 'travel',
-    date: '2026-08-15',
-    reminderEnabled: true,
-  },
-];
-
 export default function SettingsPage() {
   const { user } = useAuthStore();
   const { addresses } = useAddressStore();
 
-  const [milestones, setMilestones] = useState<Milestone[]>(DEFAULT_MILESTONES);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [waReminders, setWaReminders] = useState(true);
   const [emailReminders, setEmailReminders] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);

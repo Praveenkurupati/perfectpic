@@ -337,6 +337,12 @@ export class UploadController {
         throw ApiError.badRequest('Invalid photo path.');
       }
 
+      // Restrict deletion of compiled photobook production print masters to administrators only
+      const isRestrictedPdf = photoId.startsWith('photobooks/') || photoId.toLowerCase().endsWith('.pdf');
+      if (isRestrictedPdf && req.user?.role !== 'admin') {
+        throw ApiError.forbidden('Only administrators can delete compiled photobook production assets.');
+      }
+
       if (photoId.startsWith('photos/') || photoId.startsWith('photobooks/') || photoId.startsWith('uploads/')) {
         await deleteFromS3(photoId);
       } else {

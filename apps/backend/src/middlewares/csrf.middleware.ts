@@ -44,16 +44,23 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction):
   }
 
   // 3. Origin / Referer validation for standard browser requests
-  const origin = req.headers.origin || req.headers.referer;
-  if (origin) {
-    const isAllowedHost =
-      origin.includes('localhost') ||
-      origin.includes('127.0.0.1') ||
-      origin.includes('perfectpic.in') ||
-      origin.includes('vercel.app');
+  const originHeader = req.headers.origin || req.headers.referer;
+  if (originHeader) {
+    try {
+      const parsedUrl = new URL(originHeader);
+      const host = parsedUrl.hostname.toLowerCase();
 
-    if (isAllowedHost) {
-      return next();
+      const isAllowedHost =
+        host === 'localhost' ||
+        host === '127.0.0.1' ||
+        host === 'perfectpic.in' ||
+        host.endsWith('.perfectpic.in');
+
+      if (isAllowedHost) {
+        return next();
+      }
+    } catch {
+      // Malformed URL in origin/referer header
     }
   }
 

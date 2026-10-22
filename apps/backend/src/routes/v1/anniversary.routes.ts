@@ -1,12 +1,12 @@
 // apps/backend/src/routes/v1/anniversary.routes.ts
 import { Router } from 'express';
 import { AnniversaryController } from '../../controllers/AnniversaryController';
-import { optionalAuth } from '../../middlewares/auth.middleware';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
-// Apply optionalAuth across all anniversary endpoints
-router.use(optionalAuth);
+// Apply strict admin authentication across all anniversary operations
+router.use(authenticate, adminOnly);
 
 // GET /api/v1/anniversary/upcoming - List orders with upcoming milestones & calculated drip stages
 router.get('/upcoming', AnniversaryController.getUpcoming);

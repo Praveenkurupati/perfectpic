@@ -1,6 +1,7 @@
 // apps/backend/src/routes/v1/reviews.routes.ts
 import { Router } from 'express';
 import { ReviewController } from '../../controllers/ReviewController';
+import { authenticate, adminOnly } from '../../middlewares/auth.middleware';
 
 const router = Router();
 
@@ -19,15 +20,15 @@ router.get('/order/:orderNumber', ReviewController.getReviewByOrder);
 
 // ─── Admin Endpoints ─────────────────────────────────────────────────────────
 // List all reviews with moderation filters (status, search, rating)
-router.get('/admin', ReviewController.getAdminReviews);
+router.get('/admin', authenticate, adminOnly, ReviewController.getAdminReviews);
 
 // Update review status (approve, hide, flag) & admin notes
-router.patch('/admin/:id/status', ReviewController.updateAdminReviewStatus);
+router.patch('/admin/:id/status', authenticate, adminOnly, ReviewController.updateAdminReviewStatus);
 
 // Delete a review
-router.delete('/admin/:id', ReviewController.deleteAdminReview);
+router.delete('/admin/:id', authenticate, adminOnly, ReviewController.deleteAdminReview);
 
 // Seed or reset review dataset
-router.post('/admin/seed', ReviewController.seedReviews);
+router.post('/admin/seed', authenticate, adminOnly, ReviewController.seedReviews);
 
 export default router;
