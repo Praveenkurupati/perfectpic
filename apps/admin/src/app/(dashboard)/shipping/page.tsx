@@ -177,75 +177,76 @@ export default function ShippingLogisticsPage() {
   });
   const [lookupLoading, setLookupLoading] = useState(false);
 
-  const handleRefresh = async () => {
+  const loadLiveShipments = async () => {
     setIsRefreshing(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setIsRefreshing(false);
+    try {
+      const res = await adminApi.getOrders({ limit: 50 });
+      if (res && Array.isArray(res.orders) && res.orders.length > 0) {
+        const liveShipments: ShipmentItem[] = res.orders.map((o: any, idx: number) => {
+          const isDispatched = o.status === 'dispatched' || o.status === 'delivered';
+          const isException = o.status === 'cancelled';
+          const status: ShipmentItem['status'] = isException ? 'exception' : (isDispatched ? 'in_transit' : 'ready_to_ship');
+          const awb = o.shippingDetails?.trackingNumber || `BLD-${o.orderNumber?.replace(/\D/g, '') || idx}7492`;
+          return {
+            id: o.id || o._id || `ship-${idx}`,
+            orderNumber: o.orderNumber || `#PP-${idx + 1}`,
+            recipientName: o.customerName || o.shippingAddress?.fullName || 'Valued Patron',
+            phone: o.shippingAddress?.phone || o.customerPhone || '+91 98765 00000',
+            city: o.shippingAddress?.city || 'Bengaluru',
+            state: o.shippingAddress?.state || 'Karnataka',
+            pincode: o.shippingAddress?.pincode || o.shippingAddress?.postalCode || '560001',
+            courier: o.shippingDetails?.carrier || 'BlueDart Express Air',
+            awbNumber: awb,
+            trackingUrl: o.shippingDetails?.trackingUrl || `https://www.bluedart.com/tracking?awb=${awb}`,
+            serviceType: o.deliveryOption === 'rush' ? 'Air Express' : 'Surface Priority',
+            status,
+            statusLabel: o.status === 'dispatched' ? 'In Transit — Out for Delivery' : (o.status === 'delivered' ? 'Safely Delivered' : 'Ready for Courier Staging'),
+            dispatchedAt: o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Recent',
+            expectedDelivery: 'Within 2-3 Business Days',
+            lastCheckpoint: `Fulfillment status: ${o.status}. Processed at artisan press floor.`,
+          };
+        });
+        setShipments(liveShipments);
+      }
+    } catch (err: any) {
+      console.warn('Notice: Could not refresh live shipment telemetry:', err?.message);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const handlePincodeCheck = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadLiveShipments();
+  }, []);
+
+  const handleRefresh = async () => {
+    await loadLiveShipments();
+  };
+
+  const handlePincodeCheck = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lookupPin || lookupPin.length < 6) return;
     setLookupLoading(true);
     
-    setTimeout(() => {
-      const pinNum = parseInt(lookupPin, 10);
-      let city = "Metropolitan Area";
-      let state = "India";
-      let tier = "Tier-1 Metro";
-      let hours = "24 - 48 Hours";
-      let carrier = "BlueDart Express Air";
-
-      if (lookupPin.startsWith("40") || lookupPin.startsWith("41")) {
-        city = "Mumbai / Pune";
-        state = "Maharashtra";
-        tier = "Tier-1 Metro";
-        hours = "24 - 36 Hours";
-        carrier = "BlueDart Express Air";
-      } else if (lookupPin.startsWith("11")) {
-        city = "New Delhi / NCR";
-        state = "Delhi";
-        tier = "Tier-1 Metro";
-        hours = "24 - 36 Hours";
-        carrier = "BlueDart Express Air";
-      } else if (lookupPin.startsWith("56")) {
-        city = "Bangalore";
-        state = "Karnataka";
-        tier = "Origin Hub (Fastest)";
-        hours = "12 - 24 Hours";
-        carrier = "BlueDart Local Express";
-      } else if (lookupPin.startsWith("70")) {
-        city = "Kolkata";
-        state = "West Bengal";
-        tier = "Tier-1 Metro";
-        hours = "36 - 48 Hours";
-        carrier = "BlueDart Express Air";
-      } else if (lookupPin.startsWith("19")) {
-        city = "Srinagar / Valley";
-        state = "Jammu & Kashmir";
-        tier = "Special Remote Tier-3";
-        hours = "72 - 96 Hours";
-        carrier = "India Post Speed Post EMS";
-      } else {
-        city = "Tier-2 Regional Center";
-        state = "India";
-        tier = "Tier-2 Commercial";
-        hours = "48 - 72 Hours";
-        carrier = "Delhivery Express";
+    try {
+      const res = await adminApi.pincodeLookup(lookupPin);
+      if (res) {
+        setPincodeResult({
+          pincode: res.pincode,
+          city: res.city,
+          state: res.state,
+          tier: res.tier || (res.isServiceable ? 'Metro Tier-1' : 'Unserviceable'),
+          serviceable: Boolean(res.isServiceable ?? res.serviceable),
+          estimatedHours: res.estimatedHours || res.estimatedDays || '24 - 48 Hours',
+          preferredCarrier: res.courierPartner || res.preferredCarrier || 'BlueDart Express Air',
+          insuredTransit: res.insuredTransit || 'Full Archival Guarantee (Up to ₹25,000)',
+        });
       }
-
-      setPincodeResult({
-        pincode: lookupPin,
-        city,
-        state,
-        tier,
-        serviceable: true,
-        estimatedHours: hours,
-        preferredCarrier: carrier,
-        insuredTransit: "Full Archival Guarantee (Up to ₹25,000)",
-      });
+    } catch (err: any) {
+      console.error('Pincode serviceability lookup failed:', err);
+    } finally {
       setLookupLoading(false);
-    }, 400);
+    }
   };
 
   const handleResolveNdr = (shipmentId: string) => {

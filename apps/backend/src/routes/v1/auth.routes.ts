@@ -39,6 +39,9 @@ router.delete('/me/erase', authenticate, PrivacyController.eraseUserData);
 // List Users (Admin only)
 router.get('/users', authenticate, adminOnly, AuthController.getUsers);
 
+// Change Password (requires authentication)
+router.post('/change-password', authenticate, AuthController.changePassword);
+
 // Logout
 router.post('/logout', authenticate, AuthController.logout);
 

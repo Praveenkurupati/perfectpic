@@ -20,9 +20,8 @@ import {
   MessageSquare,
   Sparkles,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
 } from "lucide-react";
-import { recentOrders } from "@/lib/mock-data";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui/Pagination";
@@ -211,6 +210,7 @@ export default function OrdersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [fetchError, setFetchError] = useState("");
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -250,6 +250,7 @@ export default function OrdersPage() {
 
   const fetchOrders = useCallback((page = currentPage, size = pageSize, tab = activeTab, search = debouncedSearch) => {
     setIsLoading(true);
+    setFetchError("");
     const isRushTab = tab === "⚡ Rush 24H";
     const statusParam = (!isRushTab && tab !== "All") ? tab.toLowerCase() : undefined;
     const deliveryOptionParam = isRushTab ? "rush" : undefined;
@@ -273,10 +274,11 @@ export default function OrdersPage() {
         }
       })
       .catch(err => {
-        console.warn("Using offline mock orders:", err);
-        setOrders(recentOrders);
-        setTotalOrders(recentOrders.length);
-        setTotalPages(Math.max(1, Math.ceil(recentOrders.length / size)));
+        console.error("Failed to load orders from database:", err);
+        setFetchError(err.message || "Failed to load orders from database.");
+        setOrders([]);
+        setTotalOrders(0);
+        setTotalPages(1);
       })
       .finally(() => {
         setIsLoading(false);

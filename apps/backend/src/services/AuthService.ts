@@ -64,24 +64,12 @@ export class AuthService {
       throw ApiError.badRequest('Admin email and password are required.');
     }
 
-    const isMasterAdminCred = (input === 'admin@perfectpic.in' || input === 'admin' || input === 'praveen@perfectpic.in') &&
-      (password === 'password123' || password === 'Admin123!Secure' || password === 'Admin123!');
-
     let user = await UserRepository.findByIdentifier(input);
 
     if (user) {
-      let isMatch = await user.comparePassword(password);
-      if (!isMatch && isMasterAdminCred) {
-        // Synchronize admin password with master bootstrap credential
-        isMatch = true;
-        try {
-          user.password = await bcrypt.hash(password, 10);
-          await user.save();
-        } catch (_) {}
-      }
-
+      const isMatch = await user.comparePassword(password);
       if (!isMatch) {
-        throw ApiError.unauthorized('Invalid admin password.');
+        throw ApiError.unauthorized('Invalid email or password.');
       }
       if (user.role !== 'admin') {
         throw ApiError.forbidden('Access denied. Administrator privileges required.');
@@ -101,22 +89,28 @@ export class AuthService {
           name: user.name,
           email: user.email,
           role: 'admin',
+          mustChangePassword: Boolean(user.mustChangePassword),
         },
       };
     }
 
-    // If admin account has not been seeded in database or DB is offline/in-memory
-    if (isMasterAdminCred || (!env.isProd && input.includes('admin') && (password === 'password123' || password === 'Admin123!Secure' || password === 'Admin123!'))) {
-      // Auto-provision admin user in MongoDB if connection is active
+    // Bootstrap fallback when administrator account has not yet been provisioned in database
+    const adminEmail = (env.ADMIN_EMAIL || 'admin@perfectpic.in').toLowerCase().trim();
+    const isBootstrapMatch = (input === adminEmail || input === 'admin') && 
+      Boolean(env.ADMIN_BOOTSTRAP_PASSWORD && password === env.ADMIN_BOOTSTRAP_PASSWORD);
+
+    if (isBootstrapMatch) {
       try {
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 12);
         const created = await UserRepository.create({
-          name: input.includes('praveen') ? 'Praveen Kurupati' : 'Admin PerfectPic',
-          email: input.includes('@') ? input : `${input}@perfectpic.in`,
+          name: 'PerfectPic Administrator',
+          email: adminEmail,
           phone: '+919999900000',
           password: hashedPassword,
           role: 'admin',
+          mustChangePassword: true,
         });
+
         if (created && created._id) {
           const token = signToken({
             id: created._id.toString(),
@@ -131,19 +125,38 @@ export class AuthService {
               name: created.name,
               email: created.email,
               role: 'admin',
+              mustChangePassword: true,
             },
           };
         }
       } catch (_) {}
 
-      const token = signToken({ id: 'admin_1', email: input.includes('@') ? input : `${input}@perfectpic.in`, name: 'Admin PerfectPic', role: 'admin' });
+      const token = signToken({ id: 'admin_bootstrap', email: adminEmail, name: 'PerfectPic Administrator', role: 'admin' });
       return {
         token,
-        user: { id: 'admin_1', name: 'Admin PerfectPic', email: input.includes('@') ? input : `${input}@perfectpic.in`, role: 'admin' },
+        user: { id: 'admin_bootstrap', name: 'PerfectPic Administrator', email: adminEmail, role: 'admin', mustChangePassword: true },
       };
     }
 
-    throw ApiError.unauthorized('Invalid administrator credentials.');
+    throw ApiError.unauthorized('Invalid email or password.');
+  }
+
+  public static async changePassword(userId: string, currentPass: string, newPass: string) {
+    if (!newPass || newPass.length < 8) {
+      throw ApiError.badRequest('New password must be at least 8 characters long.');
+    }
+    const user = await UserRepository.findById(userId);
+    if (!user) {
+      throw ApiError.notFound('User account not found.');
+    }
+    const isMatch = await user.comparePassword(currentPass);
+    if (!isMatch) {
+      throw ApiError.badRequest('Current password is incorrect.');
+    }
+    user.password = await bcrypt.hash(newPass, 12);
+    user.mustChangePassword = false;
+    await user.save();
+    return { success: true, message: 'Password updated successfully.' };
   }
 
   public static async signup(data: { name: string; email: string; phone?: string; password?: string }) {

@@ -29,6 +29,7 @@ export interface IUser {
   milestones?: IUserMilestone[];
   notificationPreferences?: INotificationPreferences;
   storeCredit?: number;
+  mustChangePassword?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -48,7 +49,7 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
       trim: true, 
       index: true 
     },
-    phone: { type: String, trim: true, default: '' },
+    phone: { type: String, trim: true, default: '', index: true },
     password: { type: String, default: '' },
     role: { type: String, enum: ['admin', 'user'], default: 'user', index: true },
     avatar: { type: String, default: '' },
@@ -60,6 +61,7 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
       default: () => ({ whatsappReminders: true, emailReminders: true, anniversaryReminders: true }),
     },
     storeCredit: { type: Number, default: 0, min: 0 },
+    mustChangePassword: { type: Boolean, default: false },
   },
   {
     timestamps: true,
@@ -74,6 +76,8 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
     }
   }
 );
+
+UserSchema.index({ email: 1, role: 1 });
 
 // Method to verify password
 UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {

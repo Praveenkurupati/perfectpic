@@ -576,22 +576,6 @@ export const useCartStore = create<CartState>((set, get) => {
         return { success: false, message: 'Invalid gift card code or incorrect 4-digit PIN.' };
       }
     } catch (err: any) {
-      // Fallback for offline / demo environments
-      if (cleanCode.includes('PPGC-GOLD') || cleanCode === 'PPGC-DEMO-2026-VALU') {
-        const mockCard: AppliedGiftCard = {
-          code: cleanCode.includes('PPGC-GOLD') ? 'PPGC-GOLD-2026-HEIR' : cleanCode,
-          balance: 2000,
-          initialAmount: 2000,
-          theme: 'classic-noir',
-          recipientName: 'Valued Patron',
-        };
-        set({ appliedGiftCard: mockCard });
-        return {
-          success: true,
-          message: `Gift card ${mockCard.code} applied! Balance: ₹2,000`,
-          balance: 2000,
-        };
-      }
       return { success: false, message: err.message || 'Unable to verify gift card code.' };
     }
   },

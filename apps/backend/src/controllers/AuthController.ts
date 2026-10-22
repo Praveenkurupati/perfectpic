@@ -39,6 +39,20 @@ export class AuthController {
     }
   }
 
+  public static async changePassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        throw ApiError.unauthorized('Authentication required.');
+      }
+      const { currentPassword, newPassword } = req.body;
+      const result = await AuthService.changePassword(user.id || user._id, currentPassword, newPassword);
+      return res.status(200).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   public static async signup(req: Request, res: Response, next: NextFunction) {
     try {
       const { name, email, phone, password, otp } = req.body;

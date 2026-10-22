@@ -191,8 +191,24 @@ export async function acquireLock(key: string, ttlSeconds = 300): Promise<boolea
   return true;
 }
 
+export async function disconnectRedis(): Promise<void> {
+  if (redisClient) {
+    try {
+      await redisClient.quit();
+      console.info('⚡ [Redis] Client connection gracefully closed.');
+    } catch {
+      redisClient.disconnect();
+      console.info('⚡ [Redis] Client forcibly disconnected.');
+    } finally {
+      redisClient = null;
+      isConnected = false;
+    }
+  }
+}
+
 export default {
   connectRedis,
+  disconnectRedis,
   isRedisConnected,
   get: cacheGet,
   set: cacheSet,
@@ -201,4 +217,5 @@ export default {
   flushAll: cacheFlushAll,
   acquireLock,
 };
+
 

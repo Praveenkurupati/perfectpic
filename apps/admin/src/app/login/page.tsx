@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from "lucide-react";
+import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
 import { adminApi } from "@/lib/api";
 import { getStorefrontUrl } from "@/lib/urls";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -38,31 +38,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleQuickAdminLogin = async () => {
-    setEmail("admin@perfectpic.in");
-    setPassword("password123");
-    setIsSubmitting(true);
-    setErrorMsg("");
-
-    try {
-      const res = await adminApi.login({
-        email: "admin@perfectpic.in",
-        password: "password123",
-      });
-
-      if (typeof window !== "undefined") {
-        localStorage.setItem("admin_token", res.token);
-        localStorage.setItem("admin_user", JSON.stringify(res.user));
-      }
-
-      router.push("/");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Failed to sign in with admin account.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-noir-950 flex flex-col items-center justify-center p-4 text-cream-50 font-sans">
       <div className="w-full max-w-md bg-cream-50 rounded-sm shadow-luxury-xl p-8 text-noir-900 border border-cream-300">
@@ -73,30 +48,6 @@ export default function LoginPage() {
           <p className="text-xs text-noir-500 tracking-widest uppercase font-medium">
             Admin Portal • perfectpic.in
           </p>
-        </div>
-
-        {/* 1-Click Test Admin Login */}
-        <div className="mb-6 p-3.5 bg-amber-50/80 border border-amber-200 rounded-sm">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-              Demo Admin Account
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleQuickAdminLogin}
-            disabled={isSubmitting}
-            className="w-full py-2 px-3 bg-noir-900 hover:bg-noir-800 text-cream-50 rounded text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-          >
-            <span>1-Click Admin Login</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-          <div className="text-[10px] text-noir-600 mt-2 text-center flex items-center justify-center gap-2">
-            <span>admin@perfectpic.in</span>
-            <span>•</span>
-            <code className="bg-amber-100 px-1 py-0.5 rounded font-mono">password123</code>
-          </div>
         </div>
 
         {errorMsg && (

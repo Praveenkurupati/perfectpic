@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { 
   ShieldAlert, 
@@ -16,9 +16,13 @@ import {
   Clock, 
   MoreVertical,
   X,
-  Check
+  Check,
+  Loader2,
+  AlertCircle,
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { adminApi } from "@/lib/api";
 
 interface TeamMember {
   id: string;
@@ -30,69 +34,6 @@ interface TeamMember {
   lastActive: string;
   status: "active" | "suspended";
 }
-
-const mockTeam: TeamMember[] = [
-  {
-    id: "tm-1",
-    name: "Praveen Kurupati",
-    email: "praveen@perfectpic.in",
-    role: "Super Admin",
-    department: "Executive",
-    twoFactorEnabled: true,
-    lastActive: "Just now",
-    status: "active",
-  },
-  {
-    id: "tm-2",
-    name: "Vikram Sengupta",
-    email: "vikram.ops@perfectpic.in",
-    role: "Operations Manager",
-    department: "Fulfillment & SLA",
-    twoFactorEnabled: true,
-    lastActive: "12 mins ago",
-    status: "active",
-  },
-  {
-    id: "tm-3",
-    name: "Rajesh Kannan",
-    email: "rajesh.press@perfectpic.in",
-    role: "Production Floor Lead",
-    department: "HP Indigo Press Facility",
-    twoFactorEnabled: true,
-    lastActive: "4 mins ago",
-    status: "active",
-  },
-  {
-    id: "tm-4",
-    name: "Ananya Deshmukh",
-    email: "ananya.qc@perfectpic.in",
-    role: "Quality Assurance Specialist",
-    department: "Layflat Bindery QC",
-    twoFactorEnabled: false,
-    lastActive: "1 hour ago",
-    status: "active",
-  },
-  {
-    id: "tm-5",
-    name: "Sneha Nair",
-    email: "sneha.support@perfectpic.in",
-    role: "Customer Concierge Lead",
-    department: "Customer Experience",
-    twoFactorEnabled: true,
-    lastActive: "25 mins ago",
-    status: "active",
-  },
-  {
-    id: "tm-6",
-    name: "Aditya Verma",
-    email: "aditya.finance@perfectpic.in",
-    role: "Financial Analyst",
-    department: "Finance & Accounts",
-    twoFactorEnabled: true,
-    lastActive: "3 hours ago",
-    status: "active",
-  },
-];
 
 const permissionModules = [
   { id: "orders", label: "Orders 360° Management" },
@@ -169,7 +110,9 @@ const roleMatrix: Record<string, Record<string, "FULL" | "READ" | "NONE">> = {
 };
 
 export default function TeamGovernancePage() {
-  const [team, setTeam] = useState<TeamMember[]>(mockTeam);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [newMember, setNewMember] = useState({
     name: "",
@@ -177,6 +120,40 @@ export default function TeamGovernancePage() {
     role: "Customer Concierge Lead",
     department: "Customer Experience",
   });
+
+  const loadTeamMembers = useCallback(() => {
+    setIsLoading(true);
+    setErrorMsg("");
+
+    adminApi.getUsers()
+      .then((res) => {
+        if (res && res.users) {
+          const mapped: TeamMember[] = res.users.map((u: any) => ({
+            id: u._id || u.id,
+            name: u.name || u.email?.split("@")[0] || "Team Member",
+            email: u.email || "",
+            role: u.role === "admin" ? "Super Admin" : (u.staffRole || (u.role ? u.role.toUpperCase() : "Operations Specialist")),
+            department: u.department || (u.role === "admin" ? "Executive Governance" : "Operations"),
+            twoFactorEnabled: Boolean(u.twoFactorEnabled),
+            lastActive: u.updatedAt ? new Date(u.updatedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "Active",
+            status: u.status === "suspended" ? "suspended" : "active",
+          }));
+          setTeam(mapped);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load staff roster:", err);
+        setErrorMsg(err.message || "Failed to load team directory from server.");
+        setTeam([]);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    loadTeamMembers();
+  }, [loadTeamMembers]);
 
   const handleInviteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,6 +211,23 @@ export default function TeamGovernancePage() {
         </button>
       </div>
 
+      {/* Error Alert */}
+      {errorMsg && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-center justify-between text-sm text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+          <button
+            onClick={loadTeamMembers}
+            className="flex items-center gap-1 text-xs font-medium text-red-700 hover:text-red-900 bg-white px-2.5 py-1 rounded border border-red-300 shadow-sm"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Active Team Roster */}
       <div className="bg-white border border-cream-200 rounded-lg shadow-sm overflow-hidden">
         <div className="p-5 border-b border-cream-200 flex items-center justify-between">
@@ -243,9 +237,12 @@ export default function TeamGovernancePage() {
               Authorized Team Members
             </h2>
           </div>
-          <span className="text-xs font-mono text-noir-500">
-            {team.length} Active Accounts
-          </span>
+          <div className="flex items-center gap-3">
+            {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-foil-gold" />}
+            <span className="text-xs font-mono text-noir-500">
+              {team.length} Active Accounts
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -261,50 +258,66 @@ export default function TeamGovernancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-cream-100">
-              {team.map((member) => (
-                <tr key={member.id} className="hover:bg-cream-50/50 transition-colors">
-                  <td className="py-3.5 px-4 font-sans">
-                    <div className="font-semibold text-noir-950">{member.name}</div>
-                    <div className="text-[11px] font-mono text-noir-500">{member.email}</div>
-                  </td>
-
-                  <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cream-100 text-noir-900 border border-cream-200">
-                      {member.role}
-                    </span>
-                  </td>
-
-                  <td className="py-3.5 px-4 font-sans text-noir-700">
-                    {member.department}
-                  </td>
-
-                  <td className="py-3.5 px-4">
-                    {member.twoFactorEnabled ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        <Check className="w-3 h-3 text-emerald-600" />
-                        2FA Enforced
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        Pending 2FA
-                      </span>
-                    )}
-                  </td>
-
-                  <td className="py-3.5 px-4 text-noir-500 text-[11px]">
-                    {member.lastActive}
-                  </td>
-
-                  <td className="py-3.5 px-4 text-right">
-                    <button
-                      onClick={() => alert(`Opening permissions editor for ${member.name}`)}
-                      className="text-xs text-foil-gold hover:underline font-mono"
-                    >
-                      Configure Scope
-                    </button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-noir-400 font-sans">
+                    <Loader2 className="w-6 h-6 animate-spin text-foil-gold mx-auto mb-2" />
+                    <span>Loading authorized team roster from secure directory...</span>
                   </td>
                 </tr>
-              ))}
+              ) : team.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-noir-500 font-sans">
+                    <p className="font-serif text-base text-noir-800 mb-1">No Staff Profiles Found</p>
+                    <p className="text-xs text-noir-500">Invite personnel to establish administrative role assignments.</p>
+                  </td>
+                </tr>
+              ) : (
+                team.map((member) => (
+                  <tr key={member.id} className="hover:bg-cream-50/50 transition-colors">
+                    <td className="py-3.5 px-4 font-sans">
+                      <div className="font-semibold text-noir-950">{member.name}</div>
+                      <div className="text-[11px] font-mono text-noir-500">{member.email}</div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-cream-100 text-noir-900 border border-cream-200">
+                        {member.role}
+                      </span>
+                    </td>
+
+                    <td className="py-3.5 px-4 font-sans text-noir-700">
+                      {member.department}
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      {member.twoFactorEnabled ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          2FA Enforced
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          Pending 2FA
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-noir-500 text-[11px]">
+                      {member.lastActive}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={() => alert(`Opening permissions editor for ${member.name}`)}
+                        className="text-xs text-foil-gold hover:underline font-mono"
+                      >
+                        Configure Scope
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

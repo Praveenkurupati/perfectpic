@@ -1,32 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { tickets as fallbackTickets } from "@/lib/mock-data";
+import { useState, useEffect, useCallback } from "react";
 import { adminApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { MessageSquare, AlertCircle, RefreshCcw, PackageX, Loader2 } from "lucide-react";
+import { MessageSquare, AlertCircle, RefreshCcw, PackageX, Loader2, RefreshCw } from "lucide-react";
 import { Pagination } from "@/components/ui/Pagination";
 
 export default function TicketsPage() {
   const [activeTab, setActiveTab] = useState("All");
-  const [ticketList, setTicketList] = useState<any[]>(fallbackTickets);
+  const [ticketList, setTicketList] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [totalItems, setTotalItems] = useState(fallbackTickets.length);
-  const [totalPages, setTotalPages] = useState(Math.ceil(fallbackTickets.length / 10));
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab]);
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadTickets = useCallback(() => {
     setLoading(true);
+    setErrorMsg("");
 
     adminApi.getTickets({ status: activeTab, page: currentPage, limit: pageSize })
       .then(res => {
-        if (isMounted && res && res.tickets) {
+        if (res && res.tickets) {
           setTicketList(res.tickets);
           if (res.total !== undefined) {
             setTotalItems(res.total);
@@ -35,23 +35,18 @@ export default function TicketsPage() {
         }
       })
       .catch(err => {
-        console.warn("Using fallback ticket list:", err);
-        const filtered = fallbackTickets.filter((t) =>
-          activeTab === "All" || t.status.toLowerCase() === activeTab.toLowerCase()
-        );
-        setTotalItems(filtered.length);
-        setTotalPages(Math.max(1, Math.ceil(filtered.length / pageSize)));
-        const start = (currentPage - 1) * pageSize;
-        setTicketList(filtered.slice(start, start + pageSize));
+        console.error("Failed to load support tickets:", err);
+        setErrorMsg(err.message || "Failed to load support tickets from database.");
+        setTicketList([]);
       })
       .finally(() => {
-        if (isMounted) setLoading(false);
+        setLoading(false);
       });
-
-    return () => {
-      isMounted = false;
-    };
   }, [activeTab, currentPage, pageSize]);
+
+  useEffect(() => {
+    loadTickets();
+  }, [loadTickets]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -71,6 +66,22 @@ export default function TicketsPage() {
           <p className="text-sm text-noir-500 mt-1">Manage customer queries and issues.</p>
         </div>
       </div>
+
+      {errorMsg && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-center justify-between text-sm text-red-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <span>{errorMsg}</span>
+          </div>
+          <button
+            onClick={() => loadTickets()}
+            className="flex items-center gap-1.5 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-900 rounded text-xs font-medium transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Retry</span>
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-md shadow-luxury-sm border border-cream-200">
         <div className="p-4 border-b border-cream-200 flex justify-between items-center">

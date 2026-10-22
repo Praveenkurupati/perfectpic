@@ -268,8 +268,8 @@ async function runTests() {
   // 11. Admin Login
   console.log('Testing: POST /api/v1/auth/admin/login');
   const adminLogin = await dispatchRequest('POST', '/api/v1/auth/admin/login', {
-    email: 'admin@perfectpic.in',
-    password: 'Admin123!Secure',
+    email: env.ADMIN_EMAIL,
+    password: env.ADMIN_BOOTSTRAP_PASSWORD,
   });
   const adminToken = adminLogin.body?.token;
   const adminHeaders: Record<string, string> = adminToken ? { authorization: `Bearer ${adminToken}` } : {};
@@ -280,6 +280,21 @@ async function runTests() {
     expectedStatus: 200,
     passed: adminLogin.status === 200 && !!adminToken,
     details: `Role: ${adminLogin.body?.user?.role}, Name: ${adminLogin.body?.user?.name}`,
+  });
+
+  // 11b. Change Password Authentication Guard
+  console.log('Testing: POST /api/v1/auth/change-password (Rejects short password)');
+  const changePassRes = await dispatchRequest('POST', '/api/v1/auth/change-password', {
+    currentPassword: env.ADMIN_BOOTSTRAP_PASSWORD,
+    newPassword: 'short',
+  }, adminHeaders);
+  results.push({
+    endpoint: '/api/v1/auth/change-password',
+    method: 'POST',
+    status: changePassRes.status,
+    expectedStatus: 400,
+    passed: changePassRes.status === 400,
+    details: 'Validated minimum password length (HTTP 400)',
   });
 
   // 12. Admin Orders & Stats (with admin token)

@@ -3,8 +3,8 @@ import http from 'http';
 import app from './app';
 import { env } from './config/env';
 import { logger } from './utils/logger';
-import { connectDB } from './db/connection';
-import { connectRedis } from './cache/redis';
+import { connectDB, closeDB } from './db/connection';
+import { connectRedis, disconnectRedis } from './cache/redis';
 
 let server: http.Server | undefined;
 
@@ -84,13 +84,33 @@ async function bootstrap() {
   // Handle termination signals
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}. Gracefully shutting down PerfectPic server...`);
-    if (server) {
-      server.close(() => {
-        logger.info('HTTP server closed successfully.');
-        process.exit(0);
-      });
-    } else {
+
+    // Safety timeout to avoid hung processes
+    const forceExitTimeout = setTimeout(() => {
+      logger.error('Graceful shutdown timed out after 10 seconds. Forcing process exit.');
+      process.exit(1);
+    }, 10000);
+    forceExitTimeout.unref();
+
+    try {
+      if (server) {
+        await new Promise<void>((resolve, reject) => {
+          server!.close((err) => {
+            if (err) return reject(err);
+            logger.info('HTTP server closed successfully.');
+            resolve();
+          });
+        });
+      }
+
+      await closeDB();
+      await disconnectRedis();
+
+      logger.info('PerfectPic server graceful shutdown complete.');
       process.exit(0);
+    } catch (shutdownErr: any) {
+      logger.error('Error during graceful shutdown:', shutdownErr.message);
+      process.exit(1);
     }
   };
 

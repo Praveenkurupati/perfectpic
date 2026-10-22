@@ -38,6 +38,10 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getUsers: () =>
+    fetcher<{ users: any[] }>('/auth/users', {
+      headers: authHeaders(),
+    }),
 
   // Orders
   getOrders: (params?: { page?: number; limit?: number; status?: string; search?: string; deliveryOption?: string; isRush?: boolean }) => {
@@ -80,6 +84,28 @@ export const adminApi = {
       method: 'PUT',
       headers: authHeaders(),
       body: JSON.stringify({ shippingAddress }),
+    }),
+  pincodeLookup: (pincode: string) =>
+    fetcher<{
+      pincode: string;
+      city: string;
+      state: string;
+      tier?: string;
+      isServiceable: boolean;
+      serviceable?: boolean;
+      estimatedDays?: string;
+      estimatedHours?: string;
+      courierPartner?: string;
+      preferredCarrier?: string;
+      insuredTransit?: string;
+    }>('/shipping/pincode-lookup', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ pincode }),
+    }),
+  trackShipping: (trackingId: string) =>
+    fetcher<any>(`/shipping/track/${encodeURIComponent(trackingId)}`, {
+      headers: authHeaders(),
     }),
   uploadOrderPdf: async (blobOrFile: Blob | File, orderId: string, customFilename?: string) => {
     const cleanId = String(orderId).replace(/[^a-zA-Z0-9_-]/g, '') || `ORD-${Date.now()}`;
